@@ -1,11 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { AssessmentStep, CapturedImage, BodyReport, UserInfo, MemberRecord } from '../types';
 import CameraModule from './CameraModule';
 import { analyzeHealth } from '../services/geminiService';
 import ReportDashboard from './ReportDashboard';
 import UserInfoForm from './UserInfoForm';
 import HistoryManager from './HistoryManager';
+import StepInstruction from './StepInstruction';
+import useVoiceCommand from '../hooks/useVoiceCommand';
 
 // Utility to resize images to prevent LocalStorage quota issues (approx 5MB limit)
 const resizeImage = (dataUrl: string, maxWidth = 400): Promise<string> => {
@@ -28,22 +30,71 @@ const resizeImage = (dataUrl: string, maxWidth = 400): Promise<string> => {
   });
 };
 
+// Steps that show camera (not INTRO, USER_INFO, ANALYZING, REPORT)
+const CAMERA_STEPS = [
+  AssessmentStep.POSTURE_FRONT,
+  AssessmentStep.POSTURE_SIDE,
+  AssessmentStep.BALANCE_TEST,
+  AssessmentStep.ARM_RAISE_TEST,
+  AssessmentStep.FLEXIBILITY_TEST,
+  AssessmentStep.STRENGTH_SQUAT,
+  AssessmentStep.STRENGTH_PUSHUP,
+  AssessmentStep.FACE_ANALYSIS,
+];
+
+const STEP_ORDER = Object.values(AssessmentStep);
+
 const AssessmentFlow: React.FC = () => {
   const [step, setStep] = useState<AssessmentStep | 'HISTORY'>(AssessmentStep.INTRO);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [capturedImages, setCapturedImages] = useState<CapturedImage[]>([]);
   const [report, setReport] = useState<BodyReport | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showInstruction, setShowInstruction] = useState(true);
+  // Voice command forwarded to CameraModule — uses counter to trigger even if same command
+  const [cameraVoiceCommand, setCameraVoiceCommand] = useState<string | null>(null);
+  const [voiceCommandId, setVoiceCommandId] = useState(0);
+
+  // Voice command handler
+  const handleVoiceCommand = useCallback((command: string) => {
+    if (command === 'next' || command === 'start') {
+      if (step === AssessmentStep.INTRO) {
+        setStep(AssessmentStep.USER_INFO);
+      } else if (showInstruction && CAMERA_STEPS.includes(step as AssessmentStep)) {
+        setShowInstruction(false);
+      } else if (!showInstruction && CAMERA_STEPS.includes(step as AssessmentStep)) {
+        // Forward 'start' to camera module
+        setCameraVoiceCommand('start');
+        setVoiceCommandId(prev => prev + 1);
+      }
+    } else if (command === 'capture') {
+      if (!showInstruction && CAMERA_STEPS.includes(step as AssessmentStep)) {
+        setCameraVoiceCommand('capture');
+        setVoiceCommandId(prev => prev + 1);
+      }
+    }
+  }, [step, showInstruction]);
+
+  const { isListening, isSupported, toggleListening, startListening } = useVoiceCommand({
+    onCommand: handleVoiceCommand,
+    enabled: true,
+  });
+
+  // Auto-start voice recognition when entering camera steps
+  React.useEffect(() => {
+    if (!showInstruction && CAMERA_STEPS.includes(step as AssessmentStep) && isSupported && !isListening) {
+      startListening();
+    }
+  }, [step, showInstruction, isSupported]);
 
   const saveRecord = async (rep: BodyReport, imgs: CapturedImage[]) => {
     try {
       const saved = localStorage.getItem('bt_records');
       const records: MemberRecord[] = saved ? JSON.parse(saved) : [];
       
-      // Resize images for storage to stay under the 5MB limit
       const resizedImages = await Promise.all(imgs.map(async (img) => ({
         ...img,
-        dataUrl: await resizeImage(img.dataUrl, 300) // Small thumbnails for storage
+        dataUrl: await resizeImage(img.dataUrl, 300)
       })));
 
       const newRecord: MemberRecord = {
@@ -54,34 +105,32 @@ const AssessmentFlow: React.FC = () => {
         images: resizedImages
       };
       
-      records.unshift(newRecord); // Add to beginning of list
-      // Keep only last 20 records to manage space
+      records.unshift(newRecord);
       const limitedRecords = records.slice(0, 20);
       localStorage.setItem('bt_records', JSON.stringify(limitedRecords));
-      console.log("Record saved successfully");
     } catch (error) {
-      console.warn("Storage failed (likely quota limit):", error);
-      // Even if storage fails, we don't block the user from seeing the current report
+      console.warn("Storage failed:", error);
     }
   };
 
   const handleUserSubmit = (info: UserInfo) => {
     setUserInfo(info);
     setStep(AssessmentStep.POSTURE_FRONT);
+    setShowInstruction(true);
   };
 
   const handleCapture = (dataUrl: string) => {
     const newImages = [...capturedImages, { step: step as AssessmentStep, dataUrl }];
     setCapturedImages(newImages);
 
-    const steps = Object.values(AssessmentStep);
-    const currentIndex = steps.indexOf(step as AssessmentStep);
-    const nextStep = steps[currentIndex + 1];
+    const currentIndex = STEP_ORDER.indexOf(step as AssessmentStep);
+    const nextStep = STEP_ORDER[currentIndex + 1];
 
     if (nextStep === AssessmentStep.ANALYZING) {
       runAnalysis(newImages);
     } else {
       setStep(nextStep as AssessmentStep);
+      setShowInstruction(true);
     }
   };
 
@@ -90,7 +139,6 @@ const AssessmentFlow: React.FC = () => {
     setStep(AssessmentStep.ANALYZING);
     setIsAnalyzing(true);
     try {
-      // For AI analysis, we send slightly larger images than storage but still resized for speed
       const aiOptimizedImages = await Promise.all(images.map(async (img) => ({
         ...img,
         dataUrl: await resizeImage(img.dataUrl, 800)
@@ -98,10 +146,7 @@ const AssessmentFlow: React.FC = () => {
 
       const result = await analyzeHealth(userInfo, aiOptimizedImages);
       setReport(result);
-      
-      // Attempt to save to history, but don't crash if it fails
       await saveRecord(result, images);
-      
       setStep(AssessmentStep.REPORT);
     } catch (error) {
       console.error("Analysis Error:", error);
@@ -110,6 +155,74 @@ const AssessmentFlow: React.FC = () => {
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  // Step progress indicator
+  const renderStepProgress = () => {
+    if (step === AssessmentStep.INTRO || step === 'HISTORY' || step === AssessmentStep.REPORT) return null;
+    
+    const currentIndex = STEP_ORDER.indexOf(step as AssessmentStep);
+
+    return (
+      <div className="step-progress">
+        {STEP_ORDER.filter(s => s !== AssessmentStep.INTRO && s !== AssessmentStep.REPORT && s !== AssessmentStep.ANALYZING).map((s, i) => {
+          const sIndex = STEP_ORDER.indexOf(s);
+          const isActive = s === step;
+          const isCompleted = sIndex < currentIndex;
+          return (
+            <React.Fragment key={s}>
+              <div className={`step-dot ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`} />
+              {i < 8 && <div className="step-connector" />}
+            </React.Fragment>
+          );
+        })}
+        
+        {/* Voice toggle button */}
+        {isSupported && (
+          <button
+            onClick={toggleListening}
+            className={`voice-btn ml-3 ${isListening ? 'active' : 'inactive'}`}
+            title={isListening ? '음성 인식 끄기' : '음성 인식 켜기'}
+          >
+            <i className={`fas ${isListening ? 'fa-microphone' : 'fa-microphone-slash'}`}></i>
+            {isListening && <div className="voice-ripple" />}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const renderCameraStep = (assessmentStep: AssessmentStep) => {
+    const stepConfig: Record<string, { label: string; labelColor: string; title: string; guidelineType: string; autoCapture?: boolean; timerDuration?: number }> = {
+      [AssessmentStep.POSTURE_FRONT]: { label: '진단 1단계', labelColor: 'text-indigo-400', title: '정면 신체 균형', guidelineType: 'front', autoCapture: true },
+      [AssessmentStep.POSTURE_SIDE]: { label: '진단 2단계', labelColor: 'text-indigo-400', title: '측면 신체 균형', guidelineType: 'side', autoCapture: true },
+      [AssessmentStep.BALANCE_TEST]: { label: '노화 테스트 01', labelColor: 'text-rose-400', title: '눈 감고 한발 서기', guidelineType: 'balance', timerDuration: 30 },
+      [AssessmentStep.ARM_RAISE_TEST]: { label: '노화 테스트 02', labelColor: 'text-rose-400', title: '팔 들어 올리기', guidelineType: 'flexibility' },
+      [AssessmentStep.FLEXIBILITY_TEST]: { label: '노화 테스트 03', labelColor: 'text-rose-400', title: '유연성 테스트 (전굴)', guidelineType: 'flexibility' },
+      [AssessmentStep.STRENGTH_SQUAT]: { label: '근력 테스트 01', labelColor: 'text-emerald-400', title: '30초 스쿼트', guidelineType: 'squat', timerDuration: 30 },
+      [AssessmentStep.STRENGTH_PUSHUP]: { label: '근력 테스트 02', labelColor: 'text-emerald-400', title: '30초 푸시업', guidelineType: 'pushup', timerDuration: 30 },
+      [AssessmentStep.FACE_ANALYSIS]: { label: '바이오 스캔', labelColor: 'text-purple-400', title: '안면 노화도 측정', guidelineType: 'face' },
+    };
+
+    const config = stepConfig[assessmentStep];
+    if (!config) return null;
+
+    return (
+      <div className="flex-1 flex flex-col p-6 overflow-auto animate-fadeIn">
+        <div className="mb-4">
+          <span className={`${config.labelColor} font-bold text-xs uppercase tracking-widest`}>{config.label}</span>
+          <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{config.title}</h3>
+        </div>
+        <CameraModule
+          key={config.guidelineType + assessmentStep}
+          onCapture={handleCapture}
+          guidelineType={config.guidelineType as any}
+          autoCapture={config.autoCapture}
+          timerDuration={config.timerDuration}
+          voiceCommand={cameraVoiceCommand ? `${cameraVoiceCommand}_${voiceCommandId}` : null}
+        />
+      </div>
+    );
   };
 
   const renderContent = () => {
@@ -127,32 +240,38 @@ const AssessmentFlow: React.FC = () => {
     switch (step) {
       case AssessmentStep.INTRO:
         return (
-          <div className="max-w-xl mx-auto text-center py-16 px-6">
-            <div className="w-24 h-24 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-8 text-indigo-600 text-4xl shadow-inner">
-              <i className="fas fa-brain"></i>
+          <div className="max-w-xl mx-auto text-center py-16 px-6 animate-fadeIn">
+            <div className="mx-auto mb-8 animate-float rounded-2xl overflow-hidden px-4 py-3 inline-block" 
+                 style={{ background: 'rgba(255,255,255,0.95)', boxShadow: 'var(--glow-indigo)' }}>
+              <img src="/logo.jpg" alt="BrainTraining Center" className="h-16 object-contain" />
             </div>
-            <h2 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">브레인 트레이닝 센터</h2>
-            <p className="text-slate-500 mb-10 leading-relaxed text-lg italic">
-              AI 신체 밸런스 & 뇌 건강 진단 시스템
+            <p className="text-lg mb-1 font-bold" style={{ color: 'var(--text-secondary)' }}>
+              AI 신체 밸런스 &amp; 뇌 건강 진단
+            </p>
+            <p className="mb-10 leading-relaxed text-sm italic" style={{ color: 'var(--text-muted)' }}>
+              Brain Education 5-Step 기반 종합 체력 평가 시스템
             </p>
             <div className="grid grid-cols-1 gap-3 mb-10 text-left">
               <button 
                 onClick={() => setStep(AssessmentStep.USER_INFO)}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-5 rounded-3xl shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-3"
+                className="w-full font-bold py-5 rounded-3xl shadow-xl transition-all flex items-center justify-center gap-3 text-white text-lg animate-slideUp"
+                style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--glow-indigo)' }}
               >
+                <i className="fas fa-play"></i>
                 신규 진단 시작하기
                 <i className="fas fa-chevron-right"></i>
               </button>
               <button 
                 onClick={() => setStep('HISTORY')}
-                className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-5 rounded-3xl hover:bg-slate-50 transition-all flex items-center justify-center gap-3"
+                className="w-full glass font-bold py-5 rounded-3xl transition-all flex items-center justify-center gap-3 animate-slideUp delay-100"
+                style={{ color: 'var(--text-secondary)', cursor: 'pointer', background: 'var(--bg-glass-light)' }}
               >
                 <i className="fas fa-users"></i>
                 회원 데이터 관리
               </button>
             </div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
-                Powered by Gemini AI Vision
+            <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: 'var(--text-muted)' }}>
+              Powered by Gemini AI Vision
             </div>
           </div>
         );
@@ -160,107 +279,46 @@ const AssessmentFlow: React.FC = () => {
       case AssessmentStep.USER_INFO:
         return <UserInfoForm onSubmit={handleUserSubmit} />;
 
+      // Camera steps with instruction screens
       case AssessmentStep.POSTURE_FRONT:
-        return (
-          <div className="flex-1 flex flex-col p-6 overflow-auto">
-            <div className="mb-6 flex justify-between items-end">
-                <div>
-                  <span className="text-indigo-600 font-bold text-xs uppercase tracking-widest">진단 1단계</span>
-                  <h3 className="text-2xl font-bold text-slate-800">정면 신체 균형</h3>
-                </div>
-            </div>
-            <CameraModule key="front" onCapture={handleCapture} guidelineType="front" autoCapture />
-          </div>
-        );
-
       case AssessmentStep.POSTURE_SIDE:
-        return (
-          <div className="flex-1 flex flex-col p-6 overflow-auto">
-            <div className="mb-6">
-                <span className="text-indigo-600 font-bold text-xs uppercase tracking-widest">진단 2단계</span>
-                <h3 className="text-2xl font-bold text-slate-800">측면 신체 균형</h3>
-            </div>
-            <CameraModule key="side" onCapture={handleCapture} guidelineType="side" autoCapture />
-          </div>
-        );
-
       case AssessmentStep.BALANCE_TEST:
-        return (
-          <div className="flex-1 flex flex-col p-6 overflow-auto">
-            <div className="mb-6">
-                <span className="text-rose-600 font-bold text-xs uppercase tracking-widest">노화 테스트 01</span>
-                <h3 className="text-2xl font-bold text-slate-800">눈 감고 한발 서기</h3>
-            </div>
-            <CameraModule key="balance" onCapture={handleCapture} guidelineType="balance" timerDuration={30} />
-          </div>
-        );
-
       case AssessmentStep.ARM_RAISE_TEST:
-        return (
-          <div className="flex-1 flex flex-col p-6 overflow-auto">
-            <div className="mb-6">
-                <span className="text-rose-600 font-bold text-xs uppercase tracking-widest">노화 테스트 02</span>
-                <h3 className="text-2xl font-bold text-slate-800">팔 들어 올리기</h3>
-            </div>
-            <CameraModule key="arm" onCapture={handleCapture} guidelineType="flexibility" />
-          </div>
-        );
-
       case AssessmentStep.FLEXIBILITY_TEST:
-        return (
-          <div className="flex-1 flex flex-col p-6 overflow-auto">
-            <div className="mb-6">
-                <span className="text-rose-600 font-bold text-xs uppercase tracking-widest">노화 테스트 03</span>
-                <h3 className="text-2xl font-bold text-slate-800">유연성 테스트 (전굴)</h3>
-            </div>
-            <CameraModule key="flex" onCapture={handleCapture} guidelineType="flexibility" />
-          </div>
-        );
-
       case AssessmentStep.STRENGTH_SQUAT:
-        return (
-          <div className="flex-1 flex flex-col p-6 overflow-auto">
-            <div className="mb-6">
-                <span className="text-emerald-600 font-bold text-xs uppercase tracking-widest">근력 테스트 01</span>
-                <h3 className="text-2xl font-bold text-slate-800">30초 스쿼트</h3>
-            </div>
-            <CameraModule key="squat" onCapture={handleCapture} guidelineType="squat" timerDuration={30} />
-          </div>
-        );
-
       case AssessmentStep.STRENGTH_PUSHUP:
-        return (
-          <div className="flex-1 flex flex-col p-6 overflow-auto">
-            <div className="mb-6">
-                <span className="text-emerald-600 font-bold text-xs uppercase tracking-widest">근력 테스트 02</span>
-                <h3 className="text-2xl font-bold text-slate-800">30초 푸시업</h3>
-            </div>
-            <CameraModule key="pushup" onCapture={handleCapture} guidelineType="pushup" timerDuration={30} />
-          </div>
-        );
-
       case AssessmentStep.FACE_ANALYSIS:
-        return (
-          <div className="flex-1 flex flex-col p-6 overflow-auto">
-            <div className="mb-6">
-                <span className="text-indigo-600 font-bold text-xs uppercase tracking-widest">바이오 스캔</span>
-                <h3 className="text-2xl font-bold text-slate-800">안면 노화도 측정</h3>
-            </div>
-            <CameraModule key="face" onCapture={handleCapture} guidelineType="face" />
-          </div>
-        );
+        if (showInstruction) {
+          return (
+            <StepInstruction
+              step={step}
+              onStart={() => setShowInstruction(false)}
+              voiceSupported={isSupported}
+            />
+          );
+        }
+        return renderCameraStep(step);
 
       case AssessmentStep.ANALYZING:
         return (
-          <div className="flex-1 flex flex-col items-center justify-center p-10 text-center">
+          <div className="flex-1 flex flex-col items-center justify-center p-10 text-center animate-fadeIn">
             <div className="relative">
-              <div className="w-32 h-32 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 flex items-center justify-center text-indigo-600">
-                <i className="fas fa-fingerprint text-3xl animate-pulse"></i>
+              <div className="w-32 h-32 rounded-full animate-spin" 
+                   style={{ border: '4px solid rgba(99, 102, 241, 0.1)', borderTopColor: 'var(--accent-indigo)' }} />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <i className="fas fa-fingerprint text-3xl animate-pulse" style={{ color: 'var(--accent-indigo)' }}></i>
               </div>
             </div>
-            <h3 className="text-2xl font-bold text-slate-800 mt-8 mb-2">통합 AI 리포트 생성 중</h3>
-            <p className="text-slate-400 max-w-xs mx-auto text-sm">데이터를 분석하여 신뢰도 높은 리포트를 구축하고 있습니다. 잠시만 기다려 주세요.</p>
+            <h3 className="text-2xl font-bold mt-8 mb-2 gradient-text">통합 AI 리포트 생성 중</h3>
+            <p className="max-w-xs mx-auto text-sm" style={{ color: 'var(--text-muted)' }}>
+              데이터를 분석하여 신뢰도 높은 리포트를 구축하고 있습니다. 잠시만 기다려 주세요.
+            </p>
+            <div className="mt-8 flex gap-2">
+              {[0, 1, 2, 3, 4].map(i => (
+                <div key={i} className="w-2 h-2 rounded-full animate-pulse"
+                     style={{ background: 'var(--accent-indigo)', animationDelay: `${i * 0.2}s` }} />
+              ))}
+            </div>
           </div>
         );
 
@@ -273,6 +331,7 @@ const AssessmentFlow: React.FC = () => {
                             setCapturedImages([]);
                             setReport(null);
                             setUserInfo(null);
+                            setShowInstruction(true);
                           }} 
                         /> : null;
 
@@ -281,7 +340,12 @@ const AssessmentFlow: React.FC = () => {
     }
   };
 
-  return <div className="flex-1 flex flex-col">{renderContent()}</div>;
+  return (
+    <div className="flex-1 flex flex-col">
+      {renderStepProgress()}
+      {renderContent()}
+    </div>
+  );
 };
 
 export default AssessmentFlow;

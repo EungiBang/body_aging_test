@@ -20,15 +20,20 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
   };
 
   return (
-    <div className="max-w-md mx-auto w-full py-16 px-6">
-      <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
-        <h3 className="text-2xl font-bold text-slate-800 mb-6 text-center">측정 대상자 정보</h3>
+    <div className="max-w-md mx-auto w-full py-16 px-6 animate-fadeIn">
+      <div className="p-8 rounded-3xl" style={{ background: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <h3 className="text-2xl font-bold mb-6 text-center gradient-text">측정 대상자 정보</h3>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">이름</label>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-secondary)' }}>이름</label>
             <input 
               type="text" 
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+              className="w-full px-4 py-3 rounded-xl outline-none transition-all"
+              style={{ 
+                background: 'rgba(255,255,255,0.05)', 
+                border: '1px solid rgba(255,255,255,0.1)', 
+                color: 'var(--text-primary)',
+              }}
               placeholder="홍길동"
               value={formData.name}
               onChange={e => setFormData({...formData, name: e.target.value})}
@@ -36,14 +41,20 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
           </div>
           
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">성별</label>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-secondary)' }}>성별</label>
             <div className="grid grid-cols-2 gap-3">
               {(['male', 'female'] as const).map(g => (
                 <button
                   key={g}
                   type="button"
                   onClick={() => setFormData({...formData, gender: g})}
-                  className={`py-3 rounded-xl border font-bold transition-all ${formData.gender === g ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500'}`}
+                  className="py-3 rounded-xl font-bold transition-all"
+                  style={{ 
+                    background: formData.gender === g ? 'var(--gradient-primary)' : 'rgba(255,255,255,0.05)',
+                    border: formData.gender === g ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                    color: formData.gender === g ? 'white' : 'var(--text-secondary)',
+                    boxShadow: formData.gender === g ? 'var(--glow-indigo)' : 'none',
+                  }}
                 >
                   {g === 'male' ? '남성' : '여성'}
                 </button>
@@ -52,12 +63,15 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">만 나이 ({formData.age})</label>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-secondary)' }}>
+              만 나이 (<span className="gradient-text font-black">{formData.age}</span>)
+            </label>
             <input 
               type="range" 
               min="5" 
               max="100" 
-              className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+              style={{ background: 'rgba(255,255,255,0.1)' }}
               value={formData.age}
               onChange={e => setFormData({...formData, age: parseInt(e.target.value)})}
             />
@@ -65,9 +79,10 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
 
           <button 
             type="submit"
-            className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-black transition-all mt-4"
+            className="w-full text-white font-bold py-4 rounded-xl shadow-lg transition-all mt-4"
+            style={{ background: 'var(--gradient-primary)', boxShadow: 'var(--glow-indigo)' }}
           >
-            정보 저장 및 다음 단계
+            정보 저장 및 다음 단계 <i className="fas fa-chevron-right ml-2"></i>
           </button>
         </form>
       </div>

@@ -8,24 +8,30 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
-            <i className="fas fa-brain"></i>
-          </div>
-          <div>
-            <h1 className="font-bold text-slate-800 text-lg leading-tight">NEURO-PHYSICAL</h1>
-            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Brain Training Center</p>
-          </div>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--gradient-bg)' }}>
+      {/* Subtle grid pattern overlay */}
+      <div className="fixed inset-0 pointer-events-none" style={{
+        backgroundImage: 'radial-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px)',
+        backgroundSize: '40px 40px',
+      }} />
+      
+      <header className="glass px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center">
+          <img src="/logo.jpg" alt="BrainTraining Center" className="h-10 object-contain" style={{ filter: 'brightness(1.1)' }} />
         </div>
-        {title && <div className="text-slate-600 font-medium px-4 py-2 bg-slate-100 rounded-full text-sm">{title}</div>}
+        {title && (
+          <div className="glass-light px-4 py-2 rounded-full text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+            {title}
+          </div>
+        )}
       </header>
-      <main className="flex-1 flex flex-col">
+
+      <main className="flex-1 flex flex-col relative z-10">
         {children}
       </main>
-      <footer className="bg-white border-t border-slate-200 p-4 text-center text-xs text-slate-400">
-        &copy; 2024 Brain Training Center. All Rights Reserved. AI Physical Assessment Module.
+
+      <footer className="glass py-4 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+        © 2024 BrainTraining Center · Brain Education 5-Step · AI Physical Assessment
       </footer>
     </div>
   );
