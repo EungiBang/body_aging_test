@@ -1,0 +1,7 @@
+{
+  "name": "3Body Health TEST",
+  "description": "An AI-powered physical health assessment tool for Brain Training Centers, using camera input to analyze posture, flexibility, and strength (squats/push-ups) to calculate physical age and health status.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
