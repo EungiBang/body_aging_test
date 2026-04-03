@@ -61,6 +61,7 @@ export interface BodyReport {
     wrinkles: string;
     elasticity: string;
     summary: string;
+    recommendation: string;
   };
   summary: string;
   brainHealthImplication: string;
@@ -80,4 +81,5 @@ export interface MemberRecord {
   lastTestDate: string;
   report: BodyReport;
   images: CapturedImage[];
+  ownerUid: string;
 }
