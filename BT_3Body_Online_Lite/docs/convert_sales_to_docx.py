@@ -1,0 +1,135 @@
+from docx import Document
+from docx.shared import Pt, Cm, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+import re
+
+doc = Document()
+
+# ===== 페이지 설정 =====
+section = doc.sections[0]
+section.top_margin = Cm(2.5)
+section.bottom_margin = Cm(2.5)
+section.left_margin = Cm(2.5)
+section.right_margin = Cm(2.5)
+
+# ===== 스타일 설정 =====
+style = doc.styles['Normal']
+font = style.font
+font.name = '맑은 고딕'
+font.size = Pt(11)
+font.color.rgb = RGBColor(0x33, 0x33, 0x33)
+style.paragraph_format.space_after = Pt(6)
+style.paragraph_format.line_spacing = 1.5
+
+# ===== 유틸리티 함수 =====
+def add_rich(doc, text, indent=0, bullet=''):
+    p = doc.add_paragraph()
+    if indent > 0:
+        p.paragraph_format.left_indent = Cm(indent)
+    
+    # 볼드체 처리 (**텍스트**)
+    parts = re.split(r'(\*\*.*?\*\*)', text)
+    
+    if bullet:
+        run = p.add_run(bullet + ' ')
+        run.font.name = '맑은 고딕'
+        
+    for part in parts:
+        if part.startswith('**') and part.endswith('**'):
+            run = p.add_run(part[2:-2])
+            run.bold = True
+        else:
+            run = p.add_run(part)
+        run.font.name = '맑은 고딕'
+        run.font.size = Pt(11)
+    return p
+
+# ===== 표지 =====
+for _ in range(6):
+    doc.add_paragraph('')
+
+title_p = doc.add_paragraph()
+title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = title_p.add_run('BTC 3바디 AI 분석기 V4.1')
+run.font.size = Pt(28)
+run.font.bold = True
+run.font.color.rgb = RGBColor(0x1a, 0x1a, 0x2e)
+run.font.name = '맑은 고딕'
+
+subtitle_p = doc.add_paragraph()
+subtitle_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = subtitle_p.add_run('실전 상담 및 세일즈 매뉴얼')
+run.font.size = Pt(18)
+run.font.color.rgb = RGBColor(0x4a, 0x4a, 0x8a)
+run.font.name = '맑은 고딕'
+
+doc.add_paragraph('')
+doc.add_paragraph('')
+
+org_p = doc.add_paragraph()
+org_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = org_p.add_run('브레인트레이닝센터(BTC)')
+run.font.size = Pt(14)
+run.font.bold = True
+run.font.color.rgb = RGBColor(0x2d, 0x3a, 0x8c)
+run.font.name = '맑은 고딕'
+
+doc.add_page_break()
+
+# ===== 본문 내용 =====
+doc.add_heading('개요', level=2)
+add_rich(doc, '이 매뉴얼은 3바디 AI 분석기 측정 결과를 바탕으로, 회원이 자신의 현재 상태를 직관적으로 깨닫고 **정규 수련(21일/66일/100일) 및 맞춤형 프로그램에 등록하도록 이끌어내는 실전 상담 스크립트**입니다.')
+add_rich(doc, '결과 화면을 함께 보면서 **Body(몸) → Brain(뇌) → Mind(에너지/7코드)의 순서로 자연스럽게 연결**하고, 종국에는 "이 세 가지가 모두 충만해야 온전한 건강"이라는 **BTC 3바디 철학**으로 결론을 맺는 것이 핵심입니다.')
+
+doc.add_heading('Chapter 1. 상담의 3대 원칙', level=2)
+add_rich(doc, '**점수에 일희일비하게 하지 마라:** "점수가 낮네요"가 아니라 "지금 속에서 에너지가 새고 있네요"라고 표현하세요. 점수는 솔루션을 제안하기 위한 명분일 뿐입니다.', bullet='1.')
+add_rich(doc, '**의료적 표현 절대 금지:** \'디스크\', \'치매\', \'처방\'이라는 단어 대신, **\'신경계 흐름 저하\', \'두뇌 피로 누적\', \'맞춤형 에너지 충전\'** 이라는 웰니스 용어를 사용해야 신뢰도를 높이고 법적 리스크를 피할 수 있습니다.', bullet='2.')
+add_rich(doc, '**3바디 철학으로 귀결:** 문제점(원인)을 짚어준 뒤, "온전한 건강은 몸(Body), 마음(Mind), 뇌(Brain) 세 가지가 모두 충만할 때 완성됩니다. 이를 통합 관리하는 곳이 바로 브레인트레이닝센터(BTC)입니다"라고 강조하세요.', bullet='3.')
+
+doc.add_heading('Chapter 2. 결과 화면을 보며 진행하는 실전 스크립트', level=2)
+
+doc.add_heading('1단계: 도입 및 종합 점수 오픈 (경각심 부여)', level=3)
+add_rich(doc, '결과지의 첫 페이지(Overall Score)를 보여주며 시작합니다.')
+add_rich(doc, '🗣️ **매니저:** "회원님, 수고하셨습니다. 방금 하신 검사는 단순한 인바디나 체력장이 아닙니다. 회원님의 뇌 신경망이 몸을 얼마나 잘 통제하고 있는지, 즉 **\'생체 에너지와 뇌의 노화 속도\'**를 잡아내는 최첨단 분석 시스템(건강 스캐너)입니다."', bullet='*')
+add_rich(doc, '🗣️ **매니저:** (점수를 보여주며) "회원님의 3바디 코어 밸런스 종합 점수는 OO점입니다. 점수 자체보다 중요한 것은, 이 점수가 회원님의 신체(Body), 두뇌 인지(Brain), 에너지 상태(Mind)를 종합한 결과라는 점입니다. 어디서 에너지가 새고 있는지 세부 항목을 볼까요?"', bullet='*')
+
+doc.add_heading('2단계: 신체 지표 (Body) 상담 - "원인 찾기"', level=3)
+add_rich(doc, '하위 항목(자세, 균형, 근력 등) 중 가장 점수가 낮은(문제가 되는) 항목을 짚습니다.')
+add_rich(doc, '**[균형 점수가 낮을 때 (눈 감고 한발 서기)]**', bullet='*')
+add_rich(doc, '🗣️ **매니저:** "눈을 감았을 때 중심을 못 잡고 많이 흔들리셨죠? 이건 다리 힘이 없는 게 아닙니다. 시각을 차단했을 때 내 몸을 통제하는 \'소뇌 신경망\'의 피로도가 높다는 뜻입니다. 평소 머리가 무겁거나 이유 없이 피곤하지 않으신가요?"', indent=0.5, bullet='-')
+add_rich(doc, '**[자세 점수가 낮을 때 (거북목 등)]**', bullet='*')
+add_rich(doc, '🗣️ **매니저:** "거북목 수치가 높게 나왔습니다. 머리가 1cm 앞으로 나갈 때마다 목이 견뎌야 할 무게는 2~3kg씩 늘어납니다. 목 주변이 경직되면 뇌로 가는 혈류와 산소가 방해를 받아 만성 피로가 절대 안 풀립니다. 단순한 스트레칭이 아니라 신경계를 이완하는 수련이 필요한 이유입니다."', indent=0.5, bullet='-')
+
+doc.add_heading('3단계: 두뇌 지표 (Brain) 상담 - "보이지 않는 피로"', level=3)
+add_rich(doc, '신체의 문제점을 뇌의 피로 및 인지 반응 결과와 연결합니다.')
+add_rich(doc, '🗣️ **매니저:** "겉으로 나타나는 몸의 불편함은 결국 뇌에서 시작됩니다. 인지 반응 테스트 결과를 보시면, 반응 속도(또는 오답 억제력)가 다소 떨어져 있습니다. 전두엽의 피로도가 상당히 누적되어 뇌의 휴식이 절실히 필요한 상태입니다. 뇌는 안 쓰면 퇴화합니다. 늦기 전에 두뇌 트레이닝으로 뇌 신경망을 깨워야 합니다."', bullet='*')
+
+doc.add_heading('4단계: 7코드 지표 (Mind) 상담 - "에너지 충전의 필요성"', level=3)
+add_rich(doc, '선택한 7코드 키워드를 기반으로 무의식적 에너지 상태를 설명합니다.')
+add_rich(doc, '🗣️ **매니저:** "마지막으로 회원님이 무의식적으로 선택하신 키워드 분석 결과입니다. 현재 회원님의 7개 생명 에너지 코드 중 **[O번 코드]의 에너지가 가장 방전되어 충전이 필요한 상태**로 나옵니다."', bullet='*')
+add_rich(doc, '🗣️ **매니저:** "7코드는 점을 보는 것이 아닙니다. 회원님의 현재 에너지 파동이 어디서 부족한지를 보여주는 심리학적 웰니스 지표입니다. 방전된 코드를 채워주지 않으면 몸과 뇌의 피로도 해결되지 않습니다."', bullet='*')
+
+doc.add_heading('5단계: 최종 결론 (클로징) - "3바디 철학과 맞춤 솔루션 제안"', level=3)
+add_rich(doc, '모든 결과를 통합하여 정규 프로그램으로 연결합니다.')
+add_rich(doc, '🗣️ **매니저:** "회원님, 결과를 종합해 보면 몸(Body)의 경직, 뇌(Brain)의 피로, 그리고 O번 코드(Mind)의 에너지 방전이 서로 연결되어 있습니다. 병원 치료나 단순한 헬스만으로는 이 세 가지를 동시에 해결할 수 없습니다."', bullet='*')
+add_rich(doc, '🗣️ **매니저:** "**온전한 건강은 몸, 마음(에너지), 뇌 세 가지가 모두 충만할 때 완성됩니다. 이것이 저희 BTC가 관리하는 \'3바디\'입니다.**"', bullet='*')
+add_rich(doc, '**[솔루션 제안]** "약해진 에너지를 충전하고 뇌파 밸런스를 회복하기 위해, 회원님께는 **[광명차크라 / 66일 체질 개선 코스]**가 가장 필요합니다. 지금 바로 저희와 함께 방전된 에너지를 근본부터 충전해 보시죠."', bullet='*')
+
+doc.add_heading('Chapter 3. 대상별 맞춤 클로징 요약', level=2)
+add_rich(doc, '🔴 **저득점자 (70점 미만) ➔ 100일 코스 유도:** "지금은 방전된 배터리 상태입니다. 무거운 걸 들면 관절만 망가집니다. 100일간의 근본적인 체질 개선과 신경계 회복이 시급합니다."', bullet='*')
+add_rich(doc, '🟡 **중간 득점자 (70~89점) ➔ 66일 코스 유도:** "겉으론 멀쩡해 보이지만 속에서 에너지 균형이 깨지기 시작했습니다. 만성화되어 번아웃이 오기 전에, 66일 코스로 틀어진 습관을 초기화하셔야 합니다."', bullet='*')
+add_rich(doc, '🟢 **고득점자 (90점 이상) ➔ 21일 코스 / 심화 과정 유도:** "육체의 밸런스는 상위 5%입니다. 이제는 뇌의 휴식과 에너지 충만에 집중할 때입니다. 21일 코스나 심화 명상을 통해 잠재력을 100% 끌어올려 보세요."', bullet='*')
+
+doc.add_heading('Chapter 4. 자주 나오는 거절 극복 (FAQ)', level=2)
+doc.add_heading('❓ "결과가 너무 안 좋네요. 병원에 먼저 가봐야 하는 것 아닌가요?"', level=3)
+add_rich(doc, '💡 **대응:** "병원 진료도 병행하시면 좋습니다. 하지만 병원은 이미 나타난 통증을 관리하는 곳입니다. 저희 BTC 솔루션은 회원님이 왜 이렇게 에너지가 방전될 수밖에 없었는지 그 근본 원인(무의식적 긴장, 깨진 뇌파)을 스스로 교정하도록 돕습니다. 함께 하시면 회복이 훨씬 빠릅니다."')
+
+doc.add_heading('❓ "저는 헬스장이랑 필라테스를 이미 하고 있는데요?"', level=3)
+add_rich(doc, '💡 **대응:** "너무 잘하고 계십니다! 헬스는 자동차의 \'타이어와 외장재\'를 튼튼하게 하는 일입니다. 반면 저희 BTC 수련은 **\'메인 엔진과 배터리(뇌 신경망과 에너지)\'를 새로 교체하는 일**입니다. 뇌 신경망이 방전된 상태에서 근육만 키우는 건 한계가 있습니다. 그곳에서 근육 운동을 하시고, 이곳에서 3바디 에너지를 충전하시면 시너지가 엄청날 것입니다."')
+
+doc.add_heading('❓ "시간이 없어서 꾸준히 나올 수 있을지 모르겠어요."', level=3)
+add_rich(doc, '💡 **대응:** "회원님의 이 방전된 상태가 하루아침에 온 것이 아닙니다. 매일 오시지 않아도 괜찮습니다. 일주일에 두 번만 오셔도, 부족한 코드를 충전하고 내 몸이 스스로 회복하는 \'자가 치유력\' 시스템을 다시 세팅해 드리겠습니다."')
+
+output_path = r'd:\antigravity_vibecoding\BT 3바디 ai테스트\docs\V4_실전_상담_및_세일즈_매뉴얼_완성본.docx'
+doc.save(output_path)
+print(f'[OK] Word file created: {output_path}')

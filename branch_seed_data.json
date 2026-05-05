@@ -1,0 +1,642 @@
+[
+  {
+    "region": "본사",
+    "branches": [
+      {
+        "name": "신입경영홍보실",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "서울강북1",
+    "branches": [
+      {
+        "name": "공덕",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "광화문",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "연신내",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "왕십리",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "홍제",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "서울강북2",
+    "branches": [
+      {
+        "name": "구리",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "구의",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "성북",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "수유",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "의정부",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "창동",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "서울강북3",
+    "branches": [
+      {
+        "name": "공릉",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "마들",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "상계",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "서울강남1",
+    "branches": [
+      {
+        "name": "고덕",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "둔촌",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "서초",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "잠실",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "강남",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "서울강남2",
+    "branches": [
+      {
+        "name": "강서",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "신도림",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "양천구",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "여의도",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "이수",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "경기북부",
+    "branches": [
+      {
+        "name": "김포",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "마두",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "일산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "파주",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "화정",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "경기남부1",
+    "branches": [
+      {
+        "name": "고잔",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "과천",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "산본",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "안양1번가",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "평촌",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "경기남부2",
+    "branches": [
+      {
+        "name": "미금",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "서현",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "수지",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "야탑",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "이천",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "경기남부3",
+    "branches": [
+      {
+        "name": "동탄",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "영통",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "오산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "천천동",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "평택",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "인천",
+    "branches": [
+      {
+        "name": "검단",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "논현",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "부평",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "상동",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "송도",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "주안",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "강원",
+    "branches": [
+      {
+        "name": "강릉",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "동해",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "원주",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "춘천",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "대전",
+    "branches": [
+      {
+        "name": "둔산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "서대전",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "송촌",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "월평",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "충북",
+    "branches": [
+      {
+        "name": "가경",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "금천",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "율량",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "제천",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "충남",
+    "branches": [
+      {
+        "name": "서산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "세종아름",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "아산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "불당",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "충무",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "광주전남",
+    "branches": [
+      {
+        "name": "동광주",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "서구",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "순천",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "여수",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "진월",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "첨단",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "전북",
+    "branches": [
+      {
+        "name": "군산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "익산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "인후",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "정읍",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "효자",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "대구",
+    "branches": [
+      {
+        "name": "방촌",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "범어",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "상인",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "성서",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "수성",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "시지",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "월배",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "침산",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "경북",
+    "branches": [
+      {
+        "name": "경산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "경주",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "구미",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "김천",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "대이",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "두호",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "문경",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "상주",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "안동",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "영주",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "경남",
+    "branches": [
+      {
+        "name": "거제",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "내외",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "마산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "명곡",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "진주",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "진해",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "창원",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "울산",
+    "branches": [
+      {
+        "name": "대송",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "북구",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "중구",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "부산",
+    "branches": [
+      {
+        "name": "금정",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "기장",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "다대",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "대연",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "동래",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "사직",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "양산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "양정",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "영도",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "온천장",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "하단",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "제주",
+    "branches": [
+      {
+        "name": "노형",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "서귀포",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "일도",
+        "allowedLicenses": 2
+      }
+    ]
+  },
+  {
+    "region": "단무도",
+    "branches": [
+      {
+        "name": "단무도대구",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "단무도부산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "단무도부천",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "단무도분당",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "단무도서울",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "단무도일산",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "단무도창원",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "단무도천안",
+        "allowedLicenses": 2
+      },
+      {
+        "name": "단무도평촌",
+        "allowedLicenses": 2
+      }
+    ]
+  }
+]
