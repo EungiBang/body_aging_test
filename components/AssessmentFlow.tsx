@@ -247,9 +247,10 @@ const AssessmentFlow: React.FC = () => {
       interval = setInterval(() => {
         const elapsed = (Date.now() - startTime) / 1000;
         setAnalyzeProgress(prev => {
-          // 0~30초: 0→80%, 30~60초: 80→95%, 60~90초: 95→99%
-          if (elapsed < 30) return Math.min(prev + 2.5, 80);
-          if (elapsed < 60) return Math.min(prev + 0.5, 95);
+          // 0~30초: 0→70%, 30~60초: 70→90%, 60~90초: 90→96%, 90~120초: 96→99%
+          if (elapsed < 30) return Math.min(prev + 2.0, 70);
+          if (elapsed < 60) return Math.min(prev + 0.6, 90);
+          if (elapsed < 90) return Math.min(prev + 0.2, 96);
           return Math.min(prev + 0.1, 99);
         });
       }, 300);
@@ -271,6 +272,10 @@ const AssessmentFlow: React.FC = () => {
         if (img.formScore !== undefined)     resized.formScore = img.formScore;
         if (img.kneeAssisted !== undefined)  resized.kneeAssisted = img.kneeAssisted;
         if (img.balanceData !== undefined)   resized.balanceData = img.balanceData;
+        if (img.brainTestData !== undefined) resized.brainTestData = img.brainTestData;
+        if (img.postureData !== undefined)   resized.postureData = img.postureData;
+        if (img.sevenCodeKeywords !== undefined) resized.sevenCodeKeywords = img.sevenCodeKeywords;
+        if (img.weakestCode !== undefined)   resized.weakestCode = img.weakestCode;
         
         return resized;
       }));
@@ -845,12 +850,18 @@ const AssessmentFlow: React.FC = () => {
     proceedToNextStep(AssessmentStep.FLEXIBILITY_TEST, dataUrl, undefined, undefined, undefined, undefined, undefined, undefined, updatedPostureData);
   };
 
-  const runAnalysis = async (images: CapturedImage[]) => {
-    if (!userInfo) {
+  const runAnalysis = async (images: CapturedImage[], overrideUserInfo?: UserInfo) => {
+    const effectiveUserInfo = overrideUserInfo || userInfo;
+    if (!effectiveUserInfo) {
       logger.warn('Flow', 'runAnalysis 중단: userInfo 없음');
+      setErrorModal({
+        isOpen: true,
+        message: '사용자 정보가 없어 분석을 시작할 수 없습니다. 새로운 측정을 시작해 주세요.',
+        showRetry: false
+      });
       return;
     }
-    logger.info('Flow', `runAnalysis 시작`, { name: userInfo.name, imageCount: images.length, steps: images.map(i => i.step) });
+    logger.info('Flow', `runAnalysis 시작`, { name: effectiveUserInfo.name, imageCount: images.length, steps: images.map(i => i.step) });
     logger.stateChange('Flow', 'step', step, 'ANALYZING');
     setStep(AssessmentStep.ANALYZING);
     speak("이 분석은 브레인트레이닝센터와 연구원, 대학교 등 전문가들이 연구, 개발하였고, 최신 AI 기술을 접목하여 개발한 프로그램입니다. 본 시스템은 건강 관리에 도움을 주고자 자세, 동작, 기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다. 데이터 분석에 약 1분 정도 소요됩니다.");
@@ -865,7 +876,7 @@ const AssessmentFlow: React.FC = () => {
       })));
       logger.debug('Flow', `이미지 리사이즈 완료, analyzeHealth 호출`);
 
-      const result = await analyzeHealth(userInfo, aiOptimizedImages);
+      const result = await analyzeHealth(effectiveUserInfo, aiOptimizedImages);
       logger.info('Flow', `analyzeHealth 결과 수신`, { overallScore: result.overallScore, physicalAge: result.physicalAge });
       
       setReport(result);
@@ -1155,13 +1166,15 @@ const AssessmentFlow: React.FC = () => {
                   setStep(AssessmentStep.REPORT);
                 }}
                 onResumeAnalysis={(rec) => {
-                  if (rec.report?.userInfo) {
-                    setUserInfo(rec.report.userInfo);
+                  const resumeUserInfo = rec.report?.userInfo;
+                  if (resumeUserInfo) {
+                    setUserInfo(resumeUserInfo);
                   }
                   setCapturedImages(rec.images || []);
                   setPendingRecordId(rec.id);
                   setStep(AssessmentStep.ANALYZING);
-                  runAnalysis(rec.images || []);
+                  // userInfo를 직접 전달 (setState는 비동기라 아직 반영 안 됨)
+                  runAnalysis(rec.images || [], resumeUserInfo || undefined);
                 }}
                 onClose={() => setStep(AssessmentStep.INTRO)} 
              />;
