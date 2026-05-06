@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Modality } from "@google/genai";
 import { preloadedAudio } from '../assets/audio/preloadedTTS';
+import { ErrorLogger } from './ErrorLogger';
 
 
 let currentAudioSource: AudioBufferSourceNode | null = null;
@@ -129,6 +130,7 @@ const fetchAndPlayText = async (text: string, speechId: number): Promise<boolean
       quotaExceededUntil = Date.now() + 5 * 60 * 1000;
     } else {
       console.error("TTS Fetch Error:", error);
+      ErrorLogger.logApiError('ttsService.fetchAndPlayText', 'TTS Fetch Error', error);
     }
   } finally {
     isPendingRequest = false;

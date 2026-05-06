@@ -11,13 +11,14 @@ import { getDashboardStats } from '../services/statsService';
 import { updateDailyLimit, getUsageStatus, UsageStatus } from '../services/usageLimitService';
 import * as xlsx from 'xlsx';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { AdminErrorMonitor } from './AdminErrorMonitor';
 
 interface AdminDashboardProps {
   onClose: () => void;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'devices' | 'branches' | 'members' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'devices' | 'branches' | 'members' | 'errors' | 'settings'>('overview');
   
   // Data State
   const [regions, setRegions] = useState<Region[]>([]);
@@ -348,6 +349,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         </button>
         <button onClick={() => { setActiveTab('members'); if (cloudMembers.length === 0) { setMembersLoading(true); fetchAllMembers().then(m => { setCloudMembers(m); setMembersLoading(false); }).catch(() => setMembersLoading(false)); } }} className={`px-6 py-3 font-bold rounded-t-xl transition-colors ${activeTab === 'members' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
           <i className="fas fa-users mr-2"></i>회원관리
+        </button>
+        <button onClick={() => setActiveTab('errors')} className={`px-6 py-3 font-bold rounded-t-xl transition-colors ${activeTab === 'errors' ? 'bg-rose-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
+          <i className="fas fa-exclamation-triangle mr-2"></i>에러 모니터링
         </button>
         <button onClick={() => setActiveTab('settings')} className={`px-6 py-3 font-bold rounded-t-xl transition-colors ${activeTab === 'settings' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
           <i className="fas fa-cog mr-2"></i>시스템 설정
@@ -892,6 +896,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                 </div>
               );
             })()}
+
+            {/* Errors Tab */}
+            {activeTab === 'errors' && (
+              <AdminErrorMonitor branches={branches} regions={regions} />
+            )}
 
             {/* Settings Tab */}
             {activeTab === 'settings' && (

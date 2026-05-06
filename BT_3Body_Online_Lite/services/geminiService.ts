@@ -3,6 +3,7 @@ import { BodyReport, CapturedImage, UserInfo, MemberRecord, CheonbugyeongCharact
 import { MASTERS } from '../constants/masters';
 import { findSimilarCases, buildFewShotPrompt, findSimilarFaceCases, buildFaceFewShotPrompt, findSimilarTarotCases, buildTarotFewShotPrompt } from "./feedbackService";
 import { getRecordsLocally } from "./localDb";
+import { ErrorLogger } from "./ErrorLogger";
 
 // --- API Key 관리 (SettingsModal에서 사용) ---
 let customApiKey: string = localStorage.getItem('bt_custom_api_key_lite') || '';
@@ -56,6 +57,7 @@ export const checkEnvironment = async (imageDataUrl: string): Promise<{ isValid:
     return JSON.parse(text);
   } catch (e) {
     console.error('Environment check error:', e);
+    ErrorLogger.logApiError('geminiService.checkEnvironment', 'Environment check error', e);
     return { isValid: true, message: '환경 점검을 건너뜁니다.' };
   }
 };
@@ -676,7 +678,9 @@ ${userInfo.memberType === 'existing'
     }
 
     if (!response) {
-      throw lastError || new Error('AI 분석에 실패했습니다.');
+      const finalError = lastError || new Error('AI 분석에 실패했습니다.');
+      ErrorLogger.logApiError('geminiService.analyzeHealth', 'AI Analysis Failed after retries', finalError);
+      throw finalError;
     }
 
     const text = response.text;

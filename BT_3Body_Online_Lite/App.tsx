@@ -5,6 +5,7 @@ import AssessmentFlow from './components/AssessmentFlow';
 import BranchAuthScreen from './components/BranchAuthScreen';
 import AdminDashboard from './components/AdminDashboard';
 import { checkDeviceStatus } from './services/firebaseAuthService';
+import { ErrorLogger } from './services/ErrorLogger';
 
 type DeviceState = 'loading' | 'active' | 'pending' | 'revoked' | 'unregistered';
 
@@ -13,6 +14,25 @@ const App: React.FC = () => {
   
   // URL에 ?portal=btc_admin_secure 가 있으면 웹 관리자 모드로 인식
   const isAdminRoute = window.location.search.includes('portal=btc_admin_secure');
+
+  useEffect(() => {
+    // 전역 에러 감지기 설정
+    const handleGlobalError = (event: ErrorEvent) => {
+      ErrorLogger.logCrash('window.onerror', event.message || 'Unknown Global Error', event.error);
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      ErrorLogger.logCrash('unhandledrejection', 'Unhandled Promise Rejection', event.reason);
+    };
+
+    window.addEventListener('error', handleGlobalError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleGlobalError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
 
   useEffect(() => {
     // 관리자 모드인 경우 하드웨어 인증 로직 생략
