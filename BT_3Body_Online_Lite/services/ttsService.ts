@@ -5,6 +5,7 @@ import { ErrorLogger } from './ErrorLogger';
 
 
 let currentAudioSource: AudioBufferSourceNode | null = null;
+let currentHtmlAudio: HTMLAudioElement | null = null;
 let audioContext: AudioContext | null = null;
 const audioCache: Record<string, string> = {};
 let quotaExceededUntil = 0;
@@ -57,22 +58,38 @@ export const preloadTTS = async (texts: string[]) => {
   }
 };
 
-export const speak = async (text: string) => {
+/**
+ * 모든 TTS 재생 채널(AudioSource + HtmlAudio + SpeechSynthesis)을 즉시 중지합니다.
+ */
+export const stopSpeaking = () => {
   currentSpeechId++;
-  const thisSpeechId = currentSpeechId;
-  
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  if (currentHtmlAudio) {
+    try {
+      currentHtmlAudio.pause();
+      currentHtmlAudio.currentTime = 0;
+      currentHtmlAudio = null;
+    } catch (e) {}
+  }
   if (currentAudioSource) {
     try {
       currentAudioSource.stop();
+      currentAudioSource.disconnect();
+      currentAudioSource = null;
     } catch (e) {}
   }
+};
 
+export const speak = async (text: string) => {
+  stopSpeaking();
+  const thisSpeechId = currentSpeechId;
+  
   try {
     // 0. Check pre-recorded sample (MP3)
     if (preloadedAudio[text]) {
       console.log(`내장 MP3 샘플 음성 재생 [id=${thisSpeechId}]`);
       const audio = new Audio(preloadedAudio[text]);
+      currentHtmlAudio = audio;
       audio.play().catch(e => console.error('내장 MP3 재생 실패', e));
       return;
     }

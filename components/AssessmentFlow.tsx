@@ -4,7 +4,7 @@ import { AssessmentStep, CapturedImage, BodyReport, UserInfo, MemberRecord, Brai
 import pkg from '../package.json';
 import CameraModule from './CameraModule';
 import { analyzeHealth } from '../services/geminiService';
-import { speak, initAudio } from '../services/ttsService';
+import { speak, initAudio, stopSpeaking } from '../services/ttsService';
 import ReportDashboard from './ReportDashboard';
 import UserInfoForm from './UserInfoForm';
 import HistoryManager from './HistoryManager';
@@ -864,6 +864,7 @@ const AssessmentFlow: React.FC = () => {
     logger.info('Flow', `runAnalysis 시작`, { name: effectiveUserInfo.name, imageCount: images.length, steps: images.map(i => i.step) });
     logger.stateChange('Flow', 'step', step, 'ANALYZING');
     setStep(AssessmentStep.ANALYZING);
+    stopSpeaking(); // ★ 이전 나레이션 강제 중지 후 분석 안내 시작
     speak("이 분석은 브레인트레이닝센터와 연구원, 대학교 등 전문가들이 연구, 개발하였고, 최신 AI 기술을 접목하여 개발한 프로그램입니다. 본 시스템은 건강 관리에 도움을 주고자 자세, 동작, 기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다. 데이터 분석에 약 1분 정도 소요됩니다.");
     setIsAnalyzing(true);
     const analysisStartTime = Date.now();
@@ -932,6 +933,7 @@ const AssessmentFlow: React.FC = () => {
 
   const retryAnalysis = () => {
     setErrorModal({ isOpen: false, message: '', showRetry: false });
+    stopSpeaking(); // ★ 이전 나레이션 강제 중지
     runAnalysis(capturedImages);
   };
 

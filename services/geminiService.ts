@@ -180,7 +180,7 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
   const toAge = (score: number) => Math.max(20, Math.min(90, Math.round(90 - (score / 100) * 70)));
   const reactionAge = toAge(test1Score);
   const memoryAge = toAge(test2Score);
-  const calculatedBrainAge = Math.round((reactionAge + memoryAge) / 2);
+  const cognitiveBrainAge = Math.round((reactionAge + memoryAge) / 2);
 
   // --- 근력 기준표 v3.0 (15초 순간 근력 기준 / 상대 나이 역산 공식) ---
   //
@@ -415,7 +415,7 @@ ${fewShotBlock ? fewShotBlock + '\n---\n' : ''}당신은 운동역학, 노인의
 ■ 뇌 기능 분석 데이터
   - 두뇌 인지 반응: (속도: ${reactionTimeMs}ms, 오류: ${reactionErrors}회) -> 환산 뇌 나이: ${Math.round(reactionAge)}세
   - 기억력(장보기): ${memorySpan}/5 정답, 가격 계산: ${mathCorrect ? '정답' : '오답/미수행'} -> 환산 뇌 나이: ${Math.round(memoryAge)}세
-  - 종합 뇌 나이: ${calculatedBrainAge}세
+  - 인지 뇌 나이 (인지 테스트 기반): ${cognitiveBrainAge}세
   ※ 평가 지침: 뇌 나이 테스트 결과에 대해 매우 짧게(1~2문장) "어떤 부분이 강점이고 어떤 부분이 노화되었는지" 평가를 작성하세요.
 
 ■ 7코드 건강 점검 다중 선택 결과
@@ -767,7 +767,7 @@ ${userInfo.memberType === 'existing'
     const physicalScoreVal = Math.round((squatScoreVal + pushupScoreVal + relativeBalanceScore + pScore + fScore + aScore) / 6);
     
     // 2. 뇌 점수 (30%) : 뇌 나이와 실제 나이 비교 (내 나이보다 젊으면 80+, 늙으면 80-)
-    const brainAgeDiff = userInfo.age - calculatedBrainAge; // 양수면 젊음, 음수면 늙음
+    const brainAgeDiff = userInfo.age - cognitiveBrainAge; // 양수면 젊음, 음수면 늙음
     const brainScoreVal = Math.max(40, Math.min(100, Math.round(80 + (brainAgeDiff * 1.5))));
     
     // 3. 마음(7코드) 다차원 융합 산출 (감정+안면+인지+신체)
@@ -825,8 +825,14 @@ ${userInfo.memberType === 'existing'
     ageDiff = Math.max(-12, Math.min(20, ageDiff));
     const physicalAge = Math.max(20, Math.min(85, userInfo.age + ageDiff));
 
+    // ★ v5.0.8: 종합 뇌나이 = 인지(80%) + 신체(10%) + 마음(10%)
+    // cognitiveBrainAge: 순수 인지 테스트(반응속도 + 기억력) 기반 뇌나이
+    // physicalAge, mindAge를 10%씩 반영하여 종합적 뇌 건강 지표로 확장
+    const calculatedBrainAge = Math.max(20, Math.min(85, Math.round(
+      (cognitiveBrainAge * 0.80) + (physicalAge * 0.10) + (mindAge * 0.10)
+    )));
+
     // 종합 건강 나이 (comprehensiveAge): 신체(40) + 뇌(30) + 마음(15) + 얼굴(15)
-    // 마음 나이는 다차원 융합 공식으로 이미 계산됨 (mindAge)
     const comprehensiveAge = Math.round((physicalAge * 0.4) + (calculatedBrainAge * 0.3) + (mindAge * 0.15) + (faceAge * 0.15));
 
     // ─────────────────────────────────────────────────────────────────────────

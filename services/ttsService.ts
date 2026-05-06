@@ -6,6 +6,7 @@ import { preloadedAudio } from '../assets/audio/preloadedTTS';
 const TAG = 'TTS';
 
 let currentAudioSource: AudioBufferSourceNode | null = null;
+let currentHtmlAudio: HTMLAudioElement | null = null;
 let audioContext: AudioContext | null = null;
 const audioCache: Record<string, string> = {};
 let quotaExceededUntil = 0;
@@ -82,23 +83,41 @@ export const preloadTTS = async (texts: string[]) => {
   logger.info(TAG, `preloadTTS 완료, 캐시 크기: ${Object.keys(audioCache).length}건`);
 };
 
-export const speak = async (text: string) => {
-  currentSpeechId++;
-  const thisSpeechId = currentSpeechId;
-  logger.debug(TAG, `speak() 시작 [id=${thisSpeechId}]: "${text.substring(0, 50)}..."`);
-  
+/**
+ * 모든 TTS 재생 채널(AudioSource + HtmlAudio + SpeechSynthesis)을 즉시 중지합니다.
+ * 단계 전환 시 외부에서 호출하여 이전 나레이션이 잔존하지 않도록 합니다.
+ */
+export const stopSpeaking = () => {
+  currentSpeechId++; // 진행 중인 비동기 TTS 요청도 무효화
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  if (currentHtmlAudio) {
+    try {
+      currentHtmlAudio.pause();
+      currentHtmlAudio.currentTime = 0;
+      currentHtmlAudio = null;
+    } catch (e) {}
+  }
   if (currentAudioSource) {
     try {
       currentAudioSource.stop();
+      currentAudioSource.disconnect();
+      currentAudioSource = null;
     } catch (e) {}
   }
+};
+
+export const speak = async (text: string) => {
+  // 이전 재생 모두 즉시 중지 (3채널 동시 정리)
+  stopSpeaking();
+  const thisSpeechId = currentSpeechId;
+  logger.debug(TAG, `speak() 시작 [id=${thisSpeechId}]: "${text.substring(0, 50)}..."`);
 
   try {
     // 0. Check pre-recorded sample (MP3)
     if (preloadedAudio[text]) {
       logger.info(TAG, `내장 MP3 샘플 음성 재생 [id=${thisSpeechId}]`);
       const audio = new Audio(preloadedAudio[text]);
+      currentHtmlAudio = audio; // 추적하여 다음 speak() 시 중지 가능
       audio.play().catch(e => logger.error(TAG, '내장 MP3 재생 실패', e));
       return;
     }
