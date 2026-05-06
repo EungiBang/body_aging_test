@@ -135,24 +135,31 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       setLastBackup(getLastBackupTime());
       setLastBackupCount(getLastBackupCount());
       setBackupResult(null);
+      
+      if (window.electronAPI) {
+        window.electronAPI.checkForUpdates();
+      }
     }
 
+    let cleanupMessage: (() => void) | undefined;
+    let cleanupProgress: (() => void) | undefined;
+
     if (window.electronAPI && window.electronAPI.onUpdaterMessage) {
-      window.electronAPI.onUpdaterMessage((msg: any) => {
+      cleanupMessage = window.electronAPI.onUpdaterMessage((msg: any) => {
         setUpdaterStatus(msg.status);
         if (msg.version) setUpdaterVersion(msg.version);
         if (msg.error) setUpdaterError(msg.error);
       });
-      window.electronAPI.onUpdaterProgress((progress: any) => {
+      cleanupProgress = window.electronAPI.onUpdaterProgress((progress: any) => {
         setUpdaterStatus('downloading');
         setUpdaterPercent(Math.floor(progress.percent));
       });
-      
-      // 모달 열릴 때 자동 체크
-      if (isOpen) {
-        window.electronAPI.checkForUpdates();
-      }
     }
+
+    return () => {
+      if (cleanupMessage) cleanupMessage();
+      if (cleanupProgress) cleanupProgress();
+    };
   }, [isOpen]);
 
 

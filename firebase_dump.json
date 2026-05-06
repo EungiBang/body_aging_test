@@ -1,0 +1,3318 @@
+{
+  "regions": {
+    "region_1777948851638_xeva3": {
+      "id": "region_1777948851638_xeva3",
+      "order": 19,
+      "name": "울산"
+    },
+    "region_강원": {
+      "id": "region_강원",
+      "order": 12,
+      "name": "강원"
+    },
+    "region_경기남부1": {
+      "id": "region_경기남부1",
+      "order": 8,
+      "name": "경기남부1"
+    },
+    "region_경기남부2": {
+      "id": "region_경기남부2",
+      "order": 9,
+      "name": "경기남부2"
+    },
+    "region_경기남부3": {
+      "id": "region_경기남부3",
+      "order": 10,
+      "name": "경기남부3"
+    },
+    "region_경기북부": {
+      "id": "region_경기북부",
+      "order": 7,
+      "name": "경기북부"
+    },
+    "region_경남": {
+      "id": "region_경남",
+      "order": 20,
+      "name": "경남"
+    },
+    "region_경북": {
+      "id": "region_경북",
+      "order": 17,
+      "name": "경북"
+    },
+    "region_광주전남": {
+      "id": "region_광주전남",
+      "order": 22,
+      "name": "광주전남"
+    },
+    "region_단무도": {
+      "id": "region_단무도",
+      "order": 24,
+      "name": "단무도"
+    },
+    "region_대구": {
+      "id": "region_대구",
+      "order": 16,
+      "name": "대구"
+    },
+    "region_대전": {
+      "id": "region_대전",
+      "order": 13,
+      "name": "대전"
+    },
+    "region_본사": {
+      "id": "region_본사",
+      "order": 1,
+      "name": "본사"
+    },
+    "region_부산": {
+      "id": "region_부산",
+      "order": 18,
+      "name": "부산"
+    },
+    "region_서울강남1": {
+      "id": "region_서울강남1",
+      "order": 5,
+      "name": "서울강남1"
+    },
+    "region_서울강남2": {
+      "id": "region_서울강남2",
+      "order": 6,
+      "name": "서울강남2"
+    },
+    "region_서울강북1": {
+      "id": "region_서울강북1",
+      "order": 2,
+      "name": "서울강북1"
+    },
+    "region_서울강북2": {
+      "id": "region_서울강북2",
+      "order": 3,
+      "name": "서울강북2"
+    },
+    "region_서울강북3": {
+      "id": "region_서울강북3",
+      "order": 4,
+      "name": "서울강북3"
+    },
+    "region_인천": {
+      "id": "region_인천",
+      "order": 11,
+      "name": "인천"
+    },
+    "region_전북": {
+      "id": "region_전북",
+      "order": 21,
+      "name": "전북"
+    },
+    "region_제주": {
+      "id": "region_제주",
+      "order": 23,
+      "name": "제주"
+    },
+    "region_충남": {
+      "id": "region_충남",
+      "order": 14,
+      "name": "충남"
+    },
+    "region_충북": {
+      "id": "region_충북",
+      "order": 15,
+      "name": "충북"
+    }
+  },
+  "branches": {
+    "0GH5PVZ1FcBpmeNo5eg2": {
+      "id": "0GH5PVZ1FcBpmeNo5eg2",
+      "regionId": "region_경기남부1",
+      "kfaceDailyLimit": 0,
+      "name": "고잔",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "0jVCTBRWFURTr9xw2cpW": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 3,
+      "id": "0jVCTBRWFURTr9xw2cpW",
+      "regionId": "region_제주",
+      "kfaceDailyLimit": 0,
+      "name": "일도"
+    },
+    "0wnScb7XDgjQ6jOkHIFp": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "연신내",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강북1",
+      "id": "0wnScb7XDgjQ6jOkHIFp"
+    },
+    "1666zHiaGYUmY4pl41fc": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "1666zHiaGYUmY4pl41fc",
+      "regionId": "region_충남",
+      "kfaceDailyLimit": 0,
+      "name": "세종아름"
+    },
+    "23i8kRUEP7lQWP9Sey9a": {
+      "id": "23i8kRUEP7lQWP9Sey9a",
+      "regionId": "region_경기남부2",
+      "kfaceDailyLimit": 0,
+      "name": "미금",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "2tfAPWudHoNjX7XM71wx": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "name": "월배",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_대구",
+      "id": "2tfAPWudHoNjX7XM71wx"
+    },
+    "3lny5tu8Az2xOyLlp4Q4": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "3lny5tu8Az2xOyLlp4Q4",
+      "regionId": "region_광주전남",
+      "kfaceDailyLimit": 0,
+      "name": "동광주"
+    },
+    "4R9RLUAPiQ9zqxvRK1IT": {
+      "id": "4R9RLUAPiQ9zqxvRK1IT",
+      "regionId": "region_경남",
+      "kfaceDailyLimit": 0,
+      "name": "창원",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "4SjKWSdLe9WmF2EbpLQZ": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "4SjKWSdLe9WmF2EbpLQZ",
+      "regionId": "region_전북",
+      "kfaceDailyLimit": 0,
+      "name": "군산"
+    },
+    "5D0zdZYmABuWe51GgeTl": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "5D0zdZYmABuWe51GgeTl",
+      "regionId": "region_단무도",
+      "kfaceDailyLimit": 0,
+      "name": "단무도일산"
+    },
+    "6SSQzR7xnrGoI7BbAd6j": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "일산",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경기북부",
+      "id": "6SSQzR7xnrGoI7BbAd6j"
+    },
+    "6yo4bk6NdwuKr1YKE1Bp": {
+      "name": "상계",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강북3",
+      "id": "6yo4bk6NdwuKr1YKE1Bp",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "7CWOkEs9ixE39ZeIMzjU": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "name": "방촌",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_대구",
+      "id": "7CWOkEs9ixE39ZeIMzjU"
+    },
+    "8GqaMdLk63RQh6TbPpTx": {
+      "name": "침산",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_대구",
+      "id": "8GqaMdLk63RQh6TbPpTx",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "AALbCPAeYqFlXW7Vh1B3": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "경산",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경북",
+      "id": "AALbCPAeYqFlXW7Vh1B3"
+    },
+    "AZLCBJMWu5DhsCGXwgQu": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "기장",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_부산",
+      "id": "AZLCBJMWu5DhsCGXwgQu"
+    },
+    "Aj5JvNklc2wRLilcVj25": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "Aj5JvNklc2wRLilcVj25",
+      "regionId": "region_경남",
+      "kfaceDailyLimit": 0,
+      "name": "명곡"
+    },
+    "BCUchaRIMev3SlD6SBYa": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "대연",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_부산",
+      "id": "BCUchaRIMev3SlD6SBYa"
+    },
+    "BO4U2Gs1ThoIaNYxJO4J": {
+      "name": "진주",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경남",
+      "id": "BO4U2Gs1ThoIaNYxJO4J",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "Bbq1bJObl0BzcKwJsNd1": {
+      "name": "과천",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경기남부1",
+      "id": "Bbq1bJObl0BzcKwJsNd1",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "CW86CTC9zoZTa6kev22A": {
+      "id": "CW86CTC9zoZTa6kev22A",
+      "regionId": "region_단무도",
+      "kfaceDailyLimit": 0,
+      "name": "단무도대구",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "D84uxCLaOvYa6ZCVgGoq": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "D84uxCLaOvYa6ZCVgGoq",
+      "regionId": "region_경기남부3",
+      "kfaceDailyLimit": 0,
+      "name": "천천동"
+    },
+    "DZfbSM7XrwBW4y5WWmZZ": {
+      "id": "DZfbSM7XrwBW4y5WWmZZ",
+      "regionId": "region_제주",
+      "kfaceDailyLimit": 0,
+      "name": "노형",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "E1JwoksA6wG2YZvFS0l4": {
+      "id": "E1JwoksA6wG2YZvFS0l4",
+      "regionId": "region_충북",
+      "kfaceDailyLimit": 0,
+      "name": "제천",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "E4aXkc83FE6mU62UDKTs": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "E4aXkc83FE6mU62UDKTs",
+      "regionId": "region_단무도",
+      "kfaceDailyLimit": 0,
+      "name": "단무도평촌"
+    },
+    "FIIVNYViURA0a1qM8PsZ": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "단무도서울",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_단무도",
+      "id": "FIIVNYViURA0a1qM8PsZ"
+    },
+    "I8tmeilHxBsMDG2s1LXO": {
+      "id": "I8tmeilHxBsMDG2s1LXO",
+      "regionId": "region_강원",
+      "kfaceDailyLimit": 0,
+      "name": "동해",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "INgPnGHKV5XDfSDJO8Dl": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "INgPnGHKV5XDfSDJO8Dl",
+      "regionId": "region_서울강북2",
+      "kfaceDailyLimit": 0,
+      "name": "의정부"
+    },
+    "JPXUVl4ErXIRUeC7MlS8": {
+      "name": "경주",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경북",
+      "id": "JPXUVl4ErXIRUeC7MlS8",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "Jd8NmfMzYi1HUxEztsQ4": {
+      "id": "Jd8NmfMzYi1HUxEztsQ4",
+      "regionId": "region_충북",
+      "kfaceDailyLimit": 0,
+      "name": "가경",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "KZxdrNPFKZnv4FgUJRlc": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "name": "양천구",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강남2",
+      "id": "KZxdrNPFKZnv4FgUJRlc"
+    },
+    "LTMCtYU6DbuVlafCsUpN": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "LTMCtYU6DbuVlafCsUpN",
+      "regionId": "region_충남",
+      "kfaceDailyLimit": 0,
+      "name": "불당"
+    },
+    "M55kB5oTx7xGZFmQzj4H": {
+      "name": "문경",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경북",
+      "id": "M55kB5oTx7xGZFmQzj4H",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "MYyRuL4Ahn6XrObrj2sV": {
+      "name": "양산",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_부산",
+      "id": "MYyRuL4Ahn6XrObrj2sV",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "MuVRZH5KvAbXyNjLk8HV": {
+      "id": "MuVRZH5KvAbXyNjLk8HV",
+      "regionId": "region_서울강북2",
+      "kfaceDailyLimit": 0,
+      "name": "창동",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "NeWni7GxLcMzCbojWduq": {
+      "name": "인후",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_전북",
+      "id": "NeWni7GxLcMzCbojWduq",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "NtTdt9NjMt1EgdboF5Xw": {
+      "name": "첨단",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_광주전남",
+      "id": "NtTdt9NjMt1EgdboF5Xw",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "O6OXJ7KtatJuAMhzHwsg": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "신도림",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강남2",
+      "id": "O6OXJ7KtatJuAMhzHwsg"
+    },
+    "ONfNh2w5wh3FYiQb0Sav": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "ONfNh2w5wh3FYiQb0Sav",
+      "regionId": "region_경기남부1",
+      "kfaceDailyLimit": 0,
+      "name": "산본"
+    },
+    "OR68FiqB0PrlzXV6xRCt": {
+      "name": "온천장",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_부산",
+      "id": "OR68FiqB0PrlzXV6xRCt",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "P3DpUtp7rK864ZAH3kG6": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "서현",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경기남부2",
+      "id": "P3DpUtp7rK864ZAH3kG6"
+    },
+    "PYMKJeNGlYy4jnGkgJWw": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "PYMKJeNGlYy4jnGkgJWw",
+      "regionId": "region_부산",
+      "kfaceDailyLimit": 0,
+      "name": "사직"
+    },
+    "PaF1KPGvbyz0VyyhYGPM": {
+      "id": "PaF1KPGvbyz0VyyhYGPM",
+      "regionId": "region_서울강북1",
+      "kfaceDailyLimit": 0,
+      "name": "광화문",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "QRVonZ9qCUWXpVfHOScv": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "name": "이천",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경기남부2",
+      "id": "QRVonZ9qCUWXpVfHOScv"
+    },
+    "QfVRzP3PWojLNIgqgy8h": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "영주",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경북",
+      "id": "QfVRzP3PWojLNIgqgy8h"
+    },
+    "Qpml2nwj9cXjBLZrO0sJ": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "Qpml2nwj9cXjBLZrO0sJ",
+      "regionId": "region_경남",
+      "kfaceDailyLimit": 0,
+      "name": "진해"
+    },
+    "R2XSFqhHnOrEQOvzZ5LZ": {
+      "name": "부평",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_인천",
+      "id": "R2XSFqhHnOrEQOvzZ5LZ",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "REbKsJFRCzUR3aafRzRX": {
+      "id": "REbKsJFRCzUR3aafRzRX",
+      "regionId": "region_대구",
+      "kfaceDailyLimit": 0,
+      "name": "성서",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "SGdSZJaZGscfMijTD9wM": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "강서",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강남2",
+      "id": "SGdSZJaZGscfMijTD9wM"
+    },
+    "TPHaG2qM1thK01mxi5KN": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 7,
+      "name": "강남",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강남1",
+      "id": "TPHaG2qM1thK01mxi5KN"
+    },
+    "Ty4my5ocir2hgwtTN5ul": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "잠실",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강남1",
+      "id": "Ty4my5ocir2hgwtTN5ul"
+    },
+    "U0CSL0UJWirlzWGZtTDq": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "U0CSL0UJWirlzWGZtTDq",
+      "regionId": "region_경기북부",
+      "kfaceDailyLimit": 0,
+      "name": "화정"
+    },
+    "U8OSCIjX48lzcf8MnwVC": {
+      "name": "서귀포",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_제주",
+      "id": "U8OSCIjX48lzcf8MnwVC",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "U9QSQll5icMfLi28a5hZ": {
+      "name": "송촌",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_대전",
+      "id": "U9QSQll5icMfLi28a5hZ",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "UDI3KmAn08YMsU8rCTIp": {
+      "id": "UDI3KmAn08YMsU8rCTIp",
+      "regionId": "region_경기북부",
+      "kfaceDailyLimit": 0,
+      "name": "파주",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "VF0FC592uOxRjot70qWk": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "VF0FC592uOxRjot70qWk",
+      "regionId": "region_광주전남",
+      "kfaceDailyLimit": 0,
+      "name": "순천"
+    },
+    "Vi1QWi0CmNVVeyGnR3ek": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "공릉",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강북3",
+      "id": "Vi1QWi0CmNVVeyGnR3ek"
+    },
+    "XAF6r3lTjHQK9pbhCHe6": {
+      "id": "XAF6r3lTjHQK9pbhCHe6",
+      "regionId": "region_경기남부3",
+      "kfaceDailyLimit": 0,
+      "name": "오산",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "YM2DDYq7D2wg8QFpWkNP": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "김포",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경기북부",
+      "id": "YM2DDYq7D2wg8QFpWkNP"
+    },
+    "YqGjonbjTqOroFr5YC1r": {
+      "name": "수유",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강북2",
+      "id": "YqGjonbjTqOroFr5YC1r",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "ZDdXGxDTBK77IHPhYHd0": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "ZDdXGxDTBK77IHPhYHd0",
+      "regionId": "region_경기남부3",
+      "kfaceDailyLimit": 0,
+      "name": "동탄"
+    },
+    "ZvHc6f8COUyz4hUnmq7m": {
+      "name": "영통",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경기남부3",
+      "id": "ZvHc6f8COUyz4hUnmq7m",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "aHhvvdsHm09Tdc5v866i": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "aHhvvdsHm09Tdc5v866i",
+      "regionId": "region_서울강북1",
+      "kfaceDailyLimit": 0,
+      "name": "홍제"
+    },
+    "abNis7DNrH0ZxZS4W148": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "abNis7DNrH0ZxZS4W148",
+      "regionId": "region_단무도",
+      "kfaceDailyLimit": 0,
+      "name": "단무도천안"
+    },
+    "aficx2XK6e1L9ulyPi2D": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "aficx2XK6e1L9ulyPi2D",
+      "regionId": "region_단무도",
+      "kfaceDailyLimit": 0,
+      "name": "단무도창원"
+    },
+    "b7qfgEdokdXrth5jjwQC": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "b7qfgEdokdXrth5jjwQC",
+      "regionId": "region_광주전남",
+      "kfaceDailyLimit": 0,
+      "name": "서구"
+    },
+    "bLzqJTT21QOCbXfw4GYs": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "bLzqJTT21QOCbXfw4GYs",
+      "regionId": "region_서울강남2",
+      "kfaceDailyLimit": 0,
+      "name": "여의도"
+    },
+    "bhKS92XNAWz483L3HfT3": {
+      "id": "bhKS92XNAWz483L3HfT3",
+      "regionId": "region_광주전남",
+      "kfaceDailyLimit": 0,
+      "name": "여수",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "bnJqUkiWglSkF5IxAS5h": {
+      "name": "대이",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경북",
+      "id": "bnJqUkiWglSkF5IxAS5h",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948842516_yx0hs": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강북1",
+      "name": "공덕",
+      "id": "branch_1777948842516_yx0hs"
+    },
+    "branch_1777948843162_5zyr4": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강북1",
+      "name": "왕십리",
+      "id": "branch_1777948843162_5zyr4"
+    },
+    "branch_1777948843425_9fjms": {
+      "id": "branch_1777948843425_9fjms",
+      "name": "구리",
+      "regionId": "region_서울강북2",
+      "kfaceDailyLimit": 0,
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948843495_efojw": {
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강북2",
+      "name": "구의",
+      "id": "branch_1777948843495_efojw",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948843572_9zf08": {
+      "id": "branch_1777948843572_9zf08",
+      "name": "성북",
+      "regionId": "region_서울강북2",
+      "kfaceDailyLimit": 0,
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948844000_shgx9": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "branch_1777948844000_shgx9",
+      "name": "마들",
+      "regionId": "region_서울강북3",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948844169_tissp": {
+      "id": "branch_1777948844169_tissp",
+      "name": "고덕",
+      "regionId": "region_서울강남1",
+      "kfaceDailyLimit": 0,
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "branch_1777948844993_lie8w": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강남2",
+      "name": "이수",
+      "id": "branch_1777948844993_lie8w"
+    },
+    "branch_1777948845162_qf40y": {
+      "id": "branch_1777948845162_qf40y",
+      "name": "마두",
+      "regionId": "region_경기북부",
+      "kfaceDailyLimit": 0,
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948845734_wgtm6": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경기남부1",
+      "name": "안양1번가",
+      "id": "branch_1777948845734_wgtm6"
+    },
+    "branch_1777948845811_3jusn": {
+      "id": "branch_1777948845811_3jusn",
+      "name": "평촌",
+      "regionId": "region_경기남부1",
+      "kfaceDailyLimit": 0,
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948846057_i5rjo": {
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경기남부2",
+      "name": "수지",
+      "id": "branch_1777948846057_i5rjo",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948846135_okyww": {
+      "id": "branch_1777948846135_okyww",
+      "name": "야탑",
+      "regionId": "region_경기남부2",
+      "kfaceDailyLimit": 0,
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948846732_uw7yu": {
+      "id": "branch_1777948846732_uw7yu",
+      "name": "검단",
+      "regionId": "region_인천",
+      "kfaceDailyLimit": 0,
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948847036_e25yg": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "kfaceDailyLimit": 0,
+      "regionId": "region_인천",
+      "name": "송도",
+      "id": "branch_1777948847036_e25yg"
+    },
+    "branch_1777948847114_6ifki": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "kfaceDailyLimit": 0,
+      "regionId": "region_인천",
+      "name": "주안",
+      "id": "branch_1777948847114_6ifki"
+    },
+    "branch_1777948847438_dsbk4": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "branch_1777948847438_dsbk4",
+      "name": "춘천",
+      "regionId": "region_강원",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948847531_7wesl": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "kfaceDailyLimit": 0,
+      "regionId": "region_대전",
+      "name": "둔산",
+      "id": "branch_1777948847531_7wesl"
+    },
+    "branch_1777948847607_bxnq5": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "branch_1777948847607_bxnq5",
+      "name": "서대전",
+      "regionId": "region_대전",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948847761_4nc0i": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "branch_1777948847761_4nc0i",
+      "name": "월평",
+      "regionId": "region_대전",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948847933_9asil": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "kfaceDailyLimit": 0,
+      "regionId": "region_충북",
+      "name": "금천",
+      "id": "branch_1777948847933_9asil"
+    },
+    "branch_1777948848009_estfh": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "branch_1777948848009_estfh",
+      "name": "율량",
+      "regionId": "region_충북",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948848178_xhst8": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "branch_1777948848178_xhst8",
+      "name": "서산",
+      "regionId": "region_충남",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948848331_6wy8t": {
+      "kfaceDailyLimit": 0,
+      "regionId": "region_충남",
+      "name": "아산",
+      "id": "branch_1777948848331_6wy8t",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948848885_ahrxv": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "branch_1777948848885_ahrxv",
+      "name": "진월",
+      "regionId": "region_광주전남",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948849132_su65m": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "branch_1777948849132_su65m",
+      "name": "익산",
+      "regionId": "region_전북",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948849285_1b37i": {
+      "id": "branch_1777948849285_1b37i",
+      "name": "정읍",
+      "regionId": "region_전북",
+      "kfaceDailyLimit": 0,
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948849362_stymv": {
+      "kfaceDailyLimit": 0,
+      "regionId": "region_전북",
+      "name": "효자",
+      "id": "branch_1777948849362_stymv",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948849532_f37u3": {
+      "id": "branch_1777948849532_f37u3",
+      "name": "범어",
+      "regionId": "region_대구",
+      "kfaceDailyLimit": 0,
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948849611_sq8sn": {
+      "kfaceDailyLimit": 0,
+      "regionId": "region_대구",
+      "name": "상인",
+      "id": "branch_1777948849611_sq8sn",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948849766_4tbmy": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "kfaceDailyLimit": 0,
+      "regionId": "region_대구",
+      "name": "수성",
+      "id": "branch_1777948849766_4tbmy"
+    },
+    "branch_1777948849842_yp73f": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "branch_1777948849842_yp73f",
+      "name": "시지",
+      "regionId": "region_대구",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948850322_djkxn": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "branch_1777948850322_djkxn",
+      "name": "김천",
+      "regionId": "region_경북",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948851027_9n5qv": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경남",
+      "name": "마산",
+      "id": "branch_1777948851027_9n5qv"
+    },
+    "branch_1777948851660_u8glr": {
+      "name": "대송",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_1777948851638_xeva3",
+      "id": "branch_1777948851660_u8glr",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "branch_1777948851729_oxo7g": {
+      "name": "북구",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_1777948851638_xeva3",
+      "id": "branch_1777948851729_oxo7g",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "branch_1777948851806_glr5d": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "name": "중구",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_1777948851638_xeva3",
+      "id": "branch_1777948851806_glr5d"
+    },
+    "branch_1777948851898_5nllv": {
+      "id": "branch_1777948851898_5nllv",
+      "name": "금정",
+      "regionId": "region_부산",
+      "kfaceDailyLimit": 0,
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "branch_1777948852514_2rgos": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "branch_1777948852514_2rgos",
+      "name": "영도",
+      "regionId": "region_부산",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948853079_u8kru": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "branch_1777948853079_u8kru",
+      "name": "단무도부산",
+      "regionId": "region_단무도",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948853156_1147p": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "branch_1777948853156_1147p",
+      "name": "단무도부천",
+      "regionId": "region_단무도",
+      "kfaceDailyLimit": 0
+    },
+    "branch_1777948853234_3lmyn": {
+      "id": "branch_1777948853234_3lmyn",
+      "name": "단무도분당",
+      "regionId": "region_단무도",
+      "kfaceDailyLimit": 0,
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "cHfn8LcKSBThRYsd6uSL": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "cHfn8LcKSBThRYsd6uSL",
+      "regionId": "region_부산",
+      "kfaceDailyLimit": 0,
+      "name": "다대"
+    },
+    "dyDI9BRTbwUjRGt1Gfct": {
+      "name": "동래",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_부산",
+      "id": "dyDI9BRTbwUjRGt1Gfct",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "eYastz8XSgHIGQDGNhyA": {
+      "name": "평택",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경기남부3",
+      "id": "eYastz8XSgHIGQDGNhyA",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "enZUEQM1zEj6ma105chs": {
+      "id": "enZUEQM1zEj6ma105chs",
+      "name": "신입경영홍보실",
+      "kfaceDailyLimit": 10,
+      "regionId": "region_본사",
+      "ktarotDailyLimit": 10,
+      "allowedLicenses": 30
+    },
+    "fiNhpm04czxpQGYaPYSv": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "fiNhpm04czxpQGYaPYSv",
+      "regionId": "region_서울강남1",
+      "kfaceDailyLimit": 0,
+      "name": "서초"
+    },
+    "jI9xC6aizPFiGiirSfDO": {
+      "name": "둔촌",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_서울강남1",
+      "id": "jI9xC6aizPFiGiirSfDO",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 7
+    },
+    "jQXl7LIQY4ZijbzN8G1K": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "논현",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_인천",
+      "id": "jQXl7LIQY4ZijbzN8G1K"
+    },
+    "mEHYihqqemW7ggLf5zjx": {
+      "id": "mEHYihqqemW7ggLf5zjx",
+      "regionId": "region_경북",
+      "kfaceDailyLimit": 0,
+      "name": "안동",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "n6MflkvD8llVifni8qd2": {
+      "allowedLicenses": 3,
+      "ktarotDailyLimit": 0,
+      "regionId": "region_경북",
+      "kfaceDailyLimit": 0,
+      "name": "두호",
+      "id": "n6MflkvD8llVifni8qd2"
+    },
+    "npzWmVpZMV5DDKlPKXwb": {
+      "id": "npzWmVpZMV5DDKlPKXwb",
+      "regionId": "region_부산",
+      "kfaceDailyLimit": 0,
+      "name": "양정",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 3
+    },
+    "nzccHJFU8MCFujOjE6BA": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "id": "nzccHJFU8MCFujOjE6BA",
+      "regionId": "region_강원",
+      "kfaceDailyLimit": 0,
+      "name": "강릉"
+    },
+    "pGdBBMZblrG6Fp1Ntusz": {
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0,
+      "name": "상주",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경북",
+      "id": "pGdBBMZblrG6Fp1Ntusz"
+    },
+    "qhmH9Psg4ay7DhWaOLwx": {
+      "name": "구미",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경북",
+      "id": "qhmH9Psg4ay7DhWaOLwx",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "svtA80vtLv6Awr8wHtv4": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "id": "svtA80vtLv6Awr8wHtv4",
+      "regionId": "region_인천",
+      "kfaceDailyLimit": 0,
+      "name": "상동"
+    },
+    "tezH3nL3rzWH1o0QOmW6": {
+      "name": "하단",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_부산",
+      "id": "tezH3nL3rzWH1o0QOmW6",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "v9RXCIW9GvA8LiGGyIn7": {
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2,
+      "name": "충무",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_충남",
+      "id": "v9RXCIW9GvA8LiGGyIn7"
+    },
+    "weVeMsrQtxGPWjx8lryi": {
+      "name": "거제",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경남",
+      "id": "weVeMsrQtxGPWjx8lryi",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    },
+    "xPtCSnDtpagcdeBLmM6B": {
+      "name": "내외",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_경남",
+      "id": "xPtCSnDtpagcdeBLmM6B",
+      "allowedLicenses": 2,
+      "ktarotDailyLimit": 0
+    },
+    "yKNXj28CgEyCD6UzTO5F": {
+      "name": "원주",
+      "kfaceDailyLimit": 0,
+      "regionId": "region_강원",
+      "id": "yKNXj28CgEyCD6UzTO5F",
+      "ktarotDailyLimit": 0,
+      "allowedLicenses": 2
+    }
+  },
+  "devices": [
+    {
+      "appVersion": "4.2.4",
+      "adminName": "송준영",
+      "totalUsages": 1,
+      "contact": "010-7407-1785",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777630348,
+        "nanoseconds": 117000000
+      },
+      "branchId": "jI9xC6aizPFiGiirSfDO",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777706574,
+        "nanoseconds": 794000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777629159,
+        "nanoseconds": 107000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777932100,
+        "nanoseconds": 822000000
+      },
+      "contact": "010-2823-7378",
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777932102,
+        "nanoseconds": 127000000
+      },
+      "appVersion": "5.0.1",
+      "adminName": "강유진",
+      "branchId": "0jVCTBRWFURTr9xw2cpW"
+    },
+    {
+      "contact": "010-8548-3701",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777890527,
+        "nanoseconds": 47000000
+      },
+      "adminName": "장윤담",
+      "appVersion": "5.0.1",
+      "branchId": "4R9RLUAPiQ9zqxvRK1IT",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777890527,
+        "nanoseconds": 936000000
+      }
+    },
+    {
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777885233,
+        "nanoseconds": 108000000
+      },
+      "contact": "010-2960-1785",
+      "totalUsages": 1,
+      "adminName": "황현숙",
+      "appVersion": "5.0.1",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777884684,
+        "nanoseconds": 154000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777885970,
+        "nanoseconds": 69000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs"
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777901577,
+        "nanoseconds": 155000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777901578,
+        "nanoseconds": 388000000
+      },
+      "branchId": "weVeMsrQtxGPWjx8lryi",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902118,
+        "nanoseconds": 260000000
+      },
+      "contact": "010-6548-7781",
+      "totalUsages": 1,
+      "adminName": "곽명경",
+      "appVersion": "5.0.1"
+    },
+    {
+      "contact": "010-9248-8786",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777978382,
+        "nanoseconds": 458000000
+      },
+      "branchId": "branch_1777948849132_su65m",
+      "adminName": "박선녀",
+      "appVersion": "5.0.4",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777978957,
+        "nanoseconds": 402000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777982650,
+        "nanoseconds": 609000000
+      },
+      "contact": "010-3362-9316",
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777982650,
+        "nanoseconds": 914000000
+      },
+      "adminName": "박영아",
+      "appVersion": "5.0.4",
+      "branchId": "branch_1777948849285_1b37i"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777768306,
+        "nanoseconds": 346000000
+      },
+      "branchId": "jI9xC6aizPFiGiirSfDO",
+      "adminName": "송준영",
+      "appVersion": "5.0.0",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777768304,
+        "nanoseconds": 85000000
+      },
+      "status": "active",
+      "contact": "010-7407-1785"
+    },
+    {
+      "contact": "010-3157-1292",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777553205,
+        "nanoseconds": 314000000
+      },
+      "appVersion": "4.2.4",
+      "adminName": "신선영",
+      "totalUsages": 1,
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777552428,
+        "nanoseconds": 512000000
+      },
+      "branchId": "0jVCTBRWFURTr9xw2cpW",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777552429,
+        "nanoseconds": 429000000
+      }
+    },
+    {
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777531726,
+        "nanoseconds": 157000000
+      },
+      "contact": "010-8845-1785",
+      "totalUsages": 2,
+      "appVersion": "4.2.3",
+      "adminName": "방검산",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777464700,
+        "nanoseconds": 125000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777530810,
+        "nanoseconds": 559000000
+      },
+      "branchId": "yKNXj28CgEyCD6UzTO5F"
+    },
+    {
+      "contact": "010-9754-0829",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777884965,
+        "nanoseconds": 282000000
+      },
+      "appVersion": "5.0.4",
+      "adminName": "이수빈",
+      "totalUsages": 1,
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777884463,
+        "nanoseconds": 50000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777957973,
+        "nanoseconds": 296000000
+      }
+    },
+    {
+      "totalUsages": 1,
+      "adminName": "차일화",
+      "appVersion": "5.0.1",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777899960,
+        "nanoseconds": 199000000
+      },
+      "contact": "010-3958-2359",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777899371,
+        "nanoseconds": 982000000
+      },
+      "branchId": "I8tmeilHxBsMDG2s1LXO",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777899370,
+        "nanoseconds": 244000000
+      },
+      "status": "active"
+    },
+    {
+      "contact": "010-5649-1785",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777889589,
+        "nanoseconds": 227000000
+      },
+      "appVersion": "5.0.1",
+      "adminName": "신효원",
+      "branchId": "MYyRuL4Ahn6XrObrj2sV",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777889590,
+        "nanoseconds": 501000000
+      }
+    },
+    {
+      "contact": "010-5505-3472",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777884706,
+        "nanoseconds": 716000000
+      },
+      "appVersion": "5.0.0",
+      "adminName": "조영덕",
+      "totalUsages": 1,
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777884197,
+        "nanoseconds": 26000000
+      },
+      "branchId": "xPtCSnDtpagcdeBLmM6B",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777884198,
+        "nanoseconds": 126000000
+      }
+    },
+    {
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777934889,
+        "nanoseconds": 134000000
+      },
+      "branchId": "bnJqUkiWglSkF5IxAS5h",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777937668,
+        "nanoseconds": 398000000
+      },
+      "contact": "010-7618-7811",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777935621,
+        "nanoseconds": 430000000
+      },
+      "appVersion": "5.0.1",
+      "adminName": "윤소",
+      "totalUsages": 1
+    },
+    {
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777899659,
+        "nanoseconds": 444000000
+      },
+      "branchId": "qhmH9Psg4ay7DhWaOLwx",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777903666,
+        "nanoseconds": 232000000
+      },
+      "contact": "010-5132-7720",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777946361,
+        "nanoseconds": 780000000
+      },
+      "appVersion": "5.0.1",
+      "adminName": "김도혜",
+      "totalUsages": 1
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777980464,
+        "nanoseconds": 254000000
+      },
+      "branchId": "NeWni7GxLcMzCbojWduq",
+      "adminName": "신해림",
+      "appVersion": "5.0.4",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777978338,
+        "nanoseconds": 513000000
+      },
+      "status": "active",
+      "contact": "010-5094-0889"
+    },
+    {
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902210,
+        "nanoseconds": 566000000
+      },
+      "contact": "010-7900-1785",
+      "totalUsages": 1,
+      "adminName": "김은미",
+      "appVersion": "5.0.1",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777889759,
+        "nanoseconds": 909000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777901482,
+        "nanoseconds": 171000000
+      },
+      "branchId": "JPXUVl4ErXIRUeC7MlS8"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777995618,
+        "nanoseconds": 612000000
+      },
+      "appVersion": "5.0.4",
+      "adminName": "곽도윤",
+      "branchId": "KZxdrNPFKZnv4FgUJRlc",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777993546,
+        "nanoseconds": 315000000
+      },
+      "contact": "010-5399-8628",
+      "status": "active"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777934822,
+        "nanoseconds": 495000000
+      },
+      "branchId": "U8OSCIjX48lzcf8MnwVC",
+      "adminName": "김옥란",
+      "appVersion": "5.0.1",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902395,
+        "nanoseconds": 62000000
+      },
+      "status": "active",
+      "contact": "010-5183-1288"
+    },
+    {
+      "adminName": "원설윤",
+      "appVersion": "5.0.0",
+      "branchId": "BO4U2Gs1ThoIaNYxJO4J",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777873298,
+        "nanoseconds": 939000000
+      },
+      "contact": "010-5517-1042",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777872905,
+        "nanoseconds": 654000000
+      }
+    },
+    {
+      "contact": "010-9258-7726",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777903235,
+        "nanoseconds": 713000000
+      },
+      "adminName": "김병철",
+      "appVersion": "5.0.1",
+      "branchId": "n6MflkvD8llVifni8qd2",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777903236,
+        "nanoseconds": 730000000
+      }
+    },
+    {
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777900445,
+        "nanoseconds": 383000000
+      },
+      "branchId": "weVeMsrQtxGPWjx8lryi",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777900446,
+        "nanoseconds": 227000000
+      },
+      "contact": "010-6548-7781",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777901151,
+        "nanoseconds": 713000000
+      },
+      "adminName": "곽명경",
+      "appVersion": "5.0.1",
+      "totalUsages": 1
+    },
+    {
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777939075,
+        "nanoseconds": 370000000
+      },
+      "contact": "010-3888-0951",
+      "totalUsages": 1,
+      "adminName": "강규린",
+      "appVersion": "5.0.1",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777938349,
+        "nanoseconds": 554000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777940120,
+        "nanoseconds": 69000000
+      },
+      "branchId": "nzccHJFU8MCFujOjE6BA"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777939298,
+        "nanoseconds": 539000000
+      },
+      "branchId": "xPtCSnDtpagcdeBLmM6B",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777881229,
+        "nanoseconds": 297000000
+      },
+      "status": "active",
+      "totalUsages": 1,
+      "appVersion": "5.0.0",
+      "adminName": "조영덕",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777881816,
+        "nanoseconds": 637000000
+      },
+      "contact": "010-5505-3472"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777897278,
+        "nanoseconds": 393000000
+      },
+      "branchId": "ZDdXGxDTBK77IHPhYHd0",
+      "adminName": "유정열",
+      "appVersion": "5.0.1",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777897277,
+        "nanoseconds": 361000000
+      },
+      "status": "active",
+      "contact": "010-3391-4093"
+    },
+    {
+      "adminName": "이현선",
+      "appVersion": "5.0.4",
+      "branchId": "Jd8NmfMzYi1HUxEztsQ4",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1778025813,
+        "nanoseconds": 597000000
+      },
+      "contact": "010-2705-2965",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777965135,
+        "nanoseconds": 62000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777880613,
+        "nanoseconds": 565000000
+      },
+      "contact": "010-4789-7720",
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777880614,
+        "nanoseconds": 452000000
+      },
+      "appVersion": "5.0.0",
+      "adminName": "김도윤",
+      "branchId": "tezH3nL3rzWH1o0QOmW6"
+    },
+    {
+      "branchId": "tezH3nL3rzWH1o0QOmW6",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777886282,
+        "nanoseconds": 7000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777880404,
+        "nanoseconds": 957000000
+      },
+      "appVersion": "5.0.0",
+      "adminName": "김도윤",
+      "totalUsages": 2,
+      "contact": "010-4789-7720",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777886861,
+        "nanoseconds": 695000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777888156,
+        "nanoseconds": 146000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777889982,
+        "nanoseconds": 672000000
+      },
+      "branchId": "Qpml2nwj9cXjBLZrO0sJ",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777889114,
+        "nanoseconds": 710000000
+      },
+      "contact": "010-9677-1961",
+      "totalUsages": 1,
+      "adminName": "조미소",
+      "appVersion": "5.0.1"
+    },
+    {
+      "appVersion": "5.0.0",
+      "adminName": "이창호",
+      "totalUsages": 3,
+      "contact": "010-5127-5545",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777768005,
+        "nanoseconds": 813000000
+      },
+      "branchId": "TPHaG2qM1thK01mxi5KN",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777767606,
+        "nanoseconds": 423000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777725993,
+        "nanoseconds": 249000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777900213,
+        "nanoseconds": 699000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902183,
+        "nanoseconds": 499000000
+      },
+      "branchId": "U8OSCIjX48lzcf8MnwVC",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777901822,
+        "nanoseconds": 306000000
+      },
+      "contact": "010-5183-1288",
+      "totalUsages": 1,
+      "appVersion": "5.0.1",
+      "adminName": "김옥란"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777935197,
+        "nanoseconds": 421000000
+      },
+      "branchId": "npzWmVpZMV5DDKlPKXwb",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777729015,
+        "nanoseconds": 286000000
+      },
+      "status": "active",
+      "totalUsages": 4,
+      "appVersion": "5.0.1",
+      "adminName": "박선홍",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777797895,
+        "nanoseconds": 577000000
+      },
+      "contact": "010-4537-5310"
+    },
+    {
+      "contact": "010-7751-3868",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777886172,
+        "nanoseconds": 397000000
+      },
+      "appVersion": "5.0.1",
+      "adminName": "김보배",
+      "totalUsages": 1,
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777536013,
+        "nanoseconds": 671000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777885716,
+        "nanoseconds": 265000000
+      }
+    },
+    {
+      "status": "active",
+      "contact": "010-7900-1785",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777890097,
+        "nanoseconds": 540000000
+      },
+      "branchId": "JPXUVl4ErXIRUeC7MlS8",
+      "adminName": "김은미",
+      "appVersion": "5.0.1",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777901060,
+        "nanoseconds": 799000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777724515,
+        "nanoseconds": 468000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777724516,
+        "nanoseconds": 941000000
+      },
+      "branchId": "jI9xC6aizPFiGiirSfDO",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777725067,
+        "nanoseconds": 461000000
+      },
+      "contact": "010-2033-3474",
+      "totalUsages": 1,
+      "appVersion": "5.0.0",
+      "adminName": "최영환"
+    },
+    {
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777884974,
+        "nanoseconds": 827000000
+      },
+      "contact": "010-8806-3885",
+      "totalUsages": 1,
+      "adminName": "이재용",
+      "appVersion": "5.0.1",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777884224,
+        "nanoseconds": 582000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777885684,
+        "nanoseconds": 917000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs"
+    },
+    {
+      "adminName": "구선미",
+      "appVersion": "5.0.0",
+      "totalUsages": 1,
+      "contact": "010-2445-4651",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777887937,
+        "nanoseconds": 230000000
+      },
+      "branchId": "fiNhpm04czxpQGYaPYSv",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777887006,
+        "nanoseconds": 761000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777769446,
+        "nanoseconds": 414000000
+      }
+    },
+    {
+      "appVersion": "5.0.4",
+      "adminName": "청양",
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777955250,
+        "nanoseconds": 120000000
+      },
+      "contact": "010-2392-2594",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777940855,
+        "nanoseconds": 516000000
+      }
+    },
+    {
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777537653,
+        "nanoseconds": 345000000
+      },
+      "branchId": "pGdBBMZblrG6Fp1Ntusz",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777537654,
+        "nanoseconds": 615000000
+      },
+      "contact": "010-3005-2923",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777611168,
+        "nanoseconds": 834000000
+      },
+      "appVersion": "4.2.4",
+      "adminName": "김경민",
+      "totalUsages": 1
+    },
+    {
+      "contact": "010-5693-0332",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777900663,
+        "nanoseconds": 644000000
+      },
+      "appVersion": "5.0.1",
+      "adminName": "부수화",
+      "branchId": "DZfbSM7XrwBW4y5WWmZZ",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777903403,
+        "nanoseconds": 377000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777694951,
+        "nanoseconds": 334000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1778027651,
+        "nanoseconds": 378000000
+      },
+      "branchId": "eYastz8XSgHIGQDGNhyA",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777963885,
+        "nanoseconds": 968000000
+      },
+      "contact": "010-2369-8005",
+      "totalUsages": 3,
+      "appVersion": "5.0.4",
+      "adminName": "김건명"
+    },
+    {
+      "appVersion": "5.0.4",
+      "adminName": "권홍준",
+      "totalUsages": 1,
+      "contact": "010-8360-3842",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777942788,
+        "nanoseconds": 653000000
+      },
+      "branchId": "P3DpUtp7rK864ZAH3kG6",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777965808,
+        "nanoseconds": 133000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777903399,
+        "nanoseconds": 914000000
+      }
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777981307,
+        "nanoseconds": 783000000
+      },
+      "branchId": "branch_1777948846057_i5rjo",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777972737,
+        "nanoseconds": 451000000
+      },
+      "status": "active",
+      "totalUsages": 1,
+      "appVersion": "5.0.4",
+      "adminName": "김가민",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777982461,
+        "nanoseconds": 466000000
+      },
+      "contact": "010-4746-5142"
+    },
+    {
+      "totalUsages": 1,
+      "adminName": "육설빈",
+      "appVersion": "5.0.0",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777872553,
+        "nanoseconds": 136000000
+      },
+      "contact": "010-8906-1512",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777872940,
+        "nanoseconds": 390000000
+      },
+      "branchId": "jQXl7LIQY4ZijbzN8G1K",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777870408,
+        "nanoseconds": 34000000
+      },
+      "status": "active"
+    },
+    {
+      "contact": "010-6722-4992",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777980570,
+        "nanoseconds": 888000000
+      },
+      "adminName": "김미찬",
+      "appVersion": "5.0.4",
+      "totalUsages": 1,
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777979384,
+        "nanoseconds": 294000000
+      },
+      "branchId": "0wnScb7XDgjQ6jOkHIFp",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777979997,
+        "nanoseconds": 647000000
+      }
+    },
+    {
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777964973,
+        "nanoseconds": 23000000
+      },
+      "branchId": "branch_1777948846135_okyww",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777987431,
+        "nanoseconds": 814000000
+      },
+      "contact": "010-3691-3636",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777987164,
+        "nanoseconds": 601000000
+      },
+      "appVersion": "5.0.4",
+      "adminName": "강보배",
+      "totalUsages": 2
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777684848,
+        "nanoseconds": 129000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777898815,
+        "nanoseconds": 709000000
+      },
+      "branchId": "eYastz8XSgHIGQDGNhyA",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777952618,
+        "nanoseconds": 972000000
+      },
+      "contact": "010-2369-8005",
+      "totalUsages": 1,
+      "adminName": "김건명",
+      "appVersion": "5.0.1"
+    },
+    {
+      "contact": "010-7751-3868",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777448865,
+        "nanoseconds": 141000000
+      },
+      "appVersion": "4.2.2",
+      "adminName": " 김보배",
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777534987,
+        "nanoseconds": 512000000
+      }
+    },
+    {
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777949867,
+        "nanoseconds": 36000000
+      },
+      "contact": "010-3252-1836",
+      "totalUsages": 1,
+      "appVersion": "5.0.1",
+      "adminName": "이다경",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777940849,
+        "nanoseconds": 37000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777940850,
+        "nanoseconds": 457000000
+      },
+      "branchId": "dyDI9BRTbwUjRGt1Gfct"
+    },
+    {
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777945938,
+        "nanoseconds": 850000000
+      },
+      "contact": "010-9368-1785",
+      "totalUsages": 4,
+      "appVersion": "5.0.0",
+      "adminName": "김유경",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777883824,
+        "nanoseconds": 907000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777940026,
+        "nanoseconds": 271000000
+      },
+      "branchId": "BCUchaRIMev3SlD6SBYa"
+    },
+    {
+      "branchId": "BO4U2Gs1ThoIaNYxJO4J",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777943641,
+        "nanoseconds": 569000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777856701,
+        "nanoseconds": 391000000
+      },
+      "appVersion": "5.0.1",
+      "adminName": "원설윤",
+      "totalUsages": 3,
+      "contact": "010-5517-1042",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777893678,
+        "nanoseconds": 427000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777896922,
+        "nanoseconds": 292000000
+      },
+      "contact": "010-6780-1785",
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777897116,
+        "nanoseconds": 919000000
+      },
+      "adminName": "임서화 ",
+      "appVersion": "5.0.1",
+      "branchId": "REbKsJFRCzUR3aafRzRX"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777978457,
+        "nanoseconds": 904000000
+      },
+      "adminName": "권나라",
+      "appVersion": "5.0.4",
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777878154,
+        "nanoseconds": 631000000
+      },
+      "contact": "010-9954-9696",
+      "status": "active"
+    },
+    {
+      "totalUsages": 2,
+      "adminName": "박감동",
+      "appVersion": "4.2.3",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777514845,
+        "nanoseconds": 648000000
+      },
+      "contact": "010-8312-6061",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777516178,
+        "nanoseconds": 279000000
+      },
+      "branchId": "FIIVNYViURA0a1qM8PsZ",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777451691,
+        "nanoseconds": 211000000
+      },
+      "status": "active"
+    },
+    {
+      "contact": "010-4617-1716",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777981794,
+        "nanoseconds": 431000000
+      },
+      "branchId": "bLzqJTT21QOCbXfw4GYs",
+      "adminName": "춘향",
+      "appVersion": "5.0.4",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777981811,
+        "nanoseconds": 505000000
+      }
+    },
+    {
+      "branchId": "P3DpUtp7rK864ZAH3kG6",
+      "adminName": "권홍준",
+      "appVersion": "5.0.4",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777965744,
+        "nanoseconds": 613000000
+      },
+      "status": "active",
+      "contact": "010-8360-3842",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777903731,
+        "nanoseconds": 761000000
+      }
+    },
+    {
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902604,
+        "nanoseconds": 85000000
+      },
+      "contact": "010-3957-7333",
+      "totalUsages": 1,
+      "appVersion": "5.0.1",
+      "adminName": "임효리",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902007,
+        "nanoseconds": 502000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902104,
+        "nanoseconds": 394000000
+      },
+      "branchId": "mEHYihqqemW7ggLf5zjx"
+    },
+    {
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777536432,
+        "nanoseconds": 523000000
+      },
+      "branchId": "v9RXCIW9GvA8LiGGyIn7",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777695489,
+        "nanoseconds": 4000000
+      },
+      "contact": "010-7548-0200",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777696469,
+        "nanoseconds": 29000000
+      },
+      "appVersion": "4.2.4",
+      "adminName": "조보감",
+      "totalUsages": 2
+    },
+    {
+      "contact": "010-5399-8628",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777995020,
+        "nanoseconds": 326000000
+      },
+      "appVersion": "5.0.4",
+      "adminName": "곽도윤",
+      "totalUsages": 1,
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777994328,
+        "nanoseconds": 648000000
+      },
+      "branchId": "KZxdrNPFKZnv4FgUJRlc",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777994328,
+        "nanoseconds": 901000000
+      }
+    },
+    {
+      "contact": "010-5649-1785",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777889238,
+        "nanoseconds": 179000000
+      },
+      "adminName": "신효원",
+      "appVersion": "5.0.1",
+      "branchId": "MYyRuL4Ahn6XrObrj2sV",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777889350,
+        "nanoseconds": 466000000
+      }
+    },
+    {
+      "appVersion": "5.0.4",
+      "adminName": "인성민",
+      "branchId": "branch_1777948847036_e25yg",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777982623,
+        "nanoseconds": 731000000
+      },
+      "contact": "010-2505-3691",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777968460,
+        "nanoseconds": 239000000
+      }
+    },
+    {
+      "contact": "010-4341-7814",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777961628,
+        "nanoseconds": 487000000
+      },
+      "appVersion": "5.0.4",
+      "adminName": "김도영",
+      "totalUsages": 1,
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777537501,
+        "nanoseconds": 651000000
+      },
+      "branchId": "D84uxCLaOvYa6ZCVgGoq",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777960862,
+        "nanoseconds": 707000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777729016,
+        "nanoseconds": 163000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777729101,
+        "nanoseconds": 158000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777729744,
+        "nanoseconds": 335000000
+      },
+      "contact": "010-2984-1785",
+      "totalUsages": 1,
+      "appVersion": "5.0.0",
+      "adminName": "이유담노트북"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777983488,
+        "nanoseconds": 571000000
+      },
+      "adminName": "김상철",
+      "appVersion": "5.0.4",
+      "branchId": "branch_1777948847114_6ifki",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777981384,
+        "nanoseconds": 411000000
+      },
+      "contact": "010-5696-5299",
+      "status": "active"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777980409,
+        "nanoseconds": 931000000
+      },
+      "appVersion": "5.0.4",
+      "adminName": "김규빈",
+      "branchId": "branch_1777948849362_stymv",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777979027,
+        "nanoseconds": 807000000
+      },
+      "contact": "010-2615-7720",
+      "status": "active"
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777462656,
+        "nanoseconds": 61000000
+      },
+      "status": "active",
+      "contact": "010-2392-2594",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777778768,
+        "nanoseconds": 499000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "adminName": "청양온",
+      "appVersion": "Online Lite v1.0"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777986476,
+        "nanoseconds": 695000000
+      },
+      "adminName": "유아랑",
+      "appVersion": "5.0.4",
+      "branchId": "aHhvvdsHm09Tdc5v866i",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777986474,
+        "nanoseconds": 969000000
+      },
+      "contact": "010-4879-8392",
+      "status": "active"
+    },
+    {
+      "branchId": "TPHaG2qM1thK01mxi5KN",
+      "adminName": "이창호",
+      "appVersion": "5.0.0",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777769338,
+        "nanoseconds": 45000000
+      },
+      "status": "active",
+      "contact": "010-5127-5545",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777768896,
+        "nanoseconds": 723000000
+      }
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777891899,
+        "nanoseconds": 297000000
+      },
+      "branchId": "cHfn8LcKSBThRYsd6uSL",
+      "adminName": "조해선",
+      "appVersion": "5.0.1",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777891888,
+        "nanoseconds": 212000000
+      },
+      "contact": "010-8537-5021",
+      "status": "active"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777904203,
+        "nanoseconds": 978000000
+      },
+      "adminName": "전강담",
+      "appVersion": "5.0.1",
+      "branchId": "OR68FiqB0PrlzXV6xRCt",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777904203,
+        "nanoseconds": 230000000
+      },
+      "contact": "010-2810-8596",
+      "status": "active"
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777537967,
+        "nanoseconds": 415000000
+      },
+      "adminName": "김도영",
+      "appVersion": "4.2.4",
+      "branchId": "D84uxCLaOvYa6ZCVgGoq",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777537966,
+        "nanoseconds": 133000000
+      },
+      "contact": "010-4341-7814",
+      "status": "active"
+    },
+    {
+      "adminName": "김병철",
+      "appVersion": "5.0.1",
+      "branchId": "n6MflkvD8llVifni8qd2",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777898465,
+        "nanoseconds": 92000000
+      },
+      "contact": "010-9258-7726",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777892303,
+        "nanoseconds": 484000000
+      }
+    },
+    {
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777871341,
+        "nanoseconds": 160000000
+      },
+      "branchId": "jQXl7LIQY4ZijbzN8G1K",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777873014,
+        "nanoseconds": 390000000
+      },
+      "contact": "010-8906-1512",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777873888,
+        "nanoseconds": 285000000
+      },
+      "appVersion": "5.0.0",
+      "adminName": "육설빈",
+      "totalUsages": 1
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777768861,
+        "nanoseconds": 205000000
+      },
+      "contact": "010-9257-6798",
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777768905,
+        "nanoseconds": 241000000
+      },
+      "adminName": "이수목",
+      "appVersion": "5.0.0",
+      "branchId": "Ty4my5ocir2hgwtTN5ul"
+    },
+    {
+      "adminName": "김규희",
+      "appVersion": "5.0.1",
+      "totalUsages": 2,
+      "contact": "010-7377-9656",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777947669,
+        "nanoseconds": 419000000
+      },
+      "branchId": "bnJqUkiWglSkF5IxAS5h",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777937449,
+        "nanoseconds": 810000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777897019,
+        "nanoseconds": 498000000
+      }
+    },
+    {
+      "branchId": "n6MflkvD8llVifni8qd2",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777940066,
+        "nanoseconds": 800000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777936957,
+        "nanoseconds": 189000000
+      },
+      "appVersion": "5.0.1",
+      "adminName": "김병철",
+      "totalUsages": 2,
+      "contact": "010-9258-7726",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777946329,
+        "nanoseconds": 627000000
+      }
+    },
+    {
+      "contact": "010-7407-1785",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777732977,
+        "nanoseconds": 643000000
+      },
+      "adminName": "송준영",
+      "appVersion": "5.0.0",
+      "branchId": "jI9xC6aizPFiGiirSfDO",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777759060,
+        "nanoseconds": 738000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777940983,
+        "nanoseconds": 717000000
+      },
+      "status": "active",
+      "contact": "010-8898-0722",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777940984,
+        "nanoseconds": 838000000
+      },
+      "branchId": "svtA80vtLv6Awr8wHtv4",
+      "adminName": "최연서",
+      "appVersion": "5.0.1"
+    },
+    {
+      "adminName": "황현숙",
+      "appVersion": "5.0.0",
+      "totalUsages": 2,
+      "contact": "010-2960-1785",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777722032,
+        "nanoseconds": 60000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777721560,
+        "nanoseconds": 397000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777720648,
+        "nanoseconds": 703000000
+      }
+    },
+    {
+      "branchId": "1666zHiaGYUmY4pl41fc",
+      "adminName": "김준",
+      "appVersion": "5.0.1",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777901815,
+        "nanoseconds": 549000000
+      },
+      "contact": "010-3703-9932",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777901814,
+        "nanoseconds": 141000000
+      }
+    },
+    {
+      "contact": "010-6722-4992",
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777984881,
+        "nanoseconds": 83000000
+      },
+      "branchId": "0wnScb7XDgjQ6jOkHIFp",
+      "adminName": "김미찬",
+      "appVersion": "5.0.4",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777984881,
+        "nanoseconds": 533000000
+      }
+    },
+    {
+      "contact": "010-5693-0332",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902621,
+        "nanoseconds": 289000000
+      },
+      "appVersion": "5.0.1",
+      "adminName": "부수화",
+      "totalUsages": 1,
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902198,
+        "nanoseconds": 436000000
+      },
+      "branchId": "DZfbSM7XrwBW4y5WWmZZ",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902199,
+        "nanoseconds": 551000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777958686,
+        "nanoseconds": 1000000
+      },
+      "contact": "010-3055-9363",
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777982288,
+        "nanoseconds": 468000000
+      },
+      "appVersion": "5.0.4",
+      "adminName": "윤신정",
+      "branchId": "branch_1777948848009_estfh"
+    },
+    {
+      "totalUsages": 1,
+      "appVersion": "5.0.4",
+      "adminName": "배준희",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777978410,
+        "nanoseconds": 388000000
+      },
+      "contact": "010-5267-0615",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777978977,
+        "nanoseconds": 232000000
+      },
+      "branchId": "branch_1777948847438_dsbk4",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777977602,
+        "nanoseconds": 993000000
+      },
+      "status": "active"
+    },
+    {
+      "contact": "010-9754-0829",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777723178,
+        "nanoseconds": 74000000
+      },
+      "appVersion": "5.0.0",
+      "adminName": "이수빈",
+      "totalUsages": 1,
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777722744,
+        "nanoseconds": 496000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777723878,
+        "nanoseconds": 898000000
+      }
+    },
+    {
+      "branchId": "aHhvvdsHm09Tdc5v866i",
+      "adminName": "유아랑",
+      "appVersion": "5.0.4",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777994003,
+        "nanoseconds": 353000000
+      },
+      "status": "active",
+      "contact": "010-4879-8392",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777994002,
+        "nanoseconds": 643000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777976715,
+        "nanoseconds": 686000000
+      },
+      "contact": "010-3999-4122",
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777976955,
+        "nanoseconds": 339000000
+      },
+      "appVersion": "5.0.4",
+      "adminName": "김민정",
+      "branchId": "branch_1777948847933_9asil"
+    },
+    {
+      "appVersion": "5.0.1",
+      "adminName": "차일화",
+      "totalUsages": 1,
+      "contact": "010-3958-2359",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777898426,
+        "nanoseconds": 567000000
+      },
+      "branchId": "I8tmeilHxBsMDG2s1LXO",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777897540,
+        "nanoseconds": 592000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777897539,
+        "nanoseconds": 507000000
+      }
+    },
+    {
+      "appVersion": "5.0.1",
+      "adminName": "임효리",
+      "totalUsages": 1,
+      "contact": "010-3957-7333",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777903472,
+        "nanoseconds": 394000000
+      },
+      "branchId": "mEHYihqqemW7ggLf5zjx",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902931,
+        "nanoseconds": 369000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777902930,
+        "nanoseconds": 85000000
+      }
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777899165,
+        "nanoseconds": 366000000
+      },
+      "branchId": "0jVCTBRWFURTr9xw2cpW",
+      "adminName": "강유진",
+      "appVersion": "5.0.1",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777899019,
+        "nanoseconds": 619000000
+      },
+      "status": "active",
+      "contact": "010-2823-7378"
+    },
+    {
+      "contact": "010-2960-1785",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777445128,
+        "nanoseconds": 932000000
+      },
+      "appVersion": "4.2.0",
+      "adminName": "황현숙",
+      "totalUsages": 1,
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777443870,
+        "nanoseconds": 472000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777628785,
+        "nanoseconds": 110000000
+      }
+    },
+    {
+      "appVersion": "5.0.4",
+      "adminName": "권나혜",
+      "totalUsages": 3,
+      "contact": "010-8579-4522",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777969576,
+        "nanoseconds": 851000000
+      },
+      "branchId": "QRVonZ9qCUWXpVfHOScv",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777969113,
+        "nanoseconds": 318000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777459752,
+        "nanoseconds": 166000000
+      }
+    },
+    {
+      "status": "active",
+      "contact": "010-8537-5021",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777889310,
+        "nanoseconds": 649000000
+      },
+      "branchId": "cHfn8LcKSBThRYsd6uSL",
+      "adminName": "조해선",
+      "appVersion": "5.0.0",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777889349,
+        "nanoseconds": 997000000
+      }
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777982794,
+        "nanoseconds": 869000000
+      },
+      "contact": "010-5278-8010",
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777982920,
+        "nanoseconds": 350000000
+      },
+      "branchId": "R2XSFqhHnOrEQOvzZ5LZ",
+      "adminName": "장비전",
+      "appVersion": "5.0.4"
+    },
+    {
+      "appVersion": "5.0.1",
+      "adminName": "추담재",
+      "totalUsages": 2,
+      "contact": "010-6562-7720",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777882643,
+        "nanoseconds": 483000000
+      },
+      "branchId": "npzWmVpZMV5DDKlPKXwb",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777934998,
+        "nanoseconds": 939000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777632879,
+        "nanoseconds": 180000000
+      }
+    },
+    {
+      "adminName": "이유담",
+      "appVersion": "4.2.0",
+      "totalUsages": 1,
+      "contact": "010-2984-1785",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777442965,
+        "nanoseconds": 228000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777455087,
+        "nanoseconds": 402000000
+      },
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777441005,
+        "nanoseconds": 415000000
+      }
+    },
+    {
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777984814,
+        "nanoseconds": 203000000
+      },
+      "adminName": "황도해",
+      "appVersion": "5.0.4",
+      "branchId": "branch_1777948843162_5zyr4",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777984813,
+        "nanoseconds": 994000000
+      },
+      "contact": "010-9114-9310",
+      "status": "active"
+    },
+    {
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777466377,
+        "nanoseconds": 430000000
+      },
+      "branchId": "yKNXj28CgEyCD6UzTO5F",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777939990,
+        "nanoseconds": 389000000
+      },
+      "contact": "010-8845-1785",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777534221,
+        "nanoseconds": 643000000
+      },
+      "appVersion": "5.0.1",
+      "adminName": "방검산",
+      "totalUsages": 3
+    },
+    {
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777532821,
+        "nanoseconds": 991000000
+      },
+      "branchId": "XAF6r3lTjHQK9pbhCHe6",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777532841,
+        "nanoseconds": 242000000
+      },
+      "contact": "010-8230-9151",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777534042,
+        "nanoseconds": 876000000
+      },
+      "adminName": "이시영",
+      "appVersion": "4.2.3",
+      "totalUsages": 1
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777982563,
+        "nanoseconds": 321000000
+      },
+      "contact": "010-5696-5299",
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777983014,
+        "nanoseconds": 77000000
+      },
+      "adminName": "김상철",
+      "appVersion": "5.0.4",
+      "branchId": "branch_1777948847114_6ifki"
+    },
+    {
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777903098,
+        "nanoseconds": 821000000
+      },
+      "branchId": "OR68FiqB0PrlzXV6xRCt",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777903352,
+        "nanoseconds": 39000000
+      },
+      "contact": "010-2810-8596",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777904084,
+        "nanoseconds": 357000000
+      },
+      "adminName": "전강담",
+      "appVersion": "5.0.1",
+      "totalUsages": 1
+    },
+    {
+      "status": "active",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777961582,
+        "nanoseconds": 95000000
+      },
+      "branchId": "4SjKWSdLe9WmF2EbpLQZ",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777980417,
+        "nanoseconds": 413000000
+      },
+      "contact": "010-5883-4552",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777962790,
+        "nanoseconds": 772000000
+      },
+      "appVersion": "5.0.4",
+      "adminName": "정수현",
+      "totalUsages": 1
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777534977,
+        "nanoseconds": 68000000
+      },
+      "contact": "010-8230-9151",
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777535043,
+        "nanoseconds": 50000000
+      },
+      "appVersion": "4.2.3",
+      "adminName": "이시영",
+      "branchId": "XAF6r3lTjHQK9pbhCHe6"
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777885319,
+        "nanoseconds": 898000000
+      },
+      "status": "active",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777885321,
+        "nanoseconds": 121000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "lastUsage": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777885928,
+        "nanoseconds": 937000000
+      },
+      "contact": "010-2984-1785",
+      "totalUsages": 1,
+      "adminName": "이유담 사무실PC",
+      "appVersion": "5.0.1"
+    },
+    {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1777462324,
+        "nanoseconds": 546000000
+      },
+      "status": "active",
+      "contact": "010-2392-2594",
+      "lastActive": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1778027159,
+        "nanoseconds": 678000000
+      },
+      "branchId": "enZUEQM1zEj6ma105chs",
+      "adminName": "청양",
+      "appVersion": "unknown"
+    }
+  ]
+}

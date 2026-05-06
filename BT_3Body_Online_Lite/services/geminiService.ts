@@ -5,7 +5,7 @@ import { findSimilarCases, buildFewShotPrompt, findSimilarFaceCases, buildFaceFe
 import { getRecordsLocally } from "./localDb";
 
 // --- API Key 관리 (SettingsModal에서 사용) ---
-let customApiKey: string = '';
+let customApiKey: string = localStorage.getItem('bt_custom_api_key_lite') || '';
 
 export const getActiveApiKey = (): string => {
   return customApiKey || process.env.GEMINI_API_KEY || '';
@@ -13,6 +13,11 @@ export const getActiveApiKey = (): string => {
 
 export const setCustomApiKey = (key: string): void => {
   customApiKey = key;
+  if (key) {
+    localStorage.setItem('bt_custom_api_key_lite', key);
+  } else {
+    localStorage.removeItem('bt_custom_api_key_lite');
+  }
 };
 
 export const isUsingCustomKey = (): boolean => {

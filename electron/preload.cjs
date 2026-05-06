@@ -30,12 +30,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   downloadUpdate: () => ipcRenderer.invoke('download-update'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
   onUpdaterMessage: (callback) => {
-    ipcRenderer.removeAllListeners('updater-message');
-    ipcRenderer.on('updater-message', (_event, value) => callback(value));
+    const handler = (_event, value) => callback(value);
+    ipcRenderer.on('updater-message', handler);
+    return () => ipcRenderer.removeListener('updater-message', handler);
   },
   onUpdaterProgress: (callback) => {
-    ipcRenderer.removeAllListeners('updater-download-progress');
-    ipcRenderer.on('updater-download-progress', (_event, value) => callback(value));
+    const handler = (_event, value) => callback(value);
+    ipcRenderer.on('updater-download-progress', handler);
+    return () => ipcRenderer.removeListener('updater-download-progress', handler);
   },
   
   isElectron: true,

@@ -8,7 +8,7 @@ import logger from '../utils/logger';
 const TAG = 'GeminiAI';
 
 // --- API Key 관리 (SettingsModal에서 사용) ---
-let customApiKey: string = '';
+let customApiKey: string = localStorage.getItem('bt_custom_api_key') || '';
 
 export const getActiveApiKey = (): string => {
   return customApiKey || process.env.GEMINI_API_KEY || '';
@@ -16,6 +16,11 @@ export const getActiveApiKey = (): string => {
 
 export const setCustomApiKey = (key: string): void => {
   customApiKey = key;
+  if (key) {
+    localStorage.setItem('bt_custom_api_key', key);
+  } else {
+    localStorage.removeItem('bt_custom_api_key');
+  }
 };
 
 export const isUsingCustomKey = (): boolean => {

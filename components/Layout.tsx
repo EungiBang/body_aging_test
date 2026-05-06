@@ -27,6 +27,34 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     return () => stopAutoBackup();
   }, []);
 
+  // 시작 시 업데이트 확인 알람
+  useEffect(() => {
+    if (window.electronAPI && window.electronAPI.onUpdaterMessage) {
+      const cleanupMessage = window.electronAPI.onUpdaterMessage((msg: any) => {
+        if (msg.status === 'available') {
+          if (window.confirm(`새로운 업데이트(v${msg.version})가 있습니다.\n지금 백그라운드에서 다운로드를 시작하시겠습니까?`)) {
+            window.electronAPI.downloadUpdate?.();
+            // To prevent spamming, we remove the listener after they accept
+            cleanupMessage();
+          }
+        } else if (msg.status === 'downloaded') {
+          if (window.confirm(`업데이트 다운로드가 완료되었습니다.\n지금 프로그램을 재시작하여 적용하시겠습니까?`)) {
+            window.electronAPI.installUpdate?.();
+          }
+        }
+      });
+      // 앱 시작 후 3초 뒤에 백그라운드에서 업데이트 확인
+      const timer = setTimeout(() => {
+        window.electronAPI.checkForUpdates();
+      }, 3000);
+      
+      return () => {
+        cleanupMessage();
+        clearTimeout(timer);
+      };
+    }
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col font-sans"
       style={{
