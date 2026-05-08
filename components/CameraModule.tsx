@@ -41,6 +41,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
   const [zoomCapabilities, setZoomCapabilities] = useState<{ min: number, max: number, step: number } | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isMirrored, setIsMirrored] = useState<boolean>(true);
+  const [activeDeviceId, setActiveDeviceId] = useState<string>('');
 
   // perfInfo가 전달되지 않았을 때 기본값 생성 (포즈 감지 루프가 항상 동작하도록)
   const defaultPerfInfo = { poseInterval: 500, poseInputSize: 256, drawSkeleton: true, videoWidth: 640, videoHeight: 480 };
@@ -96,13 +97,29 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
     }
   };
 
-  // Get available video devices
+  // 가상 카메라 필터 (OBS, ManyCam, XSplit, Snap Camera 등 제외)
+  const VIRTUAL_CAM_KEYWORDS = [
+    'obs', 'virtual', 'manycam', 'xsplit', 'snap camera', 'droidcam',
+    'iriun', 'epoccam', 'newtek', 'ndi', 'camtwist', 'mmhmm',
+    'logi capture', 'streamlabs', 'prism', 'e2esoft', 'vcam',
+    'splitcam', 'sparkocam', 'youcam', 'cyberlink', 'fake',
+  ];
+
+  const isVirtualCamera = (device: MediaDeviceInfo): boolean => {
+    const label = (device.label || '').toLowerCase();
+    if (!label) return false; // 라벨 없으면 판단 불가 → 실제 카메라로 취급
+    return VIRTUAL_CAM_KEYWORDS.some(keyword => label.includes(keyword));
+  };
+
+  // Get available video devices (가상 카메라 제외)
   const refreshDeviceList = async () => {
     try {
       const allDevices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
-      setDevices(videoDevices);
-      console.log(`[Camera] Found ${videoDevices.length} video devices:`, videoDevices.map(d => d.label || d.deviceId));
+      const physicalDevices = videoDevices.filter(d => !isVirtualCamera(d));
+      const filteredCount = videoDevices.length - physicalDevices.length;
+      setDevices(physicalDevices);
+      console.log(`[Camera] Found ${videoDevices.length} video devices (가상 ${filteredCount}대 제외):`, physicalDevices.map(d => d.label || d.deviceId));
     } catch (err) {
       console.error("Error enumerating devices:", err);
     }
@@ -165,9 +182,11 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
           // Auto-detect and persist the actual camera device being used
           const activeTrack = stream.getVideoTracks()[0];
           const activeSettings = activeTrack.getSettings();
-          if (activeSettings.deviceId && !selectedDeviceId) {
-            setSelectedDeviceId(activeSettings.deviceId);
-            onDeviceChange?.(activeSettings.deviceId);
+          if (activeSettings.deviceId) {
+            setActiveDeviceId(activeSettings.deviceId);
+            if (!selectedDeviceId) {
+              onDeviceChange?.(activeSettings.deviceId);
+            }
           }
 
           // Re-enumerate devices after permission granted (labels become available)
@@ -188,11 +207,39 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
           }
         }
       } catch (err) {
-        console.error("Error accessing camera:", err);
-        if (isMounted) {
-          setIsCameraReady(false);
-          setIsLoading(false);
-          setCameraError("카메라에 접근할 수 없습니다. 권한 설정을 확인해 주세요.");
+        console.error("Error accessing camera with constraints:", err);
+        // Fallback: Try with simple { video: true } if exact device or facingMode failed
+        try {
+          console.log("[Camera] Retrying with basic constraints { video: true }...");
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          
+          if (!isMounted) {
+            fallbackStream.getTracks().forEach(track => track.stop());
+            return;
+          }
+
+          streamRef.current = fallbackStream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = fallbackStream;
+            videoRef.current.play().catch(e => console.error("Video play error:", e));
+            setIsCameraReady(true);
+            setIsLoading(false);
+            setCameraError(null);
+
+            const activeTrack = fallbackStream.getVideoTracks()[0];
+            const activeSettings = activeTrack.getSettings();
+            if (activeSettings.deviceId) {
+              setActiveDeviceId(activeSettings.deviceId);
+            }
+            refreshDeviceList();
+          }
+        } catch (fallbackErr) {
+          console.error("Fallback camera access also failed:", fallbackErr);
+          if (isMounted) {
+            setIsCameraReady(false);
+            setIsLoading(false);
+            setCameraError("카메라에 접근할 수 없습니다. 권한 설정을 확인해 주세요.");
+          }
         }
       }
     }

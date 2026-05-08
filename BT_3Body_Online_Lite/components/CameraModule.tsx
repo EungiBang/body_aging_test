@@ -41,6 +41,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
   const [zoomCapabilities, setZoomCapabilities] = useState<{ min: number, max: number, step: number } | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isMirrored, setIsMirrored] = useState<boolean>(true);
+  const [activeDeviceId, setActiveDeviceId] = useState<string>('');
 
   // perfInfo가 전달되지 않았을 때 기본값 생성 (포즈 감지 루프가 항상 동작하도록)
   const defaultPerfInfo = { poseInterval: 500, poseInputSize: 256, drawSkeleton: true, videoWidth: 640, videoHeight: 480 };
@@ -165,9 +166,11 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
           // Auto-detect and persist the actual camera device being used
           const activeTrack = stream.getVideoTracks()[0];
           const activeSettings = activeTrack.getSettings();
-          if (activeSettings.deviceId && !selectedDeviceId) {
-            setSelectedDeviceId(activeSettings.deviceId);
-            onDeviceChange?.(activeSettings.deviceId);
+          if (activeSettings.deviceId) {
+            setActiveDeviceId(activeSettings.deviceId);
+            if (!selectedDeviceId) {
+              onDeviceChange?.(activeSettings.deviceId);
+            }
           }
 
           // Re-enumerate devices after permission granted (labels become available)

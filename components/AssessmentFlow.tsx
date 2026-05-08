@@ -95,14 +95,27 @@ const AssessmentFlow: React.FC = () => {
     return () => window.removeEventListener('logger:toast', handleLoggerToast);
   }, []);
 
+  // 가상 카메라 필터 키워드 (CameraModule과 동일)
+  const VIRTUAL_CAM_KEYWORDS = [
+    'obs', 'virtual', 'manycam', 'xsplit', 'snap camera', 'droidcam',
+    'iriun', 'epoccam', 'newtek', 'ndi', 'camtwist', 'mmhmm',
+    'logi capture', 'streamlabs', 'prism', 'e2esoft', 'vcam',
+    'splitcam', 'sparkocam', 'youcam', 'cyberlink', 'fake',
+  ];
+
   useEffect(() => {
     const getDevices = async () => {
       try {
-        await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(() => {});
         const allDevices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
-        setDevices(videoDevices);
-        logger.info('Flow', `카메라 감지: ${videoDevices.length}대`);
+        // 가상 카메라 제외
+        const physicalDevices = videoDevices.filter(d => {
+          const label = (d.label || '').toLowerCase();
+          if (!label) return true;
+          return !VIRTUAL_CAM_KEYWORDS.some(keyword => label.includes(keyword));
+        });
+        setDevices(physicalDevices);
+        logger.info('Flow', `카메라 감지: ${physicalDevices.length}대 (가상 ${videoDevices.length - physicalDevices.length}대 제외)`);
       } catch (err) {
         logger.error('Flow', '카메라 열거 실패', err);
       }
@@ -628,12 +641,12 @@ const AssessmentFlow: React.FC = () => {
               setPreviewData(prev => prev ? { ...prev, dataUrl: analyzedDataUrl, validationResult: { passed: true, message: `AI가 ${visibleCount}개 관절을 인식했습니다. 분석에 적합합니다.` } } : null);
             } else {
               setPreviewData(prev => prev ? { ...prev, validationResult: { passed: true, message: '내장 그래픽 환경으로 인해 뼈대 일부가 누락되었을 수 있습니다. 화면에 전신이 잘 나왔다면 수동으로 다음 단계를 진행하세요. (최종 분석 정상 진행)' } } : null);
-              speak("뼈대 인식이 일부 누락되었습니다. 화면에 전신이 잘 나왔다면 수동으로 다음 단계를 진행해주세요.");
+              // speak("뼈대 인식이 일부 누락되었습니다. 화면에 전신이 잘 나왔다면 수동으로 다음 단계를 진행해주세요.");
             }
           } else {
             // Thunder 모델도 감지하지 못할 경우, 강제로 수동 패스할 수 있도록 안내 (차단하지 않음)
             setPreviewData(prev => prev ? { ...prev, validationResult: { passed: true, message: 'AI가 뼈대를 그리지 못했으나 (내장 그래픽 환경), 화면에 전신이 잘 나왔다면 다음 단계를 눌러주세요. 최종 정밀 분석은 100% 정상 작동합니다.' } } : null);
-            speak("내장 그래픽 환경입니다. 화면에 전신이 잘 나왔다면 다음 단계를 눌러주세요.");
+            // speak("내장 그래픽 환경입니다. 화면에 전신이 잘 나왔다면 다음 단계를 눌러주세요.");
           }
         } catch (err) {
           console.error('Post-capture validation error:', err);

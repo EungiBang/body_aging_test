@@ -5,6 +5,10 @@
       {
         "name": "신입경영홍보실",
         "allowedLicenses": 2
+      },
+      {
+        "name": "천화원",
+        "allowedLicenses": 2
       }
     ]
   },
