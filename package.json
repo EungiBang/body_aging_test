@@ -1,7 +1,7 @@
 {
   "name": "btc-3body-ai-analyzer",
   "private": true,
-  "version": "5.0.10",
+  "version": "5.0.11",
   "type": "module",
   "main": "electron/main.cjs",
   "description": "BTC 3바디 AI분석기 - AI 신체 균형 & 건강 상태 체력 측정 시스템",
