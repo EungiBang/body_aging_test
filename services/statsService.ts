@@ -1,8 +1,5 @@
-import { doc, setDoc, increment, serverTimestamp, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { doc, setDoc, increment, serverTimestamp, collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
 import { db } from '../firebase';
-import logger from '../utils/logger';
-
-const TAG = 'Stats';
 
 /**
  * 리포트가 생성될 때 통계를 증가시킵니다.
@@ -12,7 +9,6 @@ export const logUsage = async (branchId: string, hardwareId: string) => {
   // YYYYMMDD 포맷
   const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
 
-  logger.debug(TAG, `logUsage 시작: branch=${branchId}, hw=${hardwareId}, date=${dateStr}`);
   try {
     // 1. 일일 총 사용량 (글로벌)
     const dailyRef = doc(db, 'stats', `daily_${dateStr}`);
@@ -37,49 +33,45 @@ export const logUsage = async (branchId: string, hardwareId: string) => {
       lastUsage: serverTimestamp()
     }, { merge: true });
 
-    logger.info(TAG, `logUsage 완료: daily=${dateStr}, branch=${branchId}`);
   } catch (e) {
-    logger.error(TAG, 'logUsage 실패', e, true);
+    console.error('Failed to log usage stats', e);
   }
 };
 
 /**
  * 대시보드 표시용 전체 통계 수집
+ * dailyStats: 최근 14일 일별 측정량
+ * branchStats: 지점별 누적 사용량 (전체)
  */
 export const getDashboardStats = async () => {
-  logger.debug(TAG, 'getDashboardStats 시작');
-  const startTime = Date.now();
   try {
-    logger.apiStart(TAG, 'Firestore query: stats (last 14 days)');
-    const q = query(collection(db, 'stats'), orderBy('date', 'desc'), limit(14));
-    const snap = await getDocs(q);
+    // 전체 stats 컬렉션을 가져옴 (daily_ + branch_ 모두)
+    const snapshot = await getDocs(collection(db, 'stats'));
     
     const dailyStats: any[] = [];
     const branchStats: any[] = [];
     
-    snap.forEach(doc => {
+    snapshot.forEach(doc => {
       const id = doc.id;
       const data = doc.data();
       if (id.startsWith('daily_')) {
-        // format date string YYYYMMDD to MM/DD
         const d = data.date;
         const formatted = `${d.substring(4,6)}/${d.substring(6,8)}`;
         dailyStats.push({ name: formatted, count: data.count, raw: data.date });
       } else if (id.startsWith('branch_')) {
-        branchStats.push({ branchId: data.branchId, count: data.totalCount });
+        branchStats.push({ branchId: data.branchId, count: data.totalCount || 0 });
       }
     });
 
     // 정렬 (날짜순, 사용량순)
     dailyStats.sort((a, b) => a.raw.localeCompare(b.raw));
+    // 최근 14일만
+    const recent14 = dailyStats.slice(-14);
     branchStats.sort((a, b) => b.count - a.count);
 
-    const elapsed = Date.now() - startTime;
-    logger.apiEnd(TAG, 'getDashboardStats', true, { elapsed: `${elapsed}ms`, dailyCount: dailyStats.length, branchCount: branchStats.length });
-    return { dailyStats, branchStats };
+    return { dailyStats: recent14, branchStats };
   } catch (e) {
-    const elapsed = Date.now() - startTime;
-    logger.error(TAG, `getDashboardStats 실패 (${elapsed}ms)`, e, true);
+    console.error('Failed to get dashboard stats', e);
     return { dailyStats: [], branchStats: [] };
   }
 };

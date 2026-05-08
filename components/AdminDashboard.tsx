@@ -11,13 +11,14 @@ import { getDashboardStats } from '../services/statsService';
 import { updateDailyLimit, getUsageStatus, UsageStatus } from '../services/usageLimitService';
 import * as xlsx from 'xlsx';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { AdminErrorMonitor } from './AdminErrorMonitor';
 
 interface AdminDashboardProps {
   onClose: () => void;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'devices' | 'branches' | 'members' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'devices' | 'branches' | 'members' | 'errors' | 'settings'>('overview');
   
   // Data State
   const [regions, setRegions] = useState<Region[]>([]);
@@ -46,7 +47,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [deviceFilterRegion, setDeviceFilterRegion] = useState<string>('all');
   const [deviceFilterBranch, setDeviceFilterBranch] = useState<string>('all');
   const [deviceSearchQuery, setDeviceSearchQuery] = useState<string>('');
-  const [deviceSortOrder, setDeviceSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [deviceSortKey, setDeviceSortKey] = useState<'createdAt' | 'appVersion'>('createdAt');
+  const [deviceSortDir, setDeviceSortDir] = useState<'asc' | 'desc'>('desc');
   // 회원관리 탭 상태
   const [cloudMembers, setCloudMembers] = useState<MemberRecord[]>([]);
   const [memberFilterRegion, setMemberFilterRegion] = useState<string>('all');
@@ -54,6 +56,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [memberSearch, setMemberSearch] = useState('');
   const [selectedMember, setSelectedMember] = useState<MemberRecord | null>(null);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [memberSubTab, setMemberSubTab] = useState<'analyzed' | 'pending'>('analyzed');
 
   const loadData = async () => {
     setIsLoading(true);
@@ -167,12 +170,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const handleUpdateDailyLimit = async (branch: Branch, type: 'kface' | 'ktarot', newValue: number) => {
     if (isNaN(newValue)) return;
     
-    const currentLimit = type === 'kface' ? (branch.kfaceDailyLimit ?? 0) : (branch.ktarotDailyLimit ?? 0);
+    const currentLimit = type === 'kface' ? (branch.kfaceDailyLimit ?? 30) : (branch.ktarotDailyLimit ?? 30);
     if (newValue === currentLimit) return;
 
     try {
-      const kfaceLimit = type === 'kface' ? newValue : (branch.kfaceDailyLimit ?? 0);
-      const ktarotLimit = type === 'ktarot' ? newValue : (branch.ktarotDailyLimit ?? 0);
+      const kfaceLimit = type === 'kface' ? newValue : (branch.kfaceDailyLimit ?? 30);
+      const ktarotLimit = type === 'ktarot' ? newValue : (branch.ktarotDailyLimit ?? 30);
       await updateDailyLimit(branch.id, kfaceLimit, ktarotLimit);
       
       const updated = { ...branch, kfaceDailyLimit: kfaceLimit, ktarotDailyLimit: ktarotLimit };
@@ -180,22 +183,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       // 시각적인 방해를 줄이기 위해 alert 제거
     } catch (e) {
       alert('한도 업데이트 실패');
-    }
-  };
-
-  const handleResetAllLimits = async () => {
-    if (!window.confirm('모든 지점의 관상/타로 한도를 0으로 일괄 초기화하시겠습니까?')) return;
-    setIsLoading(true);
-    try {
-      const promises = branches.map(b => updateDailyLimit(b.id, 0, 0));
-      await Promise.all(promises);
-      const updatedBranches = branches.map(b => ({ ...b, kfaceDailyLimit: 0, ktarotDailyLimit: 0 }));
-      setBranches(updatedBranches);
-      alert('모든 지점의 한도가 0으로 초기화되었습니다.');
-    } catch (e) {
-      alert('일괄 초기화 중 오류가 발생했습니다.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -366,9 +353,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         <button onClick={() => { setActiveTab('members'); if (cloudMembers.length === 0) { setMembersLoading(true); fetchAllMembers().then(m => { setCloudMembers(m); setMembersLoading(false); }).catch(() => setMembersLoading(false)); } }} className={`px-6 py-3 font-bold rounded-t-xl transition-colors ${activeTab === 'members' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
           <i className="fas fa-users mr-2"></i>회원관리
         </button>
+        <button onClick={() => setActiveTab('errors')} className={`px-6 py-3 font-bold rounded-t-xl transition-colors ${activeTab === 'errors' ? 'bg-rose-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
+          <i className="fas fa-exclamation-triangle mr-2"></i>에러 모니터링
+        </button>
+        {currentAdmin?.role === 'master' && (
         <button onClick={() => setActiveTab('settings')} className={`px-6 py-3 font-bold rounded-t-xl transition-colors ${activeTab === 'settings' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
           <i className="fas fa-cog mr-2"></i>시스템 설정
         </button>
+        )}
       </div>
 
       {/* Content */}
@@ -378,72 +370,332 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         ) : (
           <>
             {/* Overview Tab */}
-            {activeTab === 'overview' && (
-              <div className="h-full flex flex-col gap-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-6 rounded-2xl text-white shadow-lg">
-                    <div className="text-white/80 font-bold mb-1">총 등록 지점</div>
-                    <div className="text-4xl font-black">{branches.length} <span className="text-lg font-normal">곳</span></div>
-                  </div>
-                  <div className="bg-gradient-to-br from-blue-500 to-cyan-600 p-6 rounded-2xl text-white shadow-lg">
-                    <div className="text-white/80 font-bold mb-1">등록된 총 PC(기기)</div>
-                    <div className="text-4xl font-black">{devices.length} <span className="text-lg font-normal">대</span></div>
-                  </div>
-                  <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-2xl text-white shadow-lg">
-                    <div className="text-white/80 font-bold mb-1">누적 검사 건수</div>
-                    <div className="text-4xl font-black">
-                      {stats.dailyStats.reduce((sum, s) => sum + s.count, 0)} <span className="text-lg font-normal">건</span>
+            {activeTab === 'overview' && (() => {
+              // 1. 오늘의 점검 현황 계산
+              const todayActiveBranches = branches.filter(b => (branchUsages[b.id]?.kfaceUsed || 0) + (branchUsages[b.id]?.ktarotUsed || 0) > 0);
+              const todayActiveRegionsCount = new Set(todayActiveBranches.map(b => b.regionId)).size;
+              const todayTestedCount = todayActiveBranches.reduce((sum, b) => sum + (branchUsages[b.id]?.kfaceUsed || 0) + (branchUsages[b.id]?.ktarotUsed || 0), 0);
+
+              // 2. 지역별 설치 완료 지점 현황 계산
+              const installedByRegion = regions.map(r => {
+                const branchesInRegion = branches.filter(b => b.regionId === r.id);
+                const installedCount = branchesInRegion.filter(b => devices.some(d => d.branchId === b.id && d.status === 'active')).length;
+                return { regionName: r.name, total: branchesInRegion.length, installed: installedCount };
+              }).sort((a, b) => b.installed - a.installed);
+
+              return (
+                <div className="h-full flex flex-col gap-6">
+                  {/* Today's Briefing */}
+                  <div className="bg-white p-6 rounded-2xl border border-indigo-100 shadow-md flex flex-col md:flex-row items-center justify-between gap-6 border-l-4 border-l-indigo-500">
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                      <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 text-2xl shrink-0">
+                        <i className="fas fa-bolt"></i>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-slate-800">오늘의 실시간 점검 브리핑</h3>
+                        <p className="text-sm text-slate-500 mt-1">현재 전국 지점에서 수행 중인 AI 측정 현황입니다.</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 md:gap-8 w-full md:w-auto justify-around bg-slate-50 md:bg-transparent p-4 md:p-0 rounded-xl">
+                      <div className="text-center">
+                        <div className="text-xs font-bold text-slate-500 mb-1">활동 지역</div>
+                        <div className="text-3xl font-black text-indigo-600">{todayActiveRegionsCount}<span className="text-sm font-bold text-slate-400 ml-1">곳</span></div>
+                      </div>
+                      <div className="w-px h-10 bg-slate-200 hidden md:block mt-2"></div>
+                      <div className="text-center">
+                        <div className="text-xs font-bold text-slate-500 mb-1">활동 지점</div>
+                        <div className="text-3xl font-black text-blue-600">{todayActiveBranches.length}<span className="text-sm font-bold text-slate-400 ml-1">개</span></div>
+                      </div>
+                      <div className="w-px h-10 bg-slate-200 hidden md:block mt-2"></div>
+                      <div className="text-center">
+                        <div className="text-xs font-bold text-slate-500 mb-1">오늘 총 점검자</div>
+                        <div className="text-3xl font-black text-emerald-600">{todayTestedCount}<span className="text-sm font-bold text-slate-400 ml-1">명</span></div>
+                      </div>
                     </div>
                   </div>
-                  <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-6 rounded-2xl text-white shadow-lg">
-                    <div className="text-white/80 font-bold mb-1">오늘 검사 건수</div>
-                    <div className="text-4xl font-black">
-                      {stats.dailyStats.length > 0 ? stats.dailyStats[stats.dailyStats.length - 1].count : 0} <span className="text-lg font-normal">건</span>
+
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4">
+                      <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xl"><i className="fas fa-building"></i></div>
+                      <div>
+                        <div className="text-slate-500 text-xs font-bold mb-1">총 등록 지점</div>
+                        <div className="text-2xl font-black text-slate-800">{branches.length}<span className="text-sm font-normal text-slate-500 ml-1">곳</span></div>
+                      </div>
+                    </div>
+                    <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4">
+                      <div className="w-12 h-12 bg-cyan-100 text-cyan-600 rounded-full flex items-center justify-center text-xl"><i className="fas fa-desktop"></i></div>
+                      <div>
+                        <div className="text-slate-500 text-xs font-bold mb-1">설치된 총 PC</div>
+                        <div className="text-2xl font-black text-slate-800">{devices.length}<span className="text-sm font-normal text-slate-500 ml-1">대</span></div>
+                      </div>
+                    </div>
+                    <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4">
+                      <div className="w-12 h-12 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-xl"><i className="fas fa-clipboard-check"></i></div>
+                      <div>
+                        <div className="text-slate-500 text-xs font-bold mb-1">누적 검사 건수</div>
+                        <div className="text-2xl font-black text-slate-800">{stats.dailyStats.reduce((sum, s) => sum + s.count, 0)}<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
+                      </div>
+                    </div>
+                    <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4">
+                      <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-xl"><i className="fas fa-calendar-day"></i></div>
+                      <div>
+                        <div className="text-slate-500 text-xs font-bold mb-1">오늘 DB 저장 건수</div>
+                        <div className="text-2xl font-black text-slate-800">{stats.dailyStats.length > 0 ? stats.dailyStats[stats.dailyStats.length - 1].count : 0}<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 지역별 설치 현황 */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                    <h3 className="text-lg font-bold text-slate-800 mb-6"><i className="fas fa-map-marked-alt text-teal-500 mr-2"></i>지역별 설치(활성) 지점 현황</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {installedByRegion.map(item => (
+                        <div key={item.regionName} className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
+                          <div className="font-bold text-slate-700 mb-2 truncate w-full" title={item.regionName}>{item.regionName}</div>
+                          <div className="text-2xl font-black text-teal-600">{item.installed}<span className="text-xs text-slate-400 ml-1">/ {item.total}</span></div>
+                          <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
+                            <div className="bg-teal-500 h-1.5 rounded-full transition-all duration-1000" style={{ width: `${item.total > 0 ? (item.installed / item.total) * 100 : 0}%` }}></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Charts */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[400px]">
+                    {/* Line Chart */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                      <h3 className="text-lg font-bold text-slate-800 mb-6"><i className="fas fa-chart-line text-indigo-500 mr-2"></i>일별 측정량 추이 (최근 14일)</h3>
+                      <div className="flex-1 min-h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={stats.dailyStats}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dx={-10} />
+                            <RechartsTooltip cursor={{stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                            <Line type="monotone" dataKey="count" name="검사 건수" stroke="#6366f1" strokeWidth={4} dot={{r: 4, fill: '#6366f1', strokeWidth: 0}} activeDot={{r: 6, strokeWidth: 0}} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Bar Chart */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                      <h3 className="text-lg font-bold text-slate-800 mb-6"><i className="fas fa-trophy text-amber-500 mr-2"></i>지점별 누적 사용량 TOP 10</h3>
+                      <div className="flex-1 min-h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={stats.branchStats.slice(0, 10).map(b => ({
+                            name: branches.find(branch => branch.id === b.branchId)?.name || '알 수 없음',
+                            count: b.count
+                          }))} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                            <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                            <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 12, fontWeight: 'bold'}} width={100} />
+                            <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                            <Bar dataKey="count" name="검사 건수" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={24} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 운영 인사이트 섹션 */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* 지역별 오늘 활동량 비교 */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <h3 className="text-lg font-bold text-slate-800 mb-4"><i className="fas fa-chart-bar text-blue-500 mr-2"></i>지역별 오늘 점검 현황</h3>
+                      <div className="space-y-2 max-h-[320px] overflow-y-auto">
+                        {(() => {
+                          const regionTodayStats = regions.map(r => {
+                            const rBranches = branches.filter(b => b.regionId === r.id);
+                            const todayCount = rBranches.reduce((sum, b) => sum + (branchUsages[b.id]?.kfaceUsed || 0) + (branchUsages[b.id]?.ktarotUsed || 0), 0);
+                            const cumCount = rBranches.reduce((sum, b) => {
+                              const bStat = stats.branchStats.find(s => s.branchId === b.id);
+                              return sum + (bStat?.count || 0);
+                            }, 0);
+                            return { name: r.name, todayCount, cumCount, branchCount: rBranches.length };
+                          }).filter(r => r.branchCount > 0).sort((a, b) => b.todayCount - a.todayCount);
+                          const maxToday = Math.max(...regionTodayStats.map(r => r.todayCount), 1);
+                          return regionTodayStats.map(r => (
+                            <div key={r.name} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
+                              <div className="w-20 text-sm font-bold text-slate-700 truncate shrink-0" title={r.name}>{r.name}</div>
+                              <div className="flex-1 bg-slate-100 rounded-full h-5 overflow-hidden">
+                                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-5 rounded-full flex items-center justify-end pr-2 transition-all duration-700" style={{ width: `${Math.max((r.todayCount / maxToday) * 100, r.todayCount > 0 ? 15 : 0)}%` }}>
+                                  {r.todayCount > 0 && <span className="text-[10px] font-bold text-white">{r.todayCount}</span>}
+                                </div>
+                              </div>
+                              <div className="text-xs text-slate-400 w-16 text-right shrink-0">누적 {r.cumCount}</div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* 관리 주의 지점 (설치완료 but 미사용) */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <h3 className="text-lg font-bold text-slate-800 mb-4"><i className="fas fa-exclamation-circle text-amber-500 mr-2"></i>관리 주의 지점</h3>
+                      <div className="space-y-1 max-h-[320px] overflow-y-auto">
+                        {(() => {
+                          // 기기가 active이지만 오늘 사용량 0인 지점
+                          const installedButIdle = branches.filter(b => {
+                            const hasActive = devices.some(d => d.branchId === b.id && d.status === 'active');
+                            const todayUse = (branchUsages[b.id]?.kfaceUsed || 0) + (branchUsages[b.id]?.ktarotUsed || 0);
+                            return hasActive && todayUse === 0;
+                          });
+                          // 누적 사용량이 0인 지점 (설치만 해두고 한 번도 안 쓴 곳)
+                          const neverUsed = installedButIdle.filter(b => {
+                            const bStat = stats.branchStats.find(s => s.branchId === b.id);
+                            return !bStat || bStat.count === 0;
+                          });
+                          const idleOnly = installedButIdle.filter(b => {
+                            const bStat = stats.branchStats.find(s => s.branchId === b.id);
+                            return bStat && bStat.count > 0;
+                          });
+                          return (
+                            <>
+                              {neverUsed.length > 0 && (
+                                <div className="mb-3">
+                                  <div className="text-xs font-bold text-rose-600 mb-2 flex items-center gap-1">
+                                    <i className="fas fa-ban"></i> 설치 후 미사용 ({neverUsed.length}곳)
+                                  </div>
+                                  {neverUsed.map(b => (
+                                    <div key={b.id} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-rose-50/50 mb-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-rose-400">{regions.find(r => r.id === b.regionId)?.name}</span>
+                                        <span className="text-sm font-bold text-rose-700">{b.name}</span>
+                                      </div>
+                                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 font-bold">누적 0건</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {idleOnly.length > 0 && (
+                                <div>
+                                  <div className="text-xs font-bold text-amber-600 mb-2 flex items-center gap-1">
+                                    <i className="fas fa-clock"></i> 오늘 미활동 ({idleOnly.length}곳)
+                                  </div>
+                                  {idleOnly.slice(0, 10).map(b => {
+                                    const bStat = stats.branchStats.find(s => s.branchId === b.id);
+                                    return (
+                                      <div key={b.id} className="flex items-center justify-between py-1.5 px-3 rounded-lg hover:bg-amber-50/50 mb-1">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs text-slate-400">{regions.find(r => r.id === b.regionId)?.name}</span>
+                                          <span className="text-sm font-bold text-slate-600">{b.name}</span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400">누적 {bStat?.count || 0}건</span>
+                                      </div>
+                                    );
+                                  })}
+                                  {idleOnly.length > 10 && <div className="text-xs text-slate-400 text-center mt-2">... 외 {idleOnly.length - 10}곳</div>}
+                                </div>
+                              )}
+                              {installedButIdle.length === 0 && (
+                                <div className="text-center py-8 text-slate-400">
+                                  <i className="fas fa-check-circle text-3xl text-emerald-400 mb-3"></i>
+                                  <p className="font-bold">모든 지점이 오늘 활동 중입니다! 🎉</p>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 지점별 누적 사용량 전체 테이블 */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-slate-800 mb-4"><i className="fas fa-list-ol text-purple-500 mr-2"></i>지점별 오늘/누적 점검 현황 (전체)</h3>
+                    <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 sticky top-0 z-10">
+                          <tr>
+                            <th className="p-3 text-left font-bold text-slate-600 w-8">#</th>
+                            <th className="p-3 text-left font-bold text-slate-600">지역</th>
+                            <th className="p-3 text-left font-bold text-slate-600">지점명</th>
+                            <th className="p-3 text-center font-bold text-slate-600">오늘</th>
+                            <th className="p-3 text-center font-bold text-slate-600">누적</th>
+                            <th className="p-3 text-right font-bold text-slate-600">상태</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {branches.map(b => {
+                            const bStat = stats.branchStats.find(s => s.branchId === b.id);
+                            const cumCount = bStat?.count || 0;
+                            const todayUse = (branchUsages[b.id]?.kfaceUsed || 0) + (branchUsages[b.id]?.ktarotUsed || 0);
+                            return { branch: b, cumCount, todayUse };
+                          }).sort((a, b) => b.cumCount - a.cumCount).map((item, idx) => (
+                            <tr key={item.branch.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+                              <td className="p-3 text-xs text-slate-400 font-bold">{idx + 1}</td>
+                              <td className="p-3 text-xs text-indigo-500 font-bold">{regions.find(r => r.id === item.branch.regionId)?.name || '-'}</td>
+                              <td className="p-3 font-bold text-slate-700">{item.branch.name}</td>
+                              <td className="p-3 text-center">
+                                {item.todayUse > 0 ? (
+                                  <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-black text-xs">{item.todayUse}건</span>
+                                ) : (
+                                  <span className="text-slate-300 text-xs">-</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-center font-bold text-slate-700">{item.cumCount > 0 ? `${item.cumCount}건` : '-'}</td>
+                              <td className="p-3 text-right">
+                                {item.todayUse > 0 ? (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 font-bold">활동중</span>
+                                ) : item.cumCount > 0 ? (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold">오늘 미활동</span>
+                                ) : (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-50 text-rose-400 font-bold">미사용</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[400px]">
-                  {/* Line Chart */}
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6"><i className="fas fa-calendar-alt text-indigo-500 mr-2"></i>일별 측정량 추이 (최근 14일)</h3>
-                    <div className="flex-1 min-h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={stats.dailyStats}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
-                          <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dx={-10} />
-                          <RechartsTooltip cursor={{stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
-                          <Line type="monotone" dataKey="count" name="검사 건수" stroke="#6366f1" strokeWidth={4} dot={{r: 4, fill: '#6366f1', strokeWidth: 0}} activeDot={{r: 6, strokeWidth: 0}} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  {/* Bar Chart */}
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6"><i className="fas fa-trophy text-amber-500 mr-2"></i>지점별 누적 사용량 TOP 10</h3>
-                    <div className="flex-1 min-h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={stats.branchStats.slice(0, 10).map(b => ({
-                          name: branches.find(branch => branch.id === b.branchId)?.name || '알 수 없음',
-                          count: b.count
-                        }))} layout="vertical">
-                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                          <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                          <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 12, fontWeight: 'bold'}} width={100} />
-                          <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
-                          <Bar dataKey="count" name="검사 건수" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={24} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Devices Tab */}
             {activeTab === 'devices' && (() => {
+              // 타임스탬프를 밀리초로 안전하게 변환
+              const getTime = (ts: any): number => {
+                if (!ts) return 0;
+                if (ts.toMillis) return ts.toMillis();
+                if (ts.seconds) return ts.seconds * 1000;
+                if (ts instanceof Date) return ts.getTime();
+                if (typeof ts === 'number') return ts;
+                return 0;
+              };
+
+              // 버전 문자열을 비교 가능한 숫자 배열로 변환
+              const parseVersion = (v: string | undefined): number[] => {
+                if (!v || v === '-' || v === 'unknown') return [0, 0, 0];
+                return v.split('.').map(n => parseInt(n, 10) || 0);
+              };
+              const compareVersions = (a: string | undefined, b: string | undefined): number => {
+                const va = parseVersion(a);
+                const vb = parseVersion(b);
+                for (let i = 0; i < Math.max(va.length, vb.length); i++) {
+                  const diff = (va[i] || 0) - (vb[i] || 0);
+                  if (diff !== 0) return diff;
+                }
+                return 0;
+              };
+
+              // 최신 버전 계산
+              const allVersions = devices.map(d => d.appVersion).filter(v => v && v !== '-' && v !== 'unknown') as string[];
+              const latestVersion = allVersions.length > 0 ? allVersions.sort((a, b) => compareVersions(b, a))[0] : null;
+
+              const toggleSort = (key: 'createdAt' | 'appVersion') => {
+                if (deviceSortKey === key) {
+                  setDeviceSortDir(prev => prev === 'desc' ? 'asc' : 'desc');
+                } else {
+                  setDeviceSortKey(key);
+                  setDeviceSortDir('desc');
+                }
+              };
+
               const filteredDevices = devices.filter(d => {
                 const branch = branches.find(b => b.id === d.branchId);
                 const regionName = regions.find(r => r.id === branch?.regionId)?.name || '';
@@ -462,9 +714,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                 }
                 return true;
               }).sort((a, b) => {
-                const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-                const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
-                return deviceSortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+                let cmp = 0;
+                if (deviceSortKey === 'createdAt') {
+                  cmp = getTime(a.createdAt) - getTime(b.createdAt);
+                } else {
+                  cmp = compareVersions(a.appVersion, b.appVersion);
+                }
+                return deviceSortDir === 'desc' ? -cmp : cmp;
               });
 
               return (
@@ -498,7 +754,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         ))}
                       </select>
                       
-                      <div className="relative">
+                      <div className="relative flex-1 sm:flex-none">
                         <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                         <input 
                           type="text" 
@@ -508,14 +764,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                           onChange={e => setDeviceSearchQuery(e.target.value)}
                         />
                       </div>
-                      <select 
-                        className="px-4 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 bg-white"
-                        value={deviceSortOrder}
-                        onChange={e => setDeviceSortOrder(e.target.value as 'desc' | 'asc')}
+                      <button 
+                        onClick={() => loadData()}
+                        disabled={isLoading}
+                        className="px-4 py-2 bg-indigo-50 text-indigo-600 font-bold rounded-xl hover:bg-indigo-100 text-sm disabled:opacity-50 whitespace-nowrap"
+                        title="최신 기기 데이터 불러오기"
                       >
-                        <option value="desc">최신 등록일순</option>
-                        <option value="asc">과거 등록일순</option>
-                      </select>
+                        {isLoading ? '로딩...' : '🔄 새로고침'}
+                      </button>
                     </div>
                   </div>
                 <div className="overflow-x-auto">
@@ -527,8 +783,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         <th className="px-4 py-3">기기 ID</th>
                         <th className="px-4 py-3">책임자</th>
                         <th className="px-4 py-3">연락처</th>
-                        <th className="px-4 py-3">등록일</th>
-                        <th className="px-4 py-3">버전</th>
+                        <th className="px-4 py-3 cursor-pointer hover:text-indigo-600 select-none whitespace-nowrap" onClick={() => toggleSort('createdAt')}>
+                          등록일 {deviceSortKey === 'createdAt' ? (deviceSortDir === 'desc' ? '▼' : '▲') : <span className="text-slate-300">⇅</span>}
+                        </th>
+                        <th className="px-4 py-3 cursor-pointer hover:text-indigo-600 select-none whitespace-nowrap" onClick={() => toggleSort('appVersion')}>
+                          버전 {deviceSortKey === 'appVersion' ? (deviceSortDir === 'desc' ? '▼' : '▲') : <span className="text-slate-300">⇅</span>}
+                        </th>
                         <th className="px-4 py-3">상태</th>
                         <th className="px-4 py-3 text-right">제어</th>
                       </tr>
@@ -546,7 +806,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                             <td className="px-4 py-3 font-bold text-slate-700">{d.adminName || '-'}</td>
                             <td className="px-4 py-3 text-xs text-slate-500">{d.contact || '-'}</td>
                             <td className="px-4 py-3 text-xs text-slate-500">{d.createdAt?.toDate ? d.createdAt.toDate().toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
-                            <td className="px-4 py-3 font-mono text-xs font-bold text-indigo-600">{d.appVersion || '-'}</td>
+                            <td className="px-4 py-3 font-mono text-xs font-bold">
+                              {latestVersion && d.appVersion && d.appVersion !== 'unknown' && compareVersions(d.appVersion, latestVersion) < 0 ? (
+                                <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700" title={`최신: ${latestVersion}`}>
+                                  ⚠️ {d.appVersion}
+                                </span>
+                              ) : (
+                                <span className="text-indigo-600">{d.appVersion || '-'}</span>
+                              )}
+                            </td>
                             <td className="px-4 py-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-bold ${
                                 d.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
@@ -602,12 +870,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <h2 className="text-lg font-bold">지점별 설치 허용 대수 (Quota) 관리</h2>
                     <div className="flex items-center gap-2 bg-indigo-50 p-3 rounded-xl border border-indigo-100">
-                      <button 
-                        onClick={handleResetAllLimits} 
-                        className="px-4 py-2 bg-rose-500 text-white text-xs font-bold rounded-lg hover:bg-rose-600 shadow-sm mr-2"
-                      >
-                        <i className="fas fa-undo-alt mr-1"></i>한도 일괄 0 처리
-                      </button>
                       <div className="text-sm font-bold text-indigo-800">
                         <i className="fas fa-file-excel mr-2 text-green-600"></i>엑셀 일괄 추가
                       </div>
@@ -680,7 +942,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                           const activeCount = devices.filter(d => d.branchId === b.id && d.status === 'active').length;
                           return (
                             <div key={b.id} className="border border-slate-200 rounded-xl p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
-                              <div className="text-lg font-black text-slate-800 mb-2">{b.name}</div>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-lg font-black text-slate-800">{b.name}</div>
+                                {(() => {
+                                  const todayUse = (branchUsages[b.id]?.kfaceUsed || 0) + (branchUsages[b.id]?.ktarotUsed || 0);
+                                  return todayUse > 0 ? (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 font-bold animate-pulse">활동중</span>
+                                  ) : null;
+                                })()}
+                              </div>
+
+                              {/* 오늘/누적 점검수 */}
+                              <div className="flex gap-2 mb-3">
+                                <div className="flex-1 bg-emerald-50 rounded-lg p-2 text-center">
+                                  <div className="text-[10px] text-emerald-600 font-bold">오늘 점검</div>
+                                  <div className="text-lg font-black text-emerald-700">{(branchUsages[b.id]?.kfaceUsed || 0) + (branchUsages[b.id]?.ktarotUsed || 0)}<span className="text-[10px] text-emerald-500 ml-0.5">건</span></div>
+                                </div>
+                                <div className="flex-1 bg-violet-50 rounded-lg p-2 text-center">
+                                  <div className="text-[10px] text-violet-600 font-bold">누적 점검</div>
+                                  <div className="text-lg font-black text-violet-700">{stats.branchStats.find(s => s.branchId === b.id)?.count || 0}<span className="text-[10px] text-violet-500 ml-0.5">건</span></div>
+                                </div>
+                              </div>
                               
                               <div className="flex items-center justify-between mb-3">
                                 <span className="text-xs text-slate-500">현재 사용 중:</span>
@@ -716,7 +998,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                     <input 
                                       type="number" 
                                       className="w-12 p-1 border border-fuchsia-200 rounded text-center font-bold text-[11px] bg-white text-fuchsia-700" 
-                                      defaultValue={b.kfaceDailyLimit ?? 0}
+                                      defaultValue={b.kfaceDailyLimit ?? 30}
                                       onBlur={(e) => handleUpdateDailyLimit(b, 'kface', parseInt(e.target.value))}
                                     />
                                     <span className="text-[10px] text-fuchsia-700">회</span>
@@ -731,7 +1013,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                     <input 
                                       type="number" 
                                       className="w-12 p-1 border border-indigo-200 rounded text-center font-bold text-[11px] bg-white text-indigo-700" 
-                                      defaultValue={b.ktarotDailyLimit ?? 0}
+                                      defaultValue={b.ktarotDailyLimit ?? 30}
                                       onBlur={(e) => handleUpdateDailyLimit(b, 'ktarot', parseInt(e.target.value))}
                                     />
                                     <span className="text-[10px] text-indigo-700">회</span>
@@ -758,12 +1040,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
             {/* Members Tab */}
             {activeTab === 'members' && (() => {
-              const filteredMembers = cloudMembers.filter(m => {
+              // 분석 완료 회원 vs 분석 대기 회원 분리
+              const analyzedMembers = cloudMembers.filter(m => {
+                const name = m.name || m.report?.userInfo?.name || '';
+                return !name.startsWith('(분석 대기)');
+              });
+              const pendingMembers = cloudMembers.filter(m => {
+                const name = m.name || m.report?.userInfo?.name || '';
+                return name.startsWith('(분석 대기)');
+              });
+
+              // 현재 서브탭에 따라 필터링 대상 결정
+              const currentList = memberSubTab === 'analyzed' ? analyzedMembers : pendingMembers;
+
+              const filteredMembers = currentList.filter(m => {
                 const rpt = m.report;
                 const name = m.name || rpt?.userInfo?.name || '';
-                
-                // [분석 대기] 상태인 미분석 회원 제외 (디폴트)
-                if (name.startsWith('[분석 대기]')) return false;
 
                 if (memberFilterRegion !== 'all' && (m as any).regionId !== memberFilterRegion) return false;
                 if (memberFilterBranch !== 'all' && (m as any).branchId !== memberFilterBranch) return false;
@@ -801,7 +1093,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                 const ws = xlsx.utils.json_to_sheet(rows);
                 const wb = xlsx.utils.book_new();
                 xlsx.utils.book_append_sheet(wb, ws, '회원데이터');
-                xlsx.writeFile(wb, `회원데이터_${new Date().toISOString().slice(0,10)}.xlsx`);
+                xlsx.writeFile(wb, `회원데이터_${memberSubTab === 'analyzed' ? '분석완료' : '분석대기'}_${new Date().toISOString().slice(0,10)}.xlsx`);
               };
 
               const handleRefresh = async () => {
@@ -830,6 +1122,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     </div>
                   </div>
 
+                  {/* Sub Tabs: 분석 완료 vs 분석 대기 */}
+                  <div className="flex gap-2 border-b border-slate-200 pb-0">
+                    <button
+                      onClick={() => setMemberSubTab('analyzed')}
+                      className={`px-5 py-2.5 text-sm font-bold rounded-t-xl border border-b-0 transition-colors ${
+                        memberSubTab === 'analyzed'
+                          ? 'bg-white text-indigo-700 border-slate-200 -mb-px z-10'
+                          : 'bg-slate-50 text-slate-400 border-transparent hover:text-slate-600'
+                      }`}
+                    >
+                      ✅ AI 분석 완료 <span className={`ml-1.5 px-2 py-0.5 rounded-full text-xs font-black ${memberSubTab === 'analyzed' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>{analyzedMembers.length}</span>
+                    </button>
+                    <button
+                      onClick={() => setMemberSubTab('pending')}
+                      className={`px-5 py-2.5 text-sm font-bold rounded-t-xl border border-b-0 transition-colors ${
+                        memberSubTab === 'pending'
+                          ? 'bg-white text-amber-700 border-slate-200 -mb-px z-10'
+                          : 'bg-slate-50 text-slate-400 border-transparent hover:text-slate-600'
+                      }`}
+                    >
+                      ⏳ 분석 대기 <span className={`ml-1.5 px-2 py-0.5 rounded-full text-xs font-black ${memberSubTab === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-500'}`}>{pendingMembers.length}</span>
+                    </button>
+                  </div>
+
                   {/* Filters */}
                   <div className="flex gap-3 flex-wrap">
                     <select value={memberFilterRegion} onChange={e => { setMemberFilterRegion(e.target.value); setMemberFilterBranch('all'); }} className="px-3 py-2 border rounded-xl text-sm">
@@ -848,10 +1164,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     <div className="flex-1 flex items-center justify-center text-slate-400">회원 데이터 로딩 중...</div>
                   ) : filteredMembers.length === 0 ? (
                     <div className="flex-1 flex items-center justify-center text-slate-400 flex-col gap-2">
-                      <span className="text-4xl">📭</span>
-                      <span>등록된 회원이 없습니다</span>
+                      <span className="text-4xl">{memberSubTab === 'analyzed' ? '📭' : '⏳'}</span>
+                      <span>{memberSubTab === 'analyzed' ? '분석 완료된 회원이 없습니다' : '분석 대기 중인 회원이 없습니다'}</span>
                     </div>
-                  ) : (
+                  ) : memberSubTab === 'analyzed' ? (
+                    /* 분석 완료 테이블 */
                     <div className="flex-1 overflow-auto border rounded-2xl">
                       <table className="w-full text-sm">
                         <thead className="bg-slate-50 sticky top-0 z-10">
@@ -882,6 +1199,46 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                 <td className="p-3 text-center font-black text-amber-500">{r?.brainAge || '-'}</td>
                                 <td className="p-3 text-center">
                                   <span className={`px-2 py-1 rounded-lg text-xs font-black ${(r?.overallScore || 0) >= 70 ? 'bg-emerald-100 text-emerald-700' : (r?.overallScore || 0) >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>{r?.overallScore || '-'}점</span>
+                                </td>
+                                <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
+                                  <button onClick={() => handleDeleteMember(m.id)} className="text-rose-400 hover:text-rose-600 text-xs font-bold">삭제</button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    /* 분석 대기 테이블 */
+                    <div className="flex-1 overflow-auto border border-amber-200 rounded-2xl bg-amber-50/30">
+                      <table className="w-full text-sm">
+                        <thead className="bg-amber-50 sticky top-0 z-10">
+                          <tr>
+                            <th className="p-3 text-left font-bold text-amber-700">이름</th>
+                            <th className="p-3 text-center font-bold text-amber-700">나이</th>
+                            <th className="p-3 text-center font-bold text-amber-700">성별</th>
+                            <th className="p-3 text-left font-bold text-amber-700">지점</th>
+                            <th className="p-3 text-center font-bold text-amber-700">등록일</th>
+                            <th className="p-3 text-center font-bold text-amber-700">상태</th>
+                            <th className="p-3 text-center font-bold text-amber-700">관리</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredMembers.map(m => {
+                            const r = m.report;
+                            const rawName = m.name || r?.userInfo?.name || '-';
+                            const displayName = rawName.replace('(분석 대기) ', '');
+                            const branchName = branches.find(b => b.id === (m as any).branchId)?.name || (m as any).branchId || '-';
+                            return (
+                              <tr key={m.id} className="border-t border-amber-100 hover:bg-amber-50/50 transition-colors">
+                                <td className="p-3 font-bold text-slate-700">{displayName}</td>
+                                <td className="p-3 text-center">{r?.userInfo?.age || '-'}</td>
+                                <td className="p-3 text-center">{r?.userInfo?.gender === 'male' ? '남' : r?.userInfo?.gender === 'female' ? '여' : '-'}</td>
+                                <td className="p-3 text-slate-600">{branchName}</td>
+                                <td className="p-3 text-center text-slate-500">{m.lastTestDate ? new Date(m.lastTestDate).toLocaleDateString() : '-'}</td>
+                                <td className="p-3 text-center">
+                                  <span className="px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 animate-pulse">⏳ 대기중</span>
                                 </td>
                                 <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
                                   <button onClick={() => handleDeleteMember(m.id)} className="text-rose-400 hover:text-rose-600 text-xs font-bold">삭제</button>
@@ -928,8 +1285,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               );
             })()}
 
-            {/* Settings Tab */}
-            {activeTab === 'settings' && (
+            {/* Errors Tab */}
+            {activeTab === 'errors' && (
+              <AdminErrorMonitor branches={branches} regions={regions} />
+            )}
+
+            {/* Settings Tab - Master Only */}
+            {activeTab === 'settings' && currentAdmin?.role === 'master' && (
               <div className="max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
                   <h2 className="text-lg font-bold mb-6">시스템 환경 설정</h2>

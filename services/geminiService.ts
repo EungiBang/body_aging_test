@@ -3,12 +3,10 @@ import { BodyReport, CapturedImage, UserInfo, MemberRecord, CheonbugyeongCharact
 import { MASTERS } from '../constants/masters';
 import { findSimilarCases, buildFewShotPrompt, findSimilarFaceCases, buildFaceFewShotPrompt, findSimilarTarotCases, buildTarotFewShotPrompt } from "./feedbackService";
 import { getRecordsLocally } from "./localDb";
-import logger from '../utils/logger';
-
-const TAG = 'GeminiAI';
+import { ErrorLogger } from "./ErrorLogger";
 
 // --- API Key 관리 (SettingsModal에서 사용) ---
-let customApiKey: string = localStorage.getItem('bt_custom_api_key') || '';
+let customApiKey: string = localStorage.getItem('bt_custom_api_key_lite') || '';
 
 export const getActiveApiKey = (): string => {
   return customApiKey || process.env.GEMINI_API_KEY || '';
@@ -17,9 +15,9 @@ export const getActiveApiKey = (): string => {
 export const setCustomApiKey = (key: string): void => {
   customApiKey = key;
   if (key) {
-    localStorage.setItem('bt_custom_api_key', key);
+    localStorage.setItem('bt_custom_api_key_lite', key);
   } else {
-    localStorage.removeItem('bt_custom_api_key');
+    localStorage.removeItem('bt_custom_api_key_lite');
   }
 };
 
@@ -59,21 +57,17 @@ export const checkEnvironment = async (imageDataUrl: string): Promise<{ isValid:
     return JSON.parse(text);
   } catch (e) {
     console.error('Environment check error:', e);
+    ErrorLogger.logApiError('geminiService.checkEnvironment', 'Environment check error', e);
     return { isValid: true, message: '환경 점검을 건너뜁니다.' };
   }
 };
 
 // --- 핵심 AI 건강 분석 함수 ---
 export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[]): Promise<BodyReport> => {
-  const analysisStartTime = Date.now();
-  logger.info(TAG, `analyzeHealth 시작`, { name: userInfo.name, age: userInfo.age, gender: userInfo.gender, imageCount: images.length });
-  
   const apiKey = getActiveApiKey();
   if (!apiKey) {
-    logger.error(TAG, 'API 키 없음 — 분석 중단', null, true);
     throw new Error("GEMINI_API_KEY is not configured. Please check your environment variables.");
   }
-  logger.debug(TAG, `API 키 확인 완료 (${apiKey.substring(0, 6)}...)`);
   const ai = new GoogleGenAI({ apiKey });
 
   const parts = images
@@ -93,14 +87,11 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
   const footDrops  = rawFootDrops;
   const swayScore  = balanceImg?.balanceData?.swayScore ?? null;
 
-  const squatImg   = images.find(i => i.step === 'STRENGTH_SQUAT');
-  const squatReps  = squatImg?.reps ?? 0;
-  const squatFormScore = squatImg?.formScore ?? null;
-
-  const pushupImg  = images.find(i => i.step === 'STRENGTH_PUSHUP');
-  const pushupReps = pushupImg?.reps ?? 0;
-  const pushupFormScore = pushupImg?.formScore ?? null;
-  const isKneeAssisted = pushupImg?.kneeAssisted ?? false; // 무릎 대고 수행 여부
+  const squatReps  = 0;
+  const squatFormScore = null;
+  const pushupReps = 0;
+  const pushupFormScore = null;
+  const isKneeAssisted = false;
 
   // --- 뇌 나이 및 7코드 데이터 추출 ---
   const reactionImg = images.find(i => i.step === 'BRAIN_REACTION');
@@ -142,21 +133,18 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
 
   const mathCorrect = memoryImg?.brainTestData?.mathCorrect ?? false;
 
-  // --- 뇌 나이 산출 v5.0 (TMT 마우스 반응속도 기준) ---
-  // 1단계: 두뇌 인지 반응 100점 (반응속도 50점 + 정확도 50점)
+  // --- 뇌 나이 산출 v3.0 (절대 점수 기반, 실제 나이 무관) ---
+  // 1단계: 두뇌 인지 반응 100점 (정확도/오답억제 70점 + 반응속도 30점)
   let reactionTimeScore = 0;
-  if (reactionTimeMs <= 800) reactionTimeScore = 50;
-  else if (reactionTimeMs <= 1100) reactionTimeScore = 40;
-  else if (reactionTimeMs <= 1400) reactionTimeScore = 30;
-  else if (reactionTimeMs <= 1800) reactionTimeScore = 20;
-  else reactionTimeScore = 10;
+  if (reactionTimeMs <= 600) reactionTimeScore = 30;
+  else if (reactionTimeMs <= 900) reactionTimeScore = 20;
+  else if (reactionTimeMs <= 1200) reactionTimeScore = 10;
 
   let reactionErrorScore = 0;
-  if (reactionErrors === 0) reactionErrorScore = 50;
-  else if (reactionErrors === 1) reactionErrorScore = 40;
+  if (reactionErrors === 0) reactionErrorScore = 70;
+  else if (reactionErrors === 1) reactionErrorScore = 50;
   else if (reactionErrors === 2) reactionErrorScore = 30;
-  else if (reactionErrors === 3) reactionErrorScore = 20;
-  else reactionErrorScore = 10;
+  else if (reactionErrors >= 3) reactionErrorScore = 10;
 
   const test1Score = reactionTimeScore + reactionErrorScore; // 100점 만점
 
@@ -323,19 +311,9 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
   const squatPhysicalAge  = getSquatPhysicalAge(validSquatReps, userInfo.gender, userInfo.age);
   const pushupPhysicalAge = getPushupPhysicalAge(validPushupReps, userInfo.gender, userInfo.age, isKneeAssisted);
 
-  // --- 신체 나이별 기준표 문자열 (AI 프롬프트용 v3.0 / 15초 순간 근력 기준) ---
-  const squatStandard = userInfo.gender === 'male'
-    ? '[15초 기준 나이대별 평균] 20대:18회 / 30대:15회 / 40대:12회 / 50대:10회 / 60대:8회 / 70대:6회 | 1회 차이=1.8세. 평균 이하 시 단계적 감점'
-    : '[15초 기준 나이대별 평균] 20대:15회 / 30대:12회 / 40대:10회 / 50대:8회 / 60대:6회 / 70대:4회 | 1회 차이=1.8세. 평균 이하 시 단계적 감점';
-  const pushupStandard = (() => {
-    if (userInfo.gender === 'female' && userInfo.age >= 70 && isKneeAssisted)
-      return '70대+ 여성 무릎대고 정식기준 | 평균:4회 / 우수:8회+ / 미달:2회이하. 1회 차이=1.8세';
-    if (userInfo.gender === 'female' && userInfo.age >= 60 && isKneeAssisted)
-      return '60대 여성 무릎대고(60%인정) | 15초기준 나이대별 평균: 20대:13회/30대:10회/40대:8회/50대:6회/60대:4회';
-    return userInfo.gender === 'male'
-      ? '[15초 기준 나이대별 평균] 20대:18회 / 30대:15회 / 40대:12회 / 50대:9회 / 60대:7회 / 70대:4회 | 1회 차이=1.8세'
-      : '[15초 기준 나이대별 평균] 20대:13회 / 30대:10회 / 40대:8회 / 50대:6회 / 60대:4회 / 70대:2회 | 1회 차이=1.8세';
-  })();
+  // --- 근력 기준표 (사용 안함 - 간편 버전) ---
+  const squatStandard = '미진행';
+  const pushupStandard = '미진행';
 
   // --- 균형 테스트 참조 기준표 (눈 감고 한발 서기 15초 BTC 자체 기준 / Springer 2007 기반 환산) ---
   const balanceStandard = userInfo.gender === 'male'
@@ -402,15 +380,6 @@ ${fewShotBlock ? fewShotBlock + '\n---\n' : ''}당신은 운동역학, 노인의
     · 발 땅 닿음 횟수 (footDrops): ${footDrops !== null ? footDrops + '회' : '데이터 없음'}
     · 몸 흔들림 누적 수치 (swayScore): ${swayScore !== null ? swayScore : '데이터 없음'} (0:아주안정 ~ 80이상:매우불안정)
     · [이 나이/성별의 평가 기준표] ${balanceStandard}
-  - 15초 스쿼트:
-    · 전체 횟수: ${squatReps}회 / 자세 점수(formScore): ${squatFormScore !== null ? squatFormScore + '점' : 'N/A'}
-    · 유효 횟수 (자세 보정): ${validSquatReps}회
-    · [신체 나이별 기준표] ${squatStandard}
-  - 15초 푸시업:
-    · 수행 방식: ${isKneeAssisted ? '⚠️ 무릎 보조 (Modified) — 최대 유효 횟수 3회로 상한 패널티 적용됨' : '정자세 (Standard)'}
-    · 전체 횟수: ${pushupReps}회 / 자세 점수(formScore): ${pushupFormScore !== null ? pushupFormScore + '점' : 'N/A'}
-    · 유효 횟수 (자세 보정 + 무릎 패널티 반영): ${validPushupReps}회
-    · [신체 나이별 기준표] ${pushupStandard}
 
 ■ 뇌 기능 분석 데이터
   - 두뇌 인지 반응: (속도: ${reactionTimeMs}ms, 오류: ${reactionErrors}회) -> 환산 뇌 나이: ${Math.round(reactionAge)}세
@@ -422,13 +391,9 @@ ${fewShotBlock ? fewShotBlock + '\n---\n' : ''}당신은 운동역학, 노인의
   - 선택된 키워드 목록: ${sevenCodeKeywords.join(', ')}
   - 에너지가 가장 부족한(방전된) 코드(BHP) 시스템 도출 결과: ${weakestCode}차크라
 
-■ 근력 기반 신체 나이 [코드 확정값 — 절대 변경 불가]
-  - 스쿼트 하체 신체 나이: ${squatPhysicalAge}세 (유효 ${validSquatReps}회 기준)
-  - 푸시업 상체 신체 나이: ${pushupPhysicalAge}세 (유효 ${validPushupReps}회 기준)
-  ※ 위 두 값은 사전 확정된 수치입니다. physicalAge 산출 시 반드시 반영하세요.
   ※ physicalAge(종합 신체 기능 나이) 산출 공식:
-     = 스쿼트(20%) + 푸시업(15%) + 균형(25%) + 자세(20%) + 유연성(10%) + 팔올리기(10%) 가중 평균
-     스쿼트·푸시업은 위 확정값 사용. 균형/자세/유연성/팔올리기의 신체 나이 상당값을 추정하여 가중 평균 후 physicalAge 기입.
+     = 균형(40%) + 자세(30%) + 유연성(15%) + 팔올리기(15%) 가중 평균
+     균형/자세/유연성/팔올리기의 신체 나이 상당값을 사진으로 추정하여 가중 평균 후 physicalAge 기입.
 
 ■ 정확도 강화를 위한 100점 만점 엄격 채점 지침 및 웰니스 가이드라인
 - **[법적 주의사항]** "진단", "치료", "환자", "처방" 등의 의료적 단어는 "스크리닝", "웰니스 관리", "고객/회원", "맞춤형 운동 제안" 등의 용어로 교체하세요.
@@ -499,12 +464,8 @@ ${fewShotBlock ? fewShotBlock + '\n---\n' : ''}당신은 운동역학, 노인의
 
   (최소 20세, 최대 85세 범위로 제한)
 
-[사진 6~7: 근력 테스트 - 스쿼트/푸시업]
-- 유효 횟수(validReps)는 이미 자세 보정된 수치이므로, 이를 근거로 신체 나이를 서술하세요.
-- **반드시** 사유에 "[유효 횟수: X회 / 신체 나이 환산: Y세]" 형식의 팩트를 언급하세요.
-- **[중요 지침 1]** \`agingMetrics\` 배열에는 눈 감고 한발 서기, 유연성, 팔 올리기 등 지표만 기입하고, **스쿼트와 푸시업은 절대 \`agingMetrics\`에 중복해서 기록하지 마세요.** (오직 \`strengthMetrics\`에만 기록)
-- **[중요 지침 2]** 스쿼트와 푸시업 평가 시 간결하게 작성하세요.
-- **[중요 지침 3]** 전체 리포트의 모든 설명창은 미사여구를 빼고 핵심만 1~2문장(최대 100자) 이내로 요약하세요.
+- **[중요 지침 1]** \`agingMetrics\` 배열에는 눈 감고 한발 서기, 유연성, 팔 올리기 등 지표만 기입하세요.
+- **[중요 지침 2]** 전체 리포트의 모든 설명창은 미사여구를 빼고 핵심만 1~2문장(최대 100자) 이내로 요약하세요.
 - **[중요 지침 4]** 사진 판독 거절 규정: '정상적인 측정이 불가능한 불량 사진'이라고 판단될 경우, 점수를 최하점으로 처리하고, 설명란에 **"오류: 사진에 전신 동작이 정상적으로 인식되지 않아 측정이 취소되었습니다. 올바른 자세로 다시 측정해 주세요."** 라고만 명확하게 작성하세요.
 - **[중요 지침 5] 촬영된 사진의 각 항목별 필수 기준**:
   1. 정면 자세: 가장 중요한 것은 완벽한 '정면'이어야 하며, 반드시 '머리에서 발끝까지' 전신이 다 나와야 합니다. 이 기준에 부합하는지 먼저 확인 후 평가하세요.
@@ -515,15 +476,12 @@ ${fewShotBlock ? fewShotBlock + '\n---\n' : ''}당신은 운동역학, 노인의
 - 1. 물리적 노화 평가: 피부 톤과 맑음 정도, 주름, 탄력을 세밀하게 분석하여 기본 안면 노화도를 평가하세요.
 - 2. 에너지 및 표정 평가: 카메라 측정 안면 평균 밝기(Luma)는 ${faceBrightness !== undefined ? faceBrightness : '측정불가'}입니다 (50~200 범위). 이 수치와 사진 상의 표정(미소, 생기)을 종합하여 '밝은 에너지'를 평가하세요.
 - 3. 종합 '얼굴 건강 나이(faceAgeEstimate)' 산출: 위 1번(물리적 노화)을 기준으로 하되, 2번(밝기와 에너지)이 우수할수록 실제 피부 나이보다 더 젊고 생기 있게(동안으로) 최종 건강 나이를 보정하여 산출하세요.
-- ★ [가장 중요한 논리 규칙]: 리포트(\`summary\`) 작성 시, 반드시 산출된 faceAgeEstimate(얼굴 나이) 값과 실제 나이(${userInfo.age}세)의 숫자를 직접 비교하세요.
-  만약 얼굴 나이가 실제 나이보다 '높게' 나왔다면, "피부 탄력 저하(또는 주름)나 에너지 부족으로 인해 실제 나이보다 나이들어 보이며 관리가 필요합니다."라고 엄격하게 평가하세요. (얼굴 나이가 더 많음에도 불구하고 "동안으로 보인다"거나 "활기차 보인다"는 등 앞뒤가 맞지 않는 모순된 칭찬을 절대 하지 마세요).
-  반대로 얼굴 나이가 실제 나이보다 '적거나 같을' 경우에만 "밝은 에너지 덕분에 동안으로 보입니다"라고 작성하세요.
+- 리포트 작성 시, 물리적 노화 상태와 밝은 에너지가 어떻게 결합되어 해당 나이가 도출되었는지(예: "미세 주름은 있으나 표정이 매우 밝고 에너지가 좋아 X세로 평가됩니다") 핵심만 요약해서 설명하세요.
 
 ■ 종합 분석 (summary) 및 신체 나이·종합 점수 산출
   - **physicalAge(종합 신체 기능 나이)** 가중 평균 공식을 직접 계산하여 기입:
-    physicalAge = 반올림(squatPhysicalAge×0.20 + pushupPhysicalAge×0.15 + balancePhysicalAge×0.25 + posturePhysicalAge×0.20 + flexibilityPhysicalAge×0.10 + armRaisePhysicalAge×0.10)
+    physicalAge = 반올림(balancePhysicalAge×0.40 + posturePhysicalAge×0.30 + flexibilityPhysicalAge×0.15 + armRaisePhysicalAge×0.15)
   - **overallScore(3바디 코어 밸런스 점수):** 3바디 코어 밸런스 점수는 신체, 얼굴, 뇌, 마음(7코드) 4가지 요소를 모두 반영한 점수입니다. 시스템이 자동 계산하므로, summary 작성 시 이 점수가 "신체 측정뿐만 아니라 얼굴 노화도, 두뇌 인지 반응, 7코드(K차크라) 에너지 밸런스를 모두 종합한 3바디 코어 밸런스 점수"라는 점을 강조하세요.
-- 얼굴/피부 평가 시 절대 모순 금지: summary 작성 시에도 안면 피부 나이(faceAgeEstimate)가 실제 나이(${userInfo.age}세)보다 많은데도 "동안이다" 혹은 "에너지가 맑아 젊어보인다"라고 칭찬하지 말고, 측정된 숫자 결과에 맞게 일관성 있게 서술하세요.
 - 체형 패턴 안내: bodyTypeAnalysis에서 지방 과다 패턴이 관찰될 경우, summary에 체지방 관리와 관절 부하 감소를 위한 생활 습관 개선 방향을 참고로 안내하세요. (단, 전문 의료기관 상담을 권장하는 표현으로 대체)
 - 3바디 7코드 분석: 신체 측정 데이터와 3바디 7코드의 연관성을 관찰형 언어로 설명하고, 광명차크라 수련이 건강 증진에 도움이 될 수 있음을 안내하세요. (절대 단정적 표현 금지)
 - **[핵심 결론 메시지 — summary 마지막 부분에 반드시 포함]**
@@ -542,8 +500,8 @@ ${fewShotBlock ? fewShotBlock + '\n---\n' : ''}당신은 운동역학, 노인의
    * 반드시 "데이터 → 의미 → 웰니스 개선 방향" 순서의 템플릿 구조를 따르세요. 
    * evidence 배열: 각 7코드 점수를 깎아먹은 측정 근거 또는 선택된 키워드 2~3개를 한글 배열로 추가하세요.
 3. **kwangmyungChakra (광명차크라 특별수련)**:
-   - \`reason\`: 왜 지금 광명차크라 수련이 필요한지, 회원이 현재 겪고 있을 만한 구체적인 불편함이나 신체 증상(답답함, 만성 피로, 상기 등)을 짚어주며 **깊이 공감할 수 있도록 설득력 있게 설명**하세요. (예: "현재 ${weakestCode}차크라 에너지가 방전되어 감정적으로 지치거나 가슴이 답답함을 느끼기 쉬운 상태입니다. 이러한 에너지 불균형은...")
-   - \`expectedBenefit\`: 수련을 통해 뇌파가 어떻게 안정되고 호흡이 깊어지며, 궁극적으로 삶의 질(수면 향상, 활력 회복, 긍정적 마인드 등)이 얼마나 디테일하게 향상될 것인지 매력적이고 구체적으로 묘사하세요.
+   - \`reason\`: 왜 광명차크라가 필요한지 현재 회원의 상태(부정적 키워드나 자세 등)를 기반으로 깊이 공감하며 설명하세요. (예: "현재 머리가 무겁고 집중이 잘 안 되시는 상태로 보입니다. 이는 상위 차크라 에너지가 방전되었기 때문입니다...")
+   - \`expectedBenefit\`: 수련을 통해 얻게 될 변화를 삶의 질 향상 측면에서 매력적으로 묘사하세요. (예: "내면의 빛을 밝힘으로써 정신적 혼란이 사라지고, 삶의 활력과 명료한 직관을 되찾게 될 것입니다.")
 4. **programRecommendation**: 현재 상태에 가장 적합한 프로그램을 추천하세요.
 ${userInfo.memberType === 'existing' 
   ? `   **[기존 수련 회원 전용 중요 기준 - 반드시 아래 규칙을 따르세요!]**
@@ -576,16 +534,14 @@ ${userInfo.memberType === 'existing'
 
   try {
     // 타임아웃 90초 + 자동 재시도 (최대 2회)
-    const MAX_RETRIES = 3;
-    const TIMEOUT_MS = 120_000;
+    const MAX_RETRIES = 2;
+    const TIMEOUT_MS = 90_000;
     let lastError: Error | null = null;
     let response: any = null;
 
-    logger.info(TAG, `Gemini API 호출 준비 (이미지 ${parts.length}장, 타임아웃 ${TIMEOUT_MS/1000}초, 최대 ${MAX_RETRIES}회 시도)`);
-
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        logger.apiStart(TAG, `건강 분석 시도 ${attempt + 1}/${MAX_RETRIES}`);
+        console.log(`[Gemini] 분석 시도 ${attempt + 1}/${MAX_RETRIES}...`);
         
         const apiCall = ai.models.generateContent({
           model: 'gemini-2.5-flash',
@@ -630,19 +586,7 @@ ${userInfo.memberType === 'existing'
                     }
                   }
                 },
-            strengthMetrics: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  exercise:       { type: Type.STRING },
-                  reps:           { type: Type.NUMBER, description: "실제 수행 횟수 또는 기준 수치 (카운트가 없으면 0)" },
-                  performance:    { type: Type.STRING },
-                  formScore:      { type: Type.NUMBER, description: "0~100 사이의 배점 (100점 만점 기준)" },
-                  recommendation: { type: Type.STRING, description: "장황한 설명 금지. 1~2문장(최대 100자 이내)으로 짧게 요약" }
-                }
-              }
-            },
+
             agingMetrics: {
               type: Type.ARRAY,
               items: {
@@ -721,32 +665,28 @@ ${userInfo.memberType === 'existing'
         });
 
         response = await Promise.race([apiCall, timeoutPromise]);
-        logger.apiEnd(TAG, `건강 분석 시도 ${attempt + 1}`, true);
+        console.log(`[Gemini] 분석 성공 (시도 ${attempt + 1})`);
         break; // 성공 시 루프 탈출
       } catch (retryError: any) {
         lastError = retryError;
-        logger.error(TAG, `시도 ${attempt + 1} 실패`, retryError, attempt >= MAX_RETRIES - 1);
+        console.warn(`[Gemini] 시도 ${attempt + 1} 실패:`, retryError?.message);
         if (attempt < MAX_RETRIES - 1) {
-          logger.warn(TAG, `3초 후 재시도...`);
+          console.log(`[Gemini] ${3}초 후 재시도...`);
           await new Promise(r => setTimeout(r, 3000));
         }
       }
     }
 
     if (!response) {
-      logger.error(TAG, 'Gemini 응답 없음 — 모든 시도 실패', lastError, true);
-      throw lastError || new Error('AI 분석에 실패했습니다.');
+      const finalError = lastError || new Error('AI 분석에 실패했습니다.');
+      ErrorLogger.logApiError('geminiService.analyzeHealth', 'AI Analysis Failed after retries', finalError);
+      throw finalError;
     }
 
     const text = response.text;
-    if (!text) {
-      logger.error(TAG, 'Gemini 응답 텍스트 비어있음', null, true);
-      throw new Error("AI response text is empty");
-    }
-    logger.debug(TAG, `Gemini 응답 수신: ${text.length}자`);
+    if (!text) throw new Error("AI response text is empty");
 
     const parsed = JSON.parse(text);
-    logger.info(TAG, 'JSON 파싱 성공', { postureScore: parsed.postureScore, flexScore: parsed.flexibilityScore, armRaiseScore: parsed.armRaiseScore, faceAge: parsed.faceAgeEstimate });
 
     // ─── 종합 건강 점수 (BTC 통합 측정 기준) ──────────────────────────
     // AI가 반환한 점수(posture, flex, arm)와 시스템 확정 점수(squat, pushup, balance) 병합
@@ -754,17 +694,13 @@ ${userInfo.memberType === 'existing'
     const fScore = typeof parsed.flexibilityScore === 'number' ? parsed.flexibilityScore : 70;
     const aScore = typeof parsed.armRaiseScore === 'number' ? parsed.armRaiseScore : 70;
 
-    const validSquatReps = squatReps || 0;
-    const validPushupReps = pushupReps || 0;
-    const squatScoreVal = getSquatScoreOutput(validSquatReps, userInfo.gender, userInfo.age);
-    const pushupScoreVal = getPushupScoreOutput(validPushupReps, userInfo.gender, userInfo.age, isKneeAssisted);
     const balanceScoreVal = getBalanceScoreOutput(footDrops, swayScore, eyesClosed);
     const balancePhysicalAge = getBalancePhysicalAge(footDrops, swayScore, eyesClosed);
     // 내부 연산용 상대 평가 점수 변환
     const relativeBalanceScore = Math.max(20, Math.min(100, 70 - (balancePhysicalAge - userInfo.age) * 2.5));
 
-    // 1. 신체 점수 (40%) : 6대 측정 점수 평균 (균형은 연령보정 상대점수 사용)
-    const physicalScoreVal = Math.round((squatScoreVal + pushupScoreVal + relativeBalanceScore + pScore + fScore + aScore) / 6);
+    // 1. 신체 점수 (40%) : 4대 측정 점수 평균 (근력 제외, 균형은 연령보정 상대점수 사용)
+    const physicalScoreVal = Math.round((relativeBalanceScore + pScore + fScore + aScore) / 4);
     
     // 2. 뇌 점수 (30%) : 뇌 나이와 실제 나이 비교 (내 나이보다 젊으면 80+, 늙으면 80-)
     const brainAgeDiff = userInfo.age - cognitiveBrainAge; // 양수면 젊음, 음수면 늙음
@@ -826,8 +762,6 @@ ${userInfo.memberType === 'existing'
     const physicalAge = Math.max(20, Math.min(85, userInfo.age + ageDiff));
 
     // ★ v5.0.8: 종합 뇌나이 = 인지(80%) + 신체(10%) + 마음(10%)
-    // cognitiveBrainAge: 순수 인지 테스트(반응속도 + 기억력) 기반 뇌나이
-    // physicalAge, mindAge를 10%씩 반영하여 종합적 뇌 건강 지표로 확장
     const calculatedBrainAge = Math.max(20, Math.min(85, Math.round(
       (cognitiveBrainAge * 0.80) + (physicalAge * 0.10) + (mindAge * 0.10)
     )));
@@ -857,19 +791,9 @@ ${userInfo.memberType === 'existing'
       const scoreChanges = [
         { category: '자세 점수', previousScore: previousReport.postureMetrics?.[0]?.score ?? 0, currentScore: pScore, change: pScore - (previousReport.postureMetrics?.[0]?.score ?? 0), comment: '' },
         { category: '유연성 점수', previousScore: 0, currentScore: fScore, change: 0, comment: '' },
-        { category: '근력(스쿼트)', previousScore: 0, currentScore: squatScoreVal, change: 0, comment: '' },
-        { category: '근력(팔굽혀펴기)', previousScore: 0, currentScore: pushupScoreVal, change: 0, comment: '' },
         { category: '균형감각', previousScore: 0, currentScore: balanceScoreVal, change: 0, comment: '' },
         { category: '종합 점수', previousScore: prevScore, currentScore: curScore, change: diff, comment: diff > 0 ? `${diff}점 향상` : diff < 0 ? `${Math.abs(diff)}점 하락` : '동일' },
       ];
-
-      // 이전 보고서에서 세부 점수 추출 시도
-      if (previousReport.strengthMetrics?.length) {
-        const prevSquat = previousReport.strengthMetrics.find(s => s.exercise?.includes('스쿼트'));
-        const prevPushup = previousReport.strengthMetrics.find(s => s.exercise?.includes('푸시업') || s.exercise?.includes('팔굽'));
-        if (prevSquat) { scoreChanges[2].previousScore = prevSquat.formScore; scoreChanges[2].change = squatScoreVal - prevSquat.formScore; }
-        if (prevPushup) { scoreChanges[3].previousScore = prevPushup.formScore; scoreChanges[3].change = pushupScoreVal - prevPushup.formScore; }
-      }
 
       scoreChanges.forEach(sc => {
         if (!sc.comment) sc.comment = sc.change > 0 ? `${sc.change}점 향상` : sc.change < 0 ? `${Math.abs(sc.change)}점 하락` : '동일';
@@ -887,11 +811,6 @@ ${userInfo.memberType === 'existing'
       };
     }
 
-    const analysisElapsed = Date.now() - analysisStartTime;
-    logger.info(TAG, `analyzeHealth 완료 (${analysisElapsed}ms)`, {
-      overallScore, physicalAge, brainAge: calculatedBrainAge, mindAge, comprehensiveAge, faceAge
-    });
-
     return {
       ...parsed,
       physicalAge: physicalAge,
@@ -905,8 +824,7 @@ ${userInfo.memberType === 'existing'
       userInfo
     };
   } catch (error) {
-    const elapsed = Date.now() - analysisStartTime;
-    logger.error(TAG, `analyzeHealth 실패 (${elapsed}ms)`, error, true);
+    console.error("Gemini Analysis Error:", error);
     throw error;
   }
 };
@@ -915,14 +833,8 @@ export async function analyzePhysiognomy(
   metrics: any,
   profile?: { displayName?: string; birthDate?: string; gender?: string; age?: number } | null
 ): Promise<any> {
-  const startTime = Date.now();
-  logger.info(TAG, 'analyzePhysiognomy 시작', { name: profile?.displayName, faceRatio: metrics.geometricRatio?.toFixed(3) });
-  
   const apiKey = getActiveApiKey();
-  if (!apiKey) {
-    logger.error(TAG, '관상 분석 API 키 없음', null, true);
-    throw new Error("API 키가 설정되지 않았습니다. 설정 화면에서 API 키를 입력해주세요.");
-  }
+  if (!apiKey) throw new Error("API 키가 설정되지 않았습니다. 설정 화면에서 API 키를 입력해주세요.");
 
   const ai = new GoogleGenAI({ apiKey });
 
@@ -1067,7 +979,6 @@ ${fewShotPrompt}
 `;
 
   try {
-    logger.apiStart(TAG, '관상 분석 (gemini-3-flash-preview)');
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: [{ parts: [{ text: prompt }] }],
@@ -1077,18 +988,11 @@ ${fewShotPrompt}
     });
 
     const text = response.text;
-    if (!text) {
-      logger.error(TAG, '관상 분석 응답 비어있음', null, true);
-      throw new Error("분석 결과를 받지 못했습니다.");
-    }
+    if (!text) throw new Error("분석 결과를 받지 못했습니다.");
     
-    const result = JSON.parse(text);
-    const elapsed = Date.now() - startTime;
-    logger.apiEnd(TAG, '관상 분석', true, { elapsed: `${elapsed}ms`, score: result.score, animalType: result.animalMorphology?.type });
-    return result;
+    return JSON.parse(text);
   } catch (error: any) {
-    const elapsed = Date.now() - startTime;
-    logger.error(TAG, `관상 분석 실패 (${elapsed}ms)`, error, true);
+    console.error("Gemini Analysis Error:", error);
     throw new Error(error.message || "분석 중 오류가 발생했습니다.");
   }
 }
@@ -1106,12 +1010,8 @@ export const analyzeTarot = async (
   future: CheonbugyeongCharacter,
   masterId: string
 ): Promise<string> => {
-  const startTime = Date.now();
-  logger.info(TAG, 'analyzeTarot 시작', { name, concern: concern.substring(0, 30), masterId, cards: [past.char, present.char, future.char] });
-  
   const apiKey = getActiveApiKey();
   if (!apiKey) {
-    logger.error(TAG, '타로 분석 API 키 없음', null, true);
     throw new Error("API 키가 설정되지 않았습니다. 설정 화면에서 API 키를 입력해주세요.");
   }
   const ai = new GoogleGenAI({ apiKey });
@@ -1181,22 +1081,15 @@ export const analyzeTarot = async (
   `;
 
   try {
-    logger.apiStart(TAG, '타로 해석 (gemini-2.5-flash)');
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
     const text = response.text;
-    if (!text) {
-      logger.error(TAG, '타로 해석 응답 비어있음', null, true);
-      throw new Error("타로 해석 결과를 받지 못했습니다.");
-    }
-    const elapsed = Date.now() - startTime;
-    logger.apiEnd(TAG, '타로 해석', true, { elapsed: `${elapsed}ms`, responseLen: text.length });
+    if (!text) throw new Error("타로 해석 결과를 받지 못했습니다.");
     return text;
   } catch (error: any) {
-    const elapsed = Date.now() - startTime;
-    logger.error(TAG, `타로 해석 실패 (${elapsed}ms)`, error, true);
+    console.error("Gemini Tarot Analysis Error:", error);
     throw new Error(error.message || "타로 해석 중 오류가 발생했습니다.");
   }
 };
