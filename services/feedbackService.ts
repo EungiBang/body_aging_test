@@ -8,6 +8,7 @@
  */
 
 import { FeedbackRecord, DiagnosticFeedback, BodyReport, UserInfo } from '../types';
+import { syncFeedbackToCloud } from './cloudSyncService';
 
 // ─── 내부 유틸 ────────────────────────────────────────────────────────────────
 
@@ -85,6 +86,9 @@ export const saveFeedback = async (
   // 최대 200건 유지 (오래된 것부터 삭제)
   const trimmed = [record, ...existing].slice(0, 200);
   await saveAllFeedbacks(trimmed);
+  
+  // 클라우드로 동기화 (Background)
+  syncFeedbackToCloud(record).catch(e => console.error('Feedback sync error:', e));
 };
 
 /**
@@ -161,6 +165,9 @@ export const saveFaceFeedback = async (
   const existing = await loadAllFeedbacks();
   const trimmed = [record, ...existing].slice(0, 200);
   await saveAllFeedbacks(trimmed);
+
+  // 클라우드로 동기화 (Background)
+  syncFeedbackToCloud(record).catch(e => console.error('Face feedback sync error:', e));
 };
 
 export const saveTarotFeedback = async (
@@ -179,6 +186,9 @@ export const saveTarotFeedback = async (
   const existing = await loadAllFeedbacks();
   const trimmed = [record, ...existing].slice(0, 200);
   await saveAllFeedbacks(trimmed);
+
+  // 클라우드로 동기화 (Background)
+  syncFeedbackToCloud(record).catch(e => console.error('Tarot feedback sync error:', e));
 };
 
 /**

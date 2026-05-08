@@ -68,6 +68,48 @@ export const syncMemberToCloud = async (
 };
 
 /**
+ * AI 피드백을 클라우드에 동기화합니다.
+ */
+export const syncFeedbackToCloud = async (record: any) => {
+  logger.debug(TAG, `syncFeedbackToCloud 시작`, { id: record.id, type: record.feedbackType });
+  try {
+    const rawDevice = localStorage.getItem('currentDevice');
+    let branchId = 'unknown';
+    let hardwareId = 'unknown';
+    let regionId = 'unknown';
+    
+    if (rawDevice) {
+      try {
+        const device = JSON.parse(rawDevice);
+        branchId = device.branchId || 'unknown';
+        hardwareId = device.id || 'unknown';
+        regionId = device.regionId || 'unknown';
+      } catch (e) {
+        // parsing error
+      }
+    }
+
+    const docData = {
+      ...record,
+      branchId,
+      hardwareId,
+      regionId,
+      syncedAt: serverTimestamp()
+    };
+
+    const feedbackRef = doc(db, 'ai_feedbacks_v1', record.id);
+    logger.apiStart(TAG, `Firestore setDoc: ai_feedbacks_v1/${record.id}`);
+    await setDoc(feedbackRef, docData, { merge: true });
+    logger.apiEnd(TAG, `Firestore setDoc: ai_feedbacks_v1/${record.id}`, true);
+    
+    return true;
+  } catch (e) {
+    logger.error(TAG, `syncFeedbackToCloud 실패: ${record.id}`, e, true);
+    return false;
+  }
+};
+
+/**
  * 지점의 모든 회원 기록을 클라우드에서 가져옵니다. (Cross-PC 동기화용)
  */
 export const fetchMembersFromCloud = async (branchId: string): Promise<MemberRecord[]> => {

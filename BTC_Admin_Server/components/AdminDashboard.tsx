@@ -3,7 +3,7 @@ import {
   getRegions, getBranches, getAllDevices, updateDeviceStatus, deleteDevice,
   saveBranch, saveRegion, deleteBranch, deleteRegion, getSystemSettings, updateSystemSettings,
   adminLogin, getAdminUsers, saveAdminUser, deleteAdminUser, AdminUser,
-  Region, Branch, DeviceLicense 
+  Region, Branch, DeviceLicense, getAllFeedbacks 
 } from '../services/firebaseAuthService';
 import { fetchAllMembers, fetchMembersFromCloud, deleteMemberFromCloud } from '../services/cloudSyncService';
 import { MemberRecord } from '../types';
@@ -18,7 +18,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'devices' | 'branches' | 'members' | 'errors' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'devices' | 'branches' | 'members' | 'feedbacks' | 'errors' | 'settings'>('overview');
   
   // Data State
   const [regions, setRegions] = useState<Region[]>([]);
@@ -37,7 +37,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
   // Admin Users Management State
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
-  const [newAdmin, setNewAdmin] = useState({ id: '', name: '', password: '', role: 'manager' as const });
+  const [newAdmin, setNewAdmin] = useState<{ id: string; name: string; password: string; role: 'manager' | 'master' }>({ id: '', name: '', password: '', role: 'manager' });
   const [branchUsages, setBranchUsages] = useState<Record<string, UsageStatus>>({});
 
   // Branch Quota 탭 필터 상태
@@ -58,6 +58,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [membersLoading, setMembersLoading] = useState(false);
   const [memberSubTab, setMemberSubTab] = useState<'analyzed' | 'pending'>('analyzed');
 
+  // AI Feedbacks State
+  const [allFeedbacks, setAllFeedbacks] = useState<any[]>([]);
+  const [feedbacksLoading, setFeedbacksLoading] = useState(false);
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -67,7 +70,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       setRegions(r);
       setBranches(b);
       setDevices(d);
-      setSettings(s || { autoApproveCode: '' });
+      setSettings((s as any) || { autoApproveCode: '' });
       setAdminUsers(au);
       setStats(dashStats);
 
@@ -133,20 +136,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     }
   };
 
-  const handleStatusChange = async (deviceId: string, newStatus: 'active' | 'pending' | 'revoked') => {
+  const handleStatusChange = async (deviceId: string, newStatus: 'active' | 'pending' | 'revoked', deviceType: 'pc' | 'lite' = 'lite') => {
     if (window.confirm(`이 기기의 상태를 '${newStatus}'(으)로 변경하시겠습니까?`)) {
       try {
-        await updateDeviceStatus(deviceId, newStatus);
+        await updateDeviceStatus(deviceId, newStatus, deviceType);
         setDevices(devices.map(d => d.id === deviceId ? { ...d, status: newStatus } : d));
       } catch (e) {
         alert('상태 변경 실패');
       }
     }
   };
-  const handleDeleteDevice = async (deviceId: string) => {
+  const handleDeleteDevice = async (deviceId: string, deviceType: 'pc' | 'lite' = 'lite') => {
     if (window.confirm('이 기기를 목록에서 완전히 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)')) {
       try {
-        await deleteDevice(deviceId);
+        await deleteDevice(deviceId, deviceType);
         setDevices(devices.filter(d => d.id !== deviceId));
       } catch (e) {
         alert('기기 삭제 실패');
@@ -164,6 +167,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       // 시각적인 방해를 줄이기 위해 alert 대신 조용히 업데이트
     } catch (e) {
       alert('업데이트 실패');
+    }
+  };
+
+  const handleUpdateLiteQuota = async (branch: Branch, newQuota: number) => {
+    if (isNaN(newQuota)) return;
+    if (newQuota === (branch.liteAllowedLicenses !== undefined ? branch.liteAllowedLicenses : 1)) return;
+
+    try {
+      const updated = { ...branch, liteAllowedLicenses: newQuota };
+      await saveBranch(updated);
+      setBranches(branches.map(b => b.id === branch.id ? updated : b));
+    } catch (e) {
+      alert('라이트 할당량 업데이트 실패');
     }
   };
 
@@ -321,6 +337,102 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       </div>
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────
+  // AI 훈련 센터 탭 (Feedbacks)
+  // ─────────────────────────────────────────────────────────────────
+  const renderFeedbacksTab = () => {
+    if (feedbacksLoading) {
+      return <div className="text-center py-20"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div><p className="text-slate-500 font-bold">피드백 데이터를 불러오는 중...</p></div>;
+    }
+
+    const totalCount = allFeedbacks.length;
+    const satisfiedCount = allFeedbacks.filter(f => f.feedback && (f.feedback.physicalRating?.includes('satisfied') || f.feedback.faceRating?.includes('satisfied') || f.feedback.tarotRating?.includes('satisfied')) && !f.feedback.physicalRating?.includes('dissatisfied') && !f.feedback.faceRating?.includes('dissatisfied') && !f.feedback.tarotRating?.includes('dissatisfied')).length;
+    const dissatisfiedCount = allFeedbacks.filter(f => f.feedback && (f.feedback.physicalRating?.includes('dissatisfied') || f.feedback.faceRating?.includes('dissatisfied') || f.feedback.tarotRating?.includes('dissatisfied'))).length;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-black text-slate-800">🧠 AI 훈련 센터 (피드백 취합 현황)</h3>
+          <button onClick={() => { setFeedbacksLoading(true); getAllFeedbacks().then(f => { setAllFeedbacks(f); setFeedbacksLoading(false); }).catch(() => setFeedbacksLoading(false)); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition-colors text-sm font-bold">
+            <i className="fas fa-sync-alt"></i> 새로고침
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <p className="text-sm font-bold text-slate-500 mb-1">총 누적 피드백</p>
+            <p className="text-3xl font-black text-slate-800">{totalCount}<span className="text-base font-medium text-slate-500 ml-1">건</span></p>
+          </div>
+          <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100 shadow-sm">
+            <p className="text-sm font-bold text-emerald-600 mb-1">👍 만족 이상 비율</p>
+            <p className="text-3xl font-black text-emerald-700">{totalCount ? Math.round((satisfiedCount / totalCount) * 100) : 0}<span className="text-base font-medium text-emerald-600 ml-1">% ({satisfiedCount}건)</span></p>
+          </div>
+          <div className="bg-rose-50 rounded-2xl p-6 border border-rose-100 shadow-sm">
+            <p className="text-sm font-bold text-rose-600 mb-1">⚠️ 불만족 피드백</p>
+            <p className="text-3xl font-black text-rose-700">{dissatisfiedCount}<span className="text-base font-medium text-rose-600 ml-1">건 (지속 학습 대상)</span></p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-50 text-slate-600 text-xs uppercase font-bold border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3">구분</th>
+                  <th className="px-4 py-3">지점명 / 기기</th>
+                  <th className="px-4 py-3">고객 정보</th>
+                  <th className="px-4 py-3">평가 요약</th>
+                  <th className="px-4 py-3">관리자 메모 (학습 포인트)</th>
+                  <th className="px-4 py-3">제출 일시</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allFeedbacks.map(f => {
+                  const branchName = branches.find(b => b.id === f.branchId)?.name || f.branchId || '-';
+                  const typeLabel = f.feedbackType === 'face' ? '👤 관상' : f.feedbackType === 'tarot' ? '🎴 타로' : '🏃 체형';
+                  return (
+                    <tr key={f.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-3 font-bold text-slate-700">{typeLabel}</td>
+                      <td className="px-4 py-3">
+                        <div className="font-bold">{branchName}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{(f.hardwareId || '').substring(0, 8)}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {f.userInfo?.gender === 'male' ? '남' : '여'}, {f.userInfo?.age}세
+                      </td>
+                      <td className="px-4 py-3">
+                        {f.feedbackType === 'body' && (
+                          <div className="text-xs space-y-1">
+                            <div>신체: {f.feedback?.physicalRating}</div>
+                            <div>얼굴: {f.feedback?.faceRating}</div>
+                            <div>두뇌: {f.feedback?.brainRating}</div>
+                          </div>
+                        )}
+                        {f.feedbackType === 'face' && <div className="text-xs">관상: {f.feedback?.faceRating}</div>}
+                        {f.feedbackType === 'tarot' && <div className="text-xs">타로: {f.feedback?.tarotRating}</div>}
+                      </td>
+                      <td className="px-4 py-3 max-w-xs truncate text-xs text-slate-600" title={f.feedback?.notes}>
+                        {f.feedback?.notes || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500">
+                        {new Date(f.createdAt || f.syncedAt?.toDate?.() || Date.now()).toLocaleString('ko-KR')}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {allFeedbacks.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500">수집된 피드백 데이터가 없습니다.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-slate-100 h-screen">
@@ -780,6 +892,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       <tr>
                         <th className="px-4 py-3">지역</th>
                         <th className="px-4 py-3">지점</th>
+                        <th className="px-4 py-3">종류</th>
                         <th className="px-4 py-3">기기 ID</th>
                         <th className="px-4 py-3">책임자</th>
                         <th className="px-4 py-3">연락처</th>
@@ -802,6 +915,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                           <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">
                             <td className="px-4 py-3 text-xs font-bold text-indigo-600">{regionName}</td>
                             <td className="px-4 py-3 font-bold">{branchName}</td>
+                            <td className="px-4 py-3">
+                              {d.deviceType === 'pc' ? (
+                                <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-[10px] font-bold border border-blue-200">🖥️ PC</span>
+                              ) : (
+                                <span className="px-2 py-1 rounded bg-fuchsia-100 text-fuchsia-700 text-[10px] font-bold border border-fuchsia-200">📱 LITE</span>
+                              )}
+                            </td>
                             <td className="px-4 py-3 font-mono text-xs text-slate-400">{d.id.substring(0, 12)}...</td>
                             <td className="px-4 py-3 font-bold text-slate-700">{d.adminName || '-'}</td>
                             <td className="px-4 py-3 text-xs text-slate-500">{d.contact || '-'}</td>
@@ -823,9 +943,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                               }`}>{d.status.toUpperCase()}</span>
                             </td>
                             <td className="px-4 py-3 text-right space-x-2">
-                              {d.status !== 'active' && <button onClick={() => handleStatusChange(d.id, 'active')} className="px-3 py-1 bg-emerald-500 text-white rounded text-xs">승인</button>}
-                              {d.status !== 'revoked' && <button onClick={() => handleStatusChange(d.id, 'revoked')} className="px-3 py-1 bg-rose-500 text-white rounded text-xs">사용중지(해지)</button>}
-                              {d.status === 'revoked' && <button onClick={() => handleDeleteDevice(d.id)} className="px-3 py-1 bg-slate-500 hover:bg-slate-600 text-white rounded text-xs">삭제</button>}
+                              {d.status !== 'active' && <button onClick={() => handleStatusChange(d.id, 'active', d.deviceType || 'pc')} className="px-3 py-1 bg-emerald-500 text-white rounded text-xs">승인</button>}
+                              {d.status !== 'revoked' && <button onClick={() => handleStatusChange(d.id, 'revoked', d.deviceType || 'pc')} className="px-3 py-1 bg-rose-500 text-white rounded text-xs">사용중지(해지)</button>}
+                              {d.status === 'revoked' && <button onClick={() => handleDeleteDevice(d.id, d.deviceType || 'pc')} className="px-3 py-1 bg-slate-500 hover:bg-slate-600 text-white rounded text-xs">삭제</button>}
                             </td>
                           </tr>
                         );
@@ -939,7 +1059,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       {/* 해당 지역의 지점 카드 */}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {group.branches.map(b => {
-                          const activeCount = devices.filter(d => d.branchId === b.id && d.status === 'active').length;
+                          const pcActiveCount = devices.filter(d => d.branchId === b.id && d.status === 'active' && d.deviceType === 'pc').length;
+                          const liteActiveCount = devices.filter(d => d.branchId === b.id && d.status === 'active' && d.deviceType !== 'pc').length;
                           return (
                             <div key={b.id} className="border border-slate-200 rounded-xl p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
                               <div className="flex items-center justify-between mb-2">
@@ -964,28 +1085,49 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                 </div>
                               </div>
                               
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[11px] font-bold text-slate-500">🖥️ PC 활성:</span>
+                                <span className={`text-sm font-bold ${pcActiveCount > 0 ? 'text-blue-600' : 'text-slate-400'}`}>{pcActiveCount}대</span>
+                              </div>
                               <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs text-slate-500">현재 사용 중:</span>
-                                <span className={`text-sm font-bold ${activeCount > 0 ? 'text-indigo-600' : 'text-slate-400'}`}>{activeCount}대</span>
+                                <span className="text-[11px] font-bold text-slate-500">📱 LITE 활성:</span>
+                                <span className={`text-sm font-bold ${liteActiveCount > 0 ? 'text-fuchsia-600' : 'text-slate-400'}`}>{liteActiveCount}대</span>
                               </div>
                               
-                              <div className="flex items-center justify-between pt-3 border-t border-slate-100 mb-2">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-xs text-slate-500">최대:</span>
-                                  <input 
-                                    type="number" 
-                                    className="w-14 p-1 border border-slate-300 rounded text-center font-bold text-sm" 
-                                    defaultValue={b.allowedLicenses || 2}
-                                    onBlur={(e) => handleUpdateQuota(b, parseInt(e.target.value))}
-                                  />
-                                  <span className="text-xs text-slate-500">대</span>
+                              <div className="flex flex-col gap-2 pt-3 border-t border-slate-100 mb-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] text-slate-500 font-bold bg-blue-50 px-1.5 py-0.5 rounded text-blue-600 border border-blue-100">PC 허용</span>
+                                  <div className="flex items-center gap-1">
+                                    <input 
+                                      type="number" 
+                                      className="w-12 p-0.5 border border-slate-300 rounded text-center font-bold text-xs" 
+                                      defaultValue={b.allowedLicenses || 2}
+                                      onBlur={(e) => handleUpdateQuota(b, parseInt(e.target.value))}
+                                    />
+                                    <span className="text-xs text-slate-500">대</span>
+                                  </div>
                                 </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] text-slate-500 font-bold bg-fuchsia-50 px-1.5 py-0.5 rounded text-fuchsia-600 border border-fuchsia-100">LITE 허용</span>
+                                  <div className="flex items-center gap-1">
+                                    <input 
+                                      type="number" 
+                                      className="w-12 p-0.5 border border-slate-300 rounded text-center font-bold text-xs" 
+                                      defaultValue={b.liteAllowedLicenses !== undefined ? b.liteAllowedLicenses : 1}
+                                      onBlur={(e) => handleUpdateLiteQuota(b, parseInt(e.target.value))}
+                                    />
+                                    <span className="text-xs text-slate-500">대</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center justify-end pt-2 border-t border-slate-100">
                                 <button 
                                   onClick={() => handleDeleteBranch(b.id, b.name)}
-                                  className="text-slate-300 hover:text-rose-500 text-xs p-1.5 transition-colors"
+                                  className="text-slate-300 hover:text-rose-500 text-[10px] px-2 py-1 transition-colors flex items-center gap-1"
                                   title="지점 삭제"
                                 >
-                                  <i className="fas fa-trash-alt"></i>
+                                  <i className="fas fa-trash-alt"></i> 지점 삭제
                                 </button>
                               </div>
                               <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
@@ -1283,6 +1425,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                   })()}
                 </div>
               );
+            })()}
+
+            {activeTab === 'feedbacks' && (() => {
+              return renderFeedbacksTab();
             })()}
 
             {/* Errors Tab */}

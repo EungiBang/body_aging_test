@@ -5,17 +5,11 @@ export enum AssessmentStep {
   POSTURE_FRONT = 'POSTURE_FRONT',
   POSTURE_SIDE = 'POSTURE_SIDE',
   BALANCE_TEST = 'BALANCE_TEST',
-  ARM_RAISE_TEST = 'ARM_RAISE_TEST',
-  FLEXIBILITY_TEST = 'FLEXIBILITY_TEST',
-  BRAIN_REACTION = 'BRAIN_REACTION',
   BRAIN_MEMORY = 'BRAIN_MEMORY',
   FACE_ANALYSIS = 'FACE_ANALYSIS',
-  SEVEN_CODE_CHECK = 'SEVEN_CODE_CHECK',
   READY_FOR_ANALYSIS = 'READY_FOR_ANALYSIS',
   ANALYZING = 'ANALYZING',
-  REPORT = 'REPORT',
-  KFACE = 'KFACE',
-  KTAROT = 'KTAROT'
+  REPORT = 'REPORT'
 }
 
 export interface PhysiognomyMetrics {
@@ -42,10 +36,11 @@ export interface PhysiognomyReport {
   summary: string;
   score: number;
   confidenceScore: number;
-  samjeongAnalysis: string;
-  personality: string;
-  wealthAndCareer: string;
-  animalMorphology: {
+  faceAgeEstimate?: number;
+  samjeongAnalysis?: string;
+  personality?: string;
+  wealthAndCareer?: string;
+  animalMorphology?: {
     type: string;
     englishType: string;
     description: string;
@@ -55,30 +50,30 @@ export interface PhysiognomyReport {
     geometricBasis: string;
     animalMorphologyBlend: { type: string; matchPercentage: number; characteristic: string; }[];
   };
-  energy3Body7Code: {
+  energy3Body7Code?: {
     threeBodyAnalysis: string;
     sevenCodeDetailed: { name: string; region: string; bodyPart: string; state: 'Positive' | 'Negative' | 'Neutral'; interpretation: string; score: number; }[];
   };
-  brightEnergy: { score: number; description: string; };
-  traditionalAnalysis: { 
-    forehead: string;
-    eyebrows: string;
-    eyes: string; 
-    cheekbones: string;
-    nose: string; 
-    mouth: string; 
-    jaw: string;
-    ears: string;
-    skin: string; 
+  brightEnergy?: { score: number; description: string; };
+  traditionalAnalysis?: { 
+    forehead?: string;
+    eyebrows?: string;
+    eyes?: string; 
+    cheekbones?: string;
+    nose?: string; 
+    mouth?: string; 
+    jaw?: string;
+    ears?: string;
+    skin?: string; 
   };
-  lifeStrategy: { career: string; wealth: string; relationship: string; };
-  comprehensiveEvaluation: {
-    health: string;
-    wealthAndSuccess: string;
-    loveAndRelationship: string;
-    threeBodySynthesis: string; // 3바디 7코드 관점의 최종 마스터 총평
+  lifeStrategy?: { career: string; wealth: string; relationship: string; };
+  comprehensiveEvaluation?: {
+    health?: string;
+    wealthAndSuccess?: string;
+    loveAndRelationship?: string;
+    threeBodySynthesis?: string; 
   };
-  advice: string;
+  advice?: string;
 }
 
 export interface UserInfo {
@@ -86,6 +81,7 @@ export interface UserInfo {
   gender: 'male' | 'female' | 'other';
   age: number;
   phone?: string;
+  birthDate?: string;
   resultDelivery?: 'none' | 'sms' | 'kakao';
   memberType: 'new' | 'existing';
   previousRecordId?: string;  // 재측정 시 이전 기록 ID
@@ -210,6 +206,7 @@ export interface CapturedImage {
   sevenCodeKeywords?: string[]; // 사용자가 11단계에서 다중 선택한 7코드 키워드
   weakestCode?: number;         // 11단계에서 도출된 가장 약한 BHP 코드 (1~7)
   postureData?: any;
+  type?: string;
 }
 
 export interface MemberRecord {
@@ -224,6 +221,7 @@ export interface MemberRecord {
   branchId?: string;
   hardwareId?: string;
   regionId?: string;
+  timestamp?: number;
 }
 
 // ─── 피드백 학습 시스템 타입 ────────────────────────────────────────────────
@@ -234,6 +232,8 @@ export interface DiagnosticFeedback {
   tarotRating?: 'very_satisfied' | 'satisfied' | 'normal' | 'dissatisfied' | 'very_dissatisfied';
   notes?: string;
   submittedAt: string;
+  correctedOverallScore?: number;
+  correctedPhysicalAge?: number;
 }
 
 export interface FeedbackRecord {

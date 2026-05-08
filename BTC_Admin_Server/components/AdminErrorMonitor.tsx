@@ -124,7 +124,7 @@ export const AdminErrorMonitor: React.FC<AdminErrorMonitorProps> = ({ branches, 
                   const b = branches.find(b => b.id === log.deviceInfo.branchId);
                   if (b) {
                     branchName = b.name;
-                    const r = regions.find(r => r.id === b.regionId);
+                    const r = regions.find(r => r.id === (b as any).regionId);
                     if (r) regionName = r.name;
                   }
                 }

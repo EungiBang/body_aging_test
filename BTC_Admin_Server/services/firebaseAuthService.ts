@@ -12,6 +12,7 @@ export interface Branch {
   regionId: string;
   name: string;
   allowedLicenses: number;
+  liteAllowedLicenses?: number;
   kfaceDailyLimit?: number;
   ktarotDailyLimit?: number;
 }
@@ -25,7 +26,39 @@ export interface DeviceLicense {
   appVersion?: string; // 앱 버전 추가
   createdAt: any;
   lastActive: any;
+  deviceType?: 'pc' | 'lite'; // 기기 타입 식별자 추가
 }
+
+// 4. 관리자 전용 제어 함수
+export const getAllDevices = async (): Promise<DeviceLicense[]> => {
+  const [pcSnap, liteSnap] = await Promise.all([
+    getDocs(query(collection(db, 'devices'))),
+    getDocs(query(collection(db, 'lite_devices')))
+  ]);
+  
+  const devices: DeviceLicense[] = [];
+  pcSnap.forEach((doc) => devices.push({ id: doc.id, deviceType: 'pc', ...doc.data() } as DeviceLicense));
+  liteSnap.forEach((doc) => devices.push({ id: doc.id, deviceType: 'lite', ...doc.data() } as DeviceLicense));
+  
+  // 생성일 기준 내림차순 정렬
+  return devices.sort((a, b) => {
+    const timeA = a.createdAt?.toMillis?.() || 0;
+    const timeB = b.createdAt?.toMillis?.() || 0;
+    return timeB - timeA;
+  });
+};
+
+export const updateDeviceStatus = async (hardwareId: string, status: 'active' | 'pending' | 'revoked', deviceType: 'pc' | 'lite' = 'lite') => {
+  const collectionName = deviceType === 'pc' ? 'devices' : 'lite_devices';
+  const docRef = doc(db, collectionName, hardwareId);
+  await updateDoc(docRef, { status });
+};
+
+export const deleteDevice = async (hardwareId: string, deviceType: 'pc' | 'lite' = 'lite') => {
+  const collectionName = deviceType === 'pc' ? 'devices' : 'lite_devices';
+  const docRef = doc(db, collectionName, hardwareId);
+  await deleteDoc(docRef);
+};
 
 export interface AdminUser {
   id: string; // userId
@@ -142,7 +175,7 @@ export const deleteBranch = async (branchId: string) => {
 
 // 3. 기기(Device) 라이센스 등록 및 검증 로직
 export const checkDeviceStatus = async (hardwareId: string, appVersion?: string): Promise<DeviceLicense | null> => {
-  const docRef = doc(db, 'devices', hardwareId);
+  const docRef = doc(db, 'lite_devices', hardwareId);
   const snap = await getDoc(docRef);
   if (snap.exists()) {
     const deviceData = { id: snap.id, ...snap.data() } as DeviceLicense;
@@ -169,14 +202,14 @@ export const checkDeviceStatus = async (hardwareId: string, appVersion?: string)
   return null;
 };
 
-// 지점의 활성 기기 개수 확인
+// 지점의 활성 기기 개수 확인 (라이트 버전은 할당량 제한에서 제외될 수 있으나 통계용으로 유지)
 export const getActiveDeviceCount = async (branchId: string): Promise<number> => {
-  const q = query(collection(db, 'devices'), where('branchId', '==', branchId), where('status', '==', 'active'));
+  const q = query(collection(db, 'lite_devices'), where('branchId', '==', branchId), where('status', '==', 'active'));
   const snapshot = await getDocs(q);
   return snapshot.size;
 };
 
-// 기기 등록 요청 (지점별 할당량 체크 로직 포함)
+// 기기 등록 요청 (라이트 버전은 PC 버전의 할당량(Quota) 제한을 받지 않도록 우회)
 export const requestDeviceRegistration = async (
   hardwareId: string, 
   branchId: string, 
@@ -194,27 +227,28 @@ export const requestDeviceRegistration = async (
     return { success: false, status: 'pending', error: '유효하지 않은 배포 코드입니다.' };
   }
 
-  // 2. 지점 정보 및 할당량(Quota) 확인
+  // 2. 지점 정보 확인 및 라이트 버전 할당량 체크
   const branchDoc = await getDoc(doc(db, 'branches', branchId));
   if (!branchDoc.exists()) {
     return { success: false, status: 'pending', error: '존재하지 않는 지점입니다.' };
   }
   
   const branchData = branchDoc.data() as Branch;
-  const allowedLicenses = branchData.allowedLicenses || 2; // 기본 2대
+  // 라이트 버전 고유의 라이센스 허용량 (지정되지 않았을 경우 기본 1대)
+  const liteAllowedLicenses = branchData.liteAllowedLicenses !== undefined ? branchData.liteAllowedLicenses : 1;
   
-  // 3. 현재 활성 기기 개수 확인
+  // 3. 현재 활성 라이트 기기 개수 확인
   const activeCount = await getActiveDeviceCount(branchId);
   
-  if (activeCount >= allowedLicenses) {
+  if (activeCount >= liteAllowedLicenses) {
     return { 
       success: false, 
       status: 'pending', 
-      error: `허용된 라이센스 개수(${allowedLicenses}대)를 초과했습니다. 본사에 문의하여 추가 승인을 받으세요.` 
+      error: `온라인 라이트 버전 허용 기기 수(${liteAllowedLicenses}대)를 초과했습니다. 본사에 문의하여 라이트 버전 추가 승인을 받으세요.` 
     };
   }
 
-  // 4. 할당량 이내 & 코드 정상 -> 자동 승인 완료 처리
+  // 4. 할당량 이내 & 코드 정상 -> 라이트 전용 DB(lite_devices)에 자동 승인 완료 처리
   const newDevice: Omit<DeviceLicense, 'id'> = {
     branchId,
     adminName,
@@ -225,26 +259,30 @@ export const requestDeviceRegistration = async (
     lastActive: serverTimestamp()
   };
 
-  await setDoc(doc(db, 'devices', hardwareId), newDevice);
+  await setDoc(doc(db, 'lite_devices', hardwareId), newDevice);
   
   return { success: true, status: 'active' };
 };
 
-// 4. 관리자 전용 제어 함수
-export const getAllDevices = async (): Promise<DeviceLicense[]> => {
-  const q = query(collection(db, 'devices'));
-  const snapshot = await getDocs(q);
-  const devices: DeviceLicense[] = [];
-  snapshot.forEach((doc) => devices.push({ id: doc.id, ...doc.data() } as DeviceLicense));
-  return devices;
-};
+// ─── 피드백 관리 ────────────────────────────────────────────────────────────────
 
-export const updateDeviceStatus = async (hardwareId: string, status: 'active' | 'pending' | 'revoked') => {
-  const docRef = doc(db, 'devices', hardwareId);
-  await updateDoc(docRef, { status });
-};
-
-export const deleteDevice = async (hardwareId: string) => {
-  const docRef = doc(db, 'devices', hardwareId);
-  await deleteDoc(docRef);
+export const getAllFeedbacks = async (): Promise<any[]> => {
+  try {
+    const q = query(collection(db, 'ai_feedbacks_v1'));
+    const snap = await getDocs(q);
+    const feedbacks: any[] = [];
+    snap.forEach(d => {
+      feedbacks.push({ id: d.id, ...d.data() });
+    });
+    // 최신순 정렬
+    feedbacks.sort((a, b) => {
+      const da = a.createdAt || a.syncedAt || '';
+      const db2 = b.createdAt || b.syncedAt || '';
+      return db2.localeCompare(da);
+    });
+    return feedbacks;
+  } catch (e) {
+    console.error("Failed to fetch feedbacks:", e);
+    return [];
+  }
 };
