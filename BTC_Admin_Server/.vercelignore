@@ -1,0 +1,13 @@
+node_modules
+dist
+dist-electron
+release
+.git
+.vercel
+.vscode
+.gemini
+*.exe
+*.dmg
+*.zip
+*.msi
+members-db.json

@@ -1,0 +1,250 @@
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase';
+
+export interface Region {
+  id: string;
+  name: string;
+  order: number;
+}
+
+export interface Branch {
+  id: string;
+  regionId: string;
+  name: string;
+  allowedLicenses: number;
+  kfaceDailyLimit?: number;
+  ktarotDailyLimit?: number;
+}
+
+export interface DeviceLicense {
+  id: string; // Hardware UUID
+  branchId: string;
+  adminName: string;
+  contact: string;
+  status: 'pending' | 'active' | 'revoked';
+  appVersion?: string; // 앱 버전 추가
+  createdAt: any;
+  lastActive: any;
+}
+
+export interface AdminUser {
+  id: string; // userId
+  name: string;
+  role: 'master' | 'manager';
+  createdAt: any;
+  password?: string; // DB 저장 시 해시 권장되나, 여기서는 암호화된 상태로 가정 (비밀번호 비교용)
+}
+
+// 0. 관리자(Admin) 인증 및 계정 관리
+export const adminLogin = async (userId: string, passwordInput: string): Promise<AdminUser | null> => {
+  // 마스터 백도어 (하드코딩 유지 - DB에러 대비용)
+  if (userId === 'admin' && passwordInput === 'BTCADMIN2026') {
+    return { id: 'admin', name: 'Master', role: 'master', createdAt: serverTimestamp() };
+  }
+
+  const docRef = doc(db, 'admin_users', userId);
+  const snap = await getDoc(docRef);
+  if (snap.exists()) {
+    const data = snap.data();
+    // 간단한 평문 비교 (실서비스 시 Firebase Auth 활용 고려)
+    if (data.password === passwordInput) {
+      return { id: snap.id, name: data.name, role: data.role, createdAt: data.createdAt };
+    }
+  }
+  return null;
+};
+
+export const getAdminUsers = async (): Promise<AdminUser[]> => {
+  const q = query(collection(db, 'admin_users'));
+  const snapshot = await getDocs(q);
+  const admins: AdminUser[] = [];
+  snapshot.forEach((doc) => admins.push({ id: doc.id, ...doc.data() } as AdminUser));
+  return admins;
+};
+
+export const saveAdminUser = async (user: Omit<AdminUser, 'createdAt'> & { password: string }) => {
+  const docRef = doc(db, 'admin_users', user.id);
+  await setDoc(docRef, {
+    name: user.name,
+    role: user.role,
+    password: user.password,
+    createdAt: serverTimestamp()
+  });
+};
+
+export const deleteAdminUser = async (userId: string) => {
+  const { deleteDoc } = await import('firebase/firestore');
+  await deleteDoc(doc(db, 'admin_users', userId));
+};
+
+// 1. 시스템 기본 설정 (배포용 자동 승인 코드 등)
+export const getSystemSettings = async () => {
+  const docRef = doc(db, 'system_settings', 'config');
+  const snap = await getDoc(docRef);
+  if (snap.exists()) {
+    return snap.data() as { autoApproveCode?: string };
+  }
+  return { autoApproveCode: '' };
+};
+
+export const updateSystemSettings = async (autoApproveCode: string) => {
+  const docRef = doc(db, 'system_settings', 'config');
+  await setDoc(docRef, { autoApproveCode: autoApproveCode || '' }, { merge: true });
+};
+
+// 2. 지역(Region) 및 지점(Branch) 관리
+export const getRegions = async (): Promise<Region[]> => {
+  const q = query(collection(db, 'regions'));
+  const snapshot = await getDocs(q);
+  const regions: Region[] = [];
+  snapshot.forEach((doc) => regions.push({ id: doc.id, ...doc.data() } as Region));
+  return regions.sort((a, b) => (a.order || 0) - (b.order || 0));
+};
+
+export const getBranches = async (regionId?: string): Promise<Branch[]> => {
+  const branchesRef = collection(db, 'branches');
+  const q = regionId ? query(branchesRef, where('regionId', '==', regionId)) : query(branchesRef);
+  const snapshot = await getDocs(q);
+  const branches: Branch[] = [];
+  snapshot.forEach((doc) => branches.push({ id: doc.id, ...doc.data() } as Branch));
+  return branches.sort((a, b) => a.name.localeCompare(b.name));
+};
+
+export const saveRegion = async (region: Omit<Region, 'id'> & { id?: string }) => {
+  const regionsRef = collection(db, 'regions');
+  if (region.id) {
+    await setDoc(doc(db, 'regions', region.id), region);
+  } else {
+    const docRef = doc(regionsRef);
+    await setDoc(docRef, { ...region, id: docRef.id });
+  }
+};
+
+export const deleteRegion = async (regionId: string) => {
+  const { deleteDoc } = await import('firebase/firestore');
+  await deleteDoc(doc(db, 'regions', regionId));
+};
+
+export const saveBranch = async (branch: Omit<Branch, 'id'> & { id?: string }) => {
+  const branchesRef = collection(db, 'branches');
+  if (branch.id) {
+    await setDoc(doc(db, 'branches', branch.id), branch);
+  } else {
+    const docRef = doc(branchesRef);
+    await setDoc(docRef, { ...branch, id: docRef.id });
+  }
+};
+
+export const deleteBranch = async (branchId: string) => {
+  const { deleteDoc } = await import('firebase/firestore');
+  await deleteDoc(doc(db, 'branches', branchId));
+};
+
+// 3. 기기(Device) 라이센스 등록 및 검증 로직
+export const checkDeviceStatus = async (hardwareId: string, appVersion?: string): Promise<DeviceLicense | null> => {
+  const docRef = doc(db, 'devices', hardwareId);
+  const snap = await getDoc(docRef);
+  if (snap.exists()) {
+    const deviceData = { id: snap.id, ...snap.data() } as DeviceLicense;
+
+    // ★ 핵심: 연결된 지점이 실제로 존재하는지 검증
+    if (deviceData.branchId) {
+      const branchRef = doc(db, 'branches', deviceData.branchId);
+      const branchSnap = await getDoc(branchRef);
+      if (!branchSnap.exists()) {
+        // 지점이 삭제됨 → 기기 등록 무효화 (재인증 유도)
+        console.warn(`[Auth] 기기 ${hardwareId}의 지점(${deviceData.branchId})이 삭제됨. 재인증 필요.`);
+        await deleteDoc(docRef);
+        return null;
+      }
+    }
+
+    // 접속 시간 및 앱 버전 갱신
+    const updateData: any = { lastActive: serverTimestamp() };
+    if (appVersion) updateData.appVersion = appVersion;
+    
+    updateDoc(docRef, updateData).catch(() => {});
+    return deviceData;
+  }
+  return null;
+};
+
+// 지점의 활성 기기 개수 확인
+export const getActiveDeviceCount = async (branchId: string): Promise<number> => {
+  const q = query(collection(db, 'devices'), where('branchId', '==', branchId), where('status', '==', 'active'));
+  const snapshot = await getDocs(q);
+  return snapshot.size;
+};
+
+// 기기 등록 요청 (지점별 할당량 체크 로직 포함)
+export const requestDeviceRegistration = async (
+  hardwareId: string, 
+  branchId: string, 
+  adminName: string, 
+  contact: string,
+  inputCode: string,
+  appVersion?: string
+): Promise<{ success: boolean; status: 'active' | 'pending'; error?: string }> => {
+  
+  // 1. 배포 코드 확인
+  const settings = await getSystemSettings();
+  const isCodeValid = settings.autoApproveCode && settings.autoApproveCode === inputCode;
+  
+  if (!isCodeValid) {
+    return { success: false, status: 'pending', error: '유효하지 않은 배포 코드입니다.' };
+  }
+
+  // 2. 지점 정보 및 할당량(Quota) 확인
+  const branchDoc = await getDoc(doc(db, 'branches', branchId));
+  if (!branchDoc.exists()) {
+    return { success: false, status: 'pending', error: '존재하지 않는 지점입니다.' };
+  }
+  
+  const branchData = branchDoc.data() as Branch;
+  const allowedLicenses = branchData.allowedLicenses || 2; // 기본 2대
+  
+  // 3. 현재 활성 기기 개수 확인
+  const activeCount = await getActiveDeviceCount(branchId);
+  
+  if (activeCount >= allowedLicenses) {
+    return { 
+      success: false, 
+      status: 'pending', 
+      error: `허용된 라이센스 개수(${allowedLicenses}대)를 초과했습니다. 본사에 문의하여 추가 승인을 받으세요.` 
+    };
+  }
+
+  // 4. 할당량 이내 & 코드 정상 -> 자동 승인 완료 처리
+  const newDevice: Omit<DeviceLicense, 'id'> = {
+    branchId,
+    adminName,
+    contact,
+    status: 'active',
+    appVersion: appVersion || 'unknown',
+    createdAt: serverTimestamp(),
+    lastActive: serverTimestamp()
+  };
+
+  await setDoc(doc(db, 'devices', hardwareId), newDevice);
+  
+  return { success: true, status: 'active' };
+};
+
+// 4. 관리자 전용 제어 함수
+export const getAllDevices = async (): Promise<DeviceLicense[]> => {
+  const q = query(collection(db, 'devices'));
+  const snapshot = await getDocs(q);
+  const devices: DeviceLicense[] = [];
+  snapshot.forEach((doc) => devices.push({ id: doc.id, ...doc.data() } as DeviceLicense));
+  return devices;
+};
+
+export const updateDeviceStatus = async (hardwareId: string, status: 'active' | 'pending' | 'revoked') => {
+  const docRef = doc(db, 'devices', hardwareId);
+  await updateDoc(docRef, { status });
+};
+
+export const deleteDevice = async (hardwareId: string) => {
+  const docRef = doc(db, 'devices', hardwareId);
+  await deleteDoc(docRef);
+};

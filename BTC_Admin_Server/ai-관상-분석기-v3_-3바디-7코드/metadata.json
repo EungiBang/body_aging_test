@@ -1,0 +1,7 @@
+{
+  "name": "AI 관상 분석기 V3: 3바디 7코드",
+  "description": "MediaPipe 3D 기술과 AI를 활용하여 물형관상(동물상)과 에너지 3바디 7코드를 정밀 분석하는 차세대 관상 엔진입니다.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

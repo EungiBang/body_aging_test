@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "UserInfo": {
+      "title": "UserInfo",
+      "description": "Basic information about the person being assessed",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "gender": { "type": "string", "enum": ["male", "female", "other"] },
+        "age": { "type": "integer" }
+      },
+      "required": ["name", "gender", "age"]
+    },
+    "PostureMetric": {
+      "title": "PostureMetric",
+      "description": "Analysis of a specific posture aspect",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["Good", "Fair", "Poor"] },
+        "description": { "type": "string" },
+        "score": { "type": "number" }
+      },
+      "required": ["name", "status", "description", "score"]
+    },
+    "StrengthMetric": {
+      "title": "StrengthMetric",
+      "description": "Analysis of a specific strength exercise",
+      "type": "object",
+      "properties": {
+        "exercise": { "type": "string" },
+        "reps": { "type": "number" },
+        "performance": { "type": "string" },
+        "formScore": { "type": "number" },
+        "recommendation": { "type": "string" }
+      },
+      "required": ["exercise", "reps", "performance", "formScore", "recommendation"]
+    },
+    "AgingMetric": {
+      "title": "AgingMetric",
+      "description": "Analysis of a specific aging/flexibility test",
+      "type": "object",
+      "properties": {
+        "testName": { "type": "string" },
+        "result": { "type": "string" },
+        "score": { "type": "number" }
+      },
+      "required": ["testName", "result", "score"]
+    },
+    "BrainTrainingRecommendations": {
+      "title": "BrainTrainingRecommendations",
+      "description": "Personalized training guides",
+      "type": "object",
+      "properties": {
+        "meditation": { "type": "string" },
+        "gymnastics": { "type": "string" },
+        "brainTraining": { "type": "string" }
+      },
+      "required": ["meditation", "gymnastics", "brainTraining"]
+    },
+    "BodyReport": {
+      "title": "BodyReport",
+      "description": "The complete AI analysis report",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "userInfo": { "$ref": "UserInfo" },
+        "physicalAge": { "type": "number" },
+        "faceAgeEstimate": { "type": "number" },
+        "overallScore": { "type": "number" },
+        "postureMetrics": { "type": "array", "items": { "$ref": "PostureMetric" } },
+        "strengthMetrics": { "type": "array", "items": { "$ref": "StrengthMetric" } },
+        "agingMetrics": { "type": "array", "items": { "$ref": "AgingMetric" } },
+        "faceAnalysis": {
+          "type": "object",
+          "properties": {
+            "wrinkles": { "type": "string" },
+            "elasticity": { "type": "string" },
+            "summary": { "type": "string" },
+            "recommendation": { "type": "string" }
+          }
+        },
+        "summary": { "type": "string" },
+        "brainHealthImplication": { "type": "string" },
+        "recommendations": { "$ref": "BrainTrainingRecommendations" }
+      },
+      "required": ["id", "date", "userInfo", "physicalAge", "overallScore", "summary"]
+    },
+    "CapturedImage": {
+      "title": "CapturedImage",
+      "description": "Image captured during assessment",
+      "type": "object",
+      "properties": {
+        "step": { "type": "string" },
+        "dataUrl": { "type": "string" },
+        "reps": { "type": "number" },
+        "duration": { "type": "number" }
+      },
+      "required": ["step", "dataUrl"]
+    },
+    "MemberRecord": {
+      "title": "MemberRecord",
+      "description": "A complete record for a member assessment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "lastTestDate": { "type": "string", "format": "date-time" },
+        "report": { "$ref": "BodyReport" },
+        "images": { "type": "array", "items": { "$ref": "CapturedImage" } },
+        "ownerUid": { "type": "string" }
+      },
+      "required": ["id", "name", "lastTestDate", "report", "images", "ownerUid"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/members/{memberId}": {
+      "schema": "MemberRecord",
+      "description": "Collection of assessment records"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and roles"
+    }
+  }
+}

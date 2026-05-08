@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import AssessmentFlow from './components/AssessmentFlow';
 import BranchAuthScreen from './components/BranchAuthScreen';
-import AdminDashboard from './components/AdminDashboard';
 import { checkDeviceStatus } from './services/firebaseAuthService';
 import { ErrorLogger } from './services/ErrorLogger';
 
@@ -11,9 +10,6 @@ type DeviceState = 'loading' | 'active' | 'pending' | 'revoked' | 'unregistered'
 
 const App: React.FC = () => {
   const [deviceState, setDeviceState] = useState<DeviceState>('loading');
-  
-  // URL에 ?portal=btc_admin_secure 가 있으면 웹 관리자 모드로 인식
-  const isAdminRoute = window.location.search.includes('portal=btc_admin_secure');
 
   useEffect(() => {
     // 전역 에러 감지기 설정
@@ -35,11 +31,6 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // 관리자 모드인 경우 하드웨어 인증 로직 생략
-    if (isAdminRoute) {
-      setDeviceState('active'); // 실제 기능은 안쓰지만 로딩 스크린 해제용
-      return;
-    }
 
     const checkAuth = async () => {
       try {
@@ -89,7 +80,7 @@ const App: React.FC = () => {
     };
     
     checkAuth();
-  }, [isAdminRoute]);
+  }, []);
 
   if (deviceState === 'loading') {
     return (
@@ -97,11 +88,6 @@ const App: React.FC = () => {
         <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
       </div>
     );
-  }
-
-  // 관리자 웹 모드 렌더링
-  if (isAdminRoute) {
-    return <AdminDashboard onClose={() => window.location.href = '/'} />;
   }
 
   return (
