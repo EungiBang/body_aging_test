@@ -146,7 +146,7 @@ export const AdminErrorMonitor: React.FC<AdminErrorMonitorProps> = ({ branches, 
                     </td>
                     <td className="p-4">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${log.type === 'api' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
-                        {log.type.toUpperCase()}
+                        {(log.type || 'unknown').toUpperCase()}
                       </span>
                       <div className="text-xs text-slate-500 mt-1">{log.source}</div>
                     </td>

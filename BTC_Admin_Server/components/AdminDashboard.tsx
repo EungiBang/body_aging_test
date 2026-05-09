@@ -64,8 +64,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [r, b, d, s, au, dashStats] = await Promise.all([
-        getRegions(), getBranches(), getAllDevices(), getSystemSettings(), getAdminUsers(), getDashboardStats()
+      const [r, b, d, s, au, dashStats, feedbacks] = await Promise.all([
+        getRegions(), getBranches(), getAllDevices(), getSystemSettings(), getAdminUsers(), getDashboardStats(), getAllFeedbacks()
       ]);
       setRegions(r);
       setBranches(b);
@@ -73,6 +73,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       setSettings((s as any) || { autoApproveCode: '' });
       setAdminUsers(au);
       setStats(dashStats);
+      setAllFeedbacks(feedbacks);
 
       const usages: Record<string, UsageStatus> = {};
       await Promise.all(b.map(async (branch) => {
@@ -465,6 +466,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         <button onClick={() => { setActiveTab('members'); if (cloudMembers.length === 0) { setMembersLoading(true); fetchAllMembers().then(m => { setCloudMembers(m); setMembersLoading(false); }).catch(() => setMembersLoading(false)); } }} className={`px-6 py-3 font-bold rounded-t-xl transition-colors ${activeTab === 'members' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
           <i className="fas fa-users mr-2"></i>회원관리
         </button>
+        <button onClick={() => setActiveTab('feedbacks')} className={`px-6 py-3 font-bold rounded-t-xl transition-colors ${activeTab === 'feedbacks' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
+          <i className="fas fa-brain mr-2"></i>AI 피드백 훈련
+        </button>
         <button onClick={() => setActiveTab('errors')} className={`px-6 py-3 font-bold rounded-t-xl transition-colors ${activeTab === 'errors' ? 'bg-rose-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
           <i className="fas fa-exclamation-triangle mr-2"></i>에러 모니터링
         </button>
@@ -557,6 +561,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* AI 피드백 현황 섹션 */}
+                  {allFeedbacks.length > 0 && (
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                      <h3 className="text-lg font-bold text-slate-800 mb-4"><i className="fas fa-brain text-emerald-500 mr-2"></i>AI 훈련(피드백) 현황 요약</h3>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col items-center justify-center text-center">
+                          <div className="text-sm font-bold text-slate-500 mb-1">총 수집된 피드백</div>
+                          <div className="text-2xl font-black text-slate-800">{allFeedbacks.length}<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
+                        </div>
+                        <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex flex-col items-center justify-center text-center">
+                          <div className="text-sm font-bold text-emerald-600 mb-1">👍 긍정 평가</div>
+                          <div className="text-2xl font-black text-emerald-700">
+                            {allFeedbacks.filter(f => f.feedback && (f.feedback.physicalRating?.includes('satisfied') || f.feedback.faceRating?.includes('satisfied') || f.feedback.tarotRating?.includes('satisfied')) && !f.feedback.physicalRating?.includes('dissatisfied') && !f.feedback.faceRating?.includes('dissatisfied') && !f.feedback.tarotRating?.includes('dissatisfied')).length}
+                            <span className="text-sm font-normal text-emerald-600 ml-1">건</span>
+                          </div>
+                        </div>
+                        <div className="bg-rose-50 p-4 rounded-xl border border-rose-100 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-rose-100 transition-colors" onClick={() => setActiveTab('feedbacks')} title="클릭하여 상세 피드백 보기">
+                          <div className="text-sm font-bold text-rose-600 mb-1">⚠️ 개선 필요 (학습 대상)</div>
+                          <div className="text-2xl font-black text-rose-700">
+                            {allFeedbacks.filter(f => f.feedback && (f.feedback.physicalRating?.includes('dissatisfied') || f.feedback.faceRating?.includes('dissatisfied') || f.feedback.tarotRating?.includes('dissatisfied'))).length}
+                            <span className="text-sm font-normal text-rose-600 ml-1">건</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* 지역별 설치 현황 */}
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
@@ -781,9 +812,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               };
 
               // 버전 문자열을 비교 가능한 숫자 배열로 변환
-              const parseVersion = (v: string | undefined): number[] => {
+              const parseVersion = (v: any): number[] => {
                 if (!v || v === '-' || v === 'unknown') return [0, 0, 0];
-                return v.split('.').map(n => parseInt(n, 10) || 0);
+                return String(v).split('.').map(n => parseInt(n, 10) || 0);
               };
               const compareVersions = (a: string | undefined, b: string | undefined): number => {
                 const va = parseVersion(a);
@@ -795,8 +826,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                 return 0;
               };
 
-              // 최신 버전 계산
-              const allVersions = devices.map(d => d.appVersion).filter(v => v && v !== '-' && v !== 'unknown') as string[];
+              // 최신 버전 계산 (PC 버전에 대해서만 계산, LITE는 웹이라 항상 최신)
+              const pcDevices = devices.filter(d => d.deviceType === 'pc' || !d.deviceType);
+              const allVersions = pcDevices.map(d => d.appVersion).filter(v => v && v !== '-' && v !== 'unknown') as string[];
               const latestVersion = allVersions.length > 0 ? allVersions.sort((a, b) => compareVersions(b, a))[0] : null;
 
               const toggleSort = (key: 'createdAt' | 'appVersion') => {
@@ -820,7 +852,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                   const bName = branch?.name?.toLowerCase() || '';
                   const rName = regionName.toLowerCase();
                   const adminName = d.adminName?.toLowerCase() || '';
-                  if (!bName.includes(q) && !rName.includes(q) && !adminName.includes(q) && !d.id.toLowerCase().includes(q)) {
+                  const deviceIdStr = d.id ? String(d.id).toLowerCase() : '';
+                  if (!bName.includes(q) && !rName.includes(q) && !adminName.includes(q) && !deviceIdStr.includes(q)) {
                     return false;
                   }
                 }
@@ -861,7 +894,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         disabled={deviceFilterRegion === 'all'}
                       >
                         <option value="all">전체 지점</option>
-                        {branches.filter(b => b.regionId === deviceFilterRegion).sort((a,b)=>a.name.localeCompare(b.name, 'ko')).map(b => (
+                        {branches.filter(b => b.regionId === deviceFilterRegion).sort((a,b)=>(a.name || '').localeCompare(b.name || '', 'ko')).map(b => (
                           <option key={b.id} value={b.id}>{b.name}</option>
                         ))}
                       </select>
@@ -922,12 +955,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                 <span className="px-2 py-1 rounded bg-fuchsia-100 text-fuchsia-700 text-[10px] font-bold border border-fuchsia-200">📱 LITE</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 font-mono text-xs text-slate-400">{d.id.substring(0, 12)}...</td>
+                            <td className="px-4 py-3 font-mono text-xs text-slate-400">{String(d.id || '').substring(0, 12)}...</td>
                             <td className="px-4 py-3 font-bold text-slate-700">{d.adminName || '-'}</td>
                             <td className="px-4 py-3 text-xs text-slate-500">{d.contact || '-'}</td>
                             <td className="px-4 py-3 text-xs text-slate-500">{d.createdAt?.toDate ? d.createdAt.toDate().toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
                             <td className="px-4 py-3 font-mono text-xs font-bold">
-                              {latestVersion && d.appVersion && d.appVersion !== 'unknown' && compareVersions(d.appVersion, latestVersion) < 0 ? (
+                              {d.deviceType !== 'pc' && d.deviceType !== undefined ? (
+                                <span className="text-fuchsia-600 font-bold bg-fuchsia-50 px-2 py-1 rounded-full text-[10px] border border-fuchsia-100">
+                                  🌐 Web
+                                </span>
+                              ) : latestVersion && d.appVersion && d.appVersion !== 'unknown' && compareVersions(d.appVersion, latestVersion) < 0 ? (
                                 <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700" title={`최신: ${latestVersion}`}>
                                   ⚠️ {d.appVersion}
                                 </span>
@@ -940,7 +977,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                 d.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
                                 d.status === 'revoked' ? 'bg-rose-100 text-rose-700' :
                                 'bg-amber-100 text-amber-700'
-                              }`}>{d.status.toUpperCase()}</span>
+                              }`}>{(d.status || 'pending').toUpperCase()}</span>
                             </td>
                             <td className="px-4 py-3 text-right space-x-2">
                               {d.status !== 'active' && <button onClick={() => handleStatusChange(d.id, 'active', d.deviceType || 'pc')} className="px-3 py-1 bg-emerald-500 text-white rounded text-xs">승인</button>}

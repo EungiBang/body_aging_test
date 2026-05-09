@@ -928,17 +928,28 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
       {/* 관리자 피드백 패널 — Few-Shot 학습 데이터 누적 */}
       <FeedbackPanel report={report} />
 
-      {/* ⚠️ 법적 면책 고지 (의료법 준수) */}
-      <div className="mt-4 mb-2 px-6 py-4 bg-amber-50 border border-amber-200 rounded-2xl text-center print:block">
-        <p className="text-amber-800 text-xs font-bold mb-1">
-          ⚠️ 서비스 이용 안내 (법적 고지)
-        </p>
-        <p className="text-amber-700 text-[11px] leading-relaxed">
-          본 결과는 뇌파와 생체 에너지 균형을 파악하기 위한 <strong>웰니스 스크리닝 지표</strong>입니다.{' '}
-          의료기기법에 따른 의료기기 또는 의료행위가 <strong>아닙니다</strong>.<br />
-          본 리포트는 의학적 진단·처방·치료를 대체하지 않습니다.{' '}
-          근골격계의 심각한 물리적 통증이나 의학적 이상이 지속될 경우 전문 의료기관의 진료를 권장합니다.
-        </p>
+      {/* ⚠️ 법적 면책 고지 및 산출 근거 (의료법 준수) */}
+      <div className="mt-8 mb-2 px-6 py-5 bg-slate-50 border border-slate-200 rounded-2xl text-left print:block">
+        <div className="flex items-center gap-2 mb-3 justify-center">
+          <i className="fas fa-book-medical text-slate-400"></i>
+          <p className="text-slate-600 text-xs font-bold uppercase tracking-wider">
+            서비스 산출 근거 및 이용 안내 (법적 고지)
+          </p>
+        </div>
+        <div className="text-slate-500 text-[11px] leading-relaxed space-y-3">
+          <p>
+            <strong>📌 학술적 측정 기반 (Academic Basis):</strong> 본 서비스의 웰니스 지표는 다음의 인지과학 및 생체역학적 연구 방법론을 기초로 당사의 AI 알고리즘에 맞게 재구성되었습니다.
+            <br />• <strong>신체 분석:</strong> Kendall의 자세 평가(Posture Analysis) 및 플럼라인(Plumb Line) 생체역학 정렬 기준
+            <br />• <strong>두뇌 분석:</strong> J.R. Stroop(1935)의 인지 간섭 현상(Stroop Effect) 및 A. Baddeley(1974)의 작업기억(Working Memory) 모델
+            <br />• <strong>안면 분석:</strong> Computer Vision 기반 안면 랜드마크(Facial Landmark) 텍스처 및 비대칭성 분석
+          </p>
+          <p>
+            <strong>📌 연령 지표 산출 근거:</strong> 위 학술적 기반과 Vision AI(자세 정렬, 안면 근육, 인지 반응 속도 등) 측정 데이터를 종합하여, 당사 고유의 <strong>통계적·휴리스틱 알고리즘</strong>을 통해 산출된 <strong>건강관리 및 동기부여 목적의 참고 지표</strong>입니다.
+          </p>
+          <p>
+            <strong>⚠️ 비의료 건강관리서비스 안내:</strong> 본 테스트는 보건복지부의 「비의료 건강관리서비스 가이드라인」을 준수합니다. 본 결과는 질병의 진단을 위한 의학적 수치가 아니며, 의료법에 따른 의료행위(진찰, 검사, 진단, 처방 등)를 대체할 수 없습니다. 질환이 의심되거나 신체적 이상이 있는 경우 반드시 전문 의료기관을 방문하여 진료를 받으시기 바랍니다.
+          </p>
+        </div>
       </div>
     </div>
   );
