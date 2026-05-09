@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AssessmentStep, BrainTestData } from '../types';
-import { speak } from '../services/ttsService';
+import { speak, stopSpeaking } from '../services/ttsService';
 import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl';
 import * as poseDetection from '@tensorflow-models/pose-detection';
@@ -1165,6 +1165,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
   // Handle start
   const handleStart = () => {
+    stopSpeaking(); // 테스트 진입 시 진행중이던 안내 나레이션 즉시 중단
     if (testType === AssessmentStep.BRAIN_MEMORY) {
       // 카메라 없이 바로 시작
       setPhase('countdown');
@@ -1500,7 +1501,10 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
           {/* PLAYING - MART SHOPPING GAME (손 커서 기반) */}
           {phase === 'playing' && testType === AssessmentStep.BRAIN_MEMORY && (
-            <div className="absolute inset-0 flex flex-col">
+            <div className={`absolute inset-0 flex items-center justify-center z-20 overflow-hidden ${isPortraitMode ? 'bg-slate-950/80 p-2 md:p-8' : ''}`}>
+              <div className={`relative w-full h-full flex flex-col transition-all duration-500 overflow-hidden mx-auto
+                ${isPortraitMode ? 'w-[95%] max-w-3xl max-h-[85vh] aspect-[4/5] rounded-[3rem] bg-slate-900 border border-slate-700/50 shadow-[0_0_50px_rgba(0,0,0,0.8)]' : ''}
+              `}>
               {/* 상단: 메시지 + 타이머 (showing 단계에서는 아이템 영역에 통합 표시) */}
               <div className={`absolute top-4 inset-x-0 text-center z-50 pointer-events-none ${martPhase === 'showing' ? 'hidden' : ''}`}>
                 {martPhase === 'shopping' && (
@@ -1526,23 +1530,23 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
               {/* 기억하기 단계 */}
               {martPhase === 'showing' && (
-                <div className="flex-1 flex flex-col items-center justify-center p-3">
-                  <div className={`w-full ${isPortraitMode ? 'max-w-sm' : 'max-w-4xl'}`}>
+                <div className={`flex-1 flex flex-col items-center ${isPortraitMode ? 'justify-start pt-28 pb-8' : 'justify-center'} p-3`}>
+                  <div className={`w-full ${isPortraitMode ? 'max-w-xl px-4' : 'max-w-4xl'}`}>
                     {/* 안내 + 타이머 */}
-                    <div className={`flex items-center justify-between mb-4 bg-black/50 backdrop-blur-sm border border-white/10 ${isPortraitMode ? 'rounded-2xl px-4 py-3' : 'rounded-3xl px-8 py-6'}`}>
-                      <span className={`text-white font-bold ${isPortraitMode ? 'text-sm' : 'text-2xl'}`}>🛒 물건 6개와 총 금액을 기억하세요</span>
-                      <span className={`font-black ml-3 ${isPortraitMode ? 'text-2xl' : 'text-4xl'} ${martShowingCountdown <= 5 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`}>
+                    <div className={`flex items-center justify-between bg-black/50 backdrop-blur-sm border border-white/10 ${isPortraitMode ? 'mb-8 rounded-2xl px-6 py-5 shadow-xl' : 'mb-4 rounded-3xl px-8 py-6'}`}>
+                      <span className={`text-white font-bold ${isPortraitMode ? 'text-lg' : 'text-2xl'}`}>🛒 물건 6개와 총 금액을 기억하세요</span>
+                      <span className={`font-black ml-3 ${isPortraitMode ? 'text-3xl drop-shadow-md' : 'text-4xl'} ${martShowingCountdown <= 5 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`}>
                         ⏱️ {martShowingCountdown}초
                       </span>
                     </div>
                     {/* 6개 아이템 그리드 */}
-                    <div className={`grid ${isPortraitMode ? 'grid-cols-2 gap-3' : 'grid-cols-3 gap-6'}`}>
+                    <div className={`grid ${isPortraitMode ? 'grid-cols-2 gap-6' : 'grid-cols-3 gap-6'}`}>
                       {martItemsToRemember.map((item, i) => (
                         <div key={item.id}
-                          className={`flex flex-col items-center justify-center rounded-xl bg-amber-500/20 border border-amber-500/50 ${isPortraitMode ? 'px-3 py-2.5' : 'px-6 py-8'}`}>
-                          <span className={isPortraitMode ? 'text-4xl' : 'text-7xl'}>{item.emoji}</span>
-                          <span className={`text-white font-bold mt-2 ${isPortraitMode ? 'text-sm' : 'text-2xl'}`}>{item.name}</span>
-                          <span className={`text-amber-300 font-black mt-1 ${isPortraitMode ? 'text-xs' : 'text-xl'}`}>{item.price/1000}천원</span>
+                          className={`flex flex-col items-center justify-center rounded-3xl bg-amber-500/20 border border-amber-500/50 ${isPortraitMode ? 'px-4 py-8 shadow-inner' : 'px-6 py-8'}`}>
+                          <span className={isPortraitMode ? 'text-[90px] leading-none drop-shadow-xl mb-3' : 'text-7xl'}>{item.emoji}</span>
+                          <span className={`text-white font-bold mt-3 ${isPortraitMode ? 'text-2xl' : 'text-2xl'}`}>{item.name}</span>
+                          <span className={`text-amber-300 font-black mt-2 ${isPortraitMode ? 'text-xl' : 'text-xl'}`}>{item.price/1000}천원</span>
                         </div>
                       ))}
                     </div>
@@ -1580,8 +1584,8 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
               {martPhase === 'shopping' && (
                 <div className={`flex-1 flex flex-col relative pt-16`}>
                   {/* Grid Area */}
-                  <div className={`flex-1 flex justify-center overflow-y-auto ${isPortraitMode ? 'flex-col items-center px-4 pt-1 pb-4' : 'items-center px-8 pb-4 pt-4'}`}>
-                    <div className={`grid w-full ${isPortraitMode ? 'grid-cols-3 gap-2 max-w-sm' : 'grid-cols-6 gap-6 max-w-6xl'}`}>
+                  <div className={`flex-1 flex justify-center overflow-y-auto ${isPortraitMode ? 'flex-col items-center justify-center px-6 pt-10 pb-6' : 'items-center px-8 pb-2 pt-2'}`}>
+                    <div className={`grid w-full ${isPortraitMode ? 'grid-cols-3 gap-5 max-w-xl' : 'grid-cols-6 gap-3 max-w-5xl'}`}>
                       {martShelfItems.map((item) => {
                         const inCart = cartItems.includes(item.id);
                         return (
@@ -1598,14 +1602,14 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                                 setTimeout(() => setLastAddedItem(null), 400);
                               }
                             }}
-                            className={`relative flex flex-col items-center justify-center rounded-2xl border-2 transition-all duration-200 select-none active:scale-95 ${isPortraitMode ? 'py-2 px-1' : 'py-6 px-3'} ${
-                              inCart ? 'bg-emerald-500/30 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                            className={`relative flex flex-col items-center justify-center rounded-3xl border-2 transition-all duration-200 select-none active:scale-95 ${isPortraitMode ? 'py-6 px-3' : 'py-3 px-2'} ${
+                              inCart ? 'bg-emerald-500/30 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
                               : cartItems.length >= MART_ITEMS_TO_REMEMBER ? 'border-white/10 bg-white/5 opacity-30 cursor-not-allowed'
-                              : 'border-white/20 bg-slate-800/80 hover:bg-indigo-500/30 hover:border-indigo-400 active:bg-indigo-500/50 cursor-pointer shadow-lg'
+                              : 'border-white/20 bg-slate-800/80 hover:bg-indigo-500/30 hover:border-indigo-400 active:bg-indigo-500/50 cursor-pointer shadow-xl'
                             }`}>
-                            <span className={`transition-transform drop-shadow-lg ${isPortraitMode ? 'text-3xl' : 'text-7xl'} ${lastAddedItem === item.id ? 'scale-125' : ''}`}>{item.emoji}</span>
-                            <span className={`text-white font-bold mt-3 ${isPortraitMode ? 'text-xs text-white/80' : 'text-xl'}`}>{item.name}</span>
-                            {inCart && <div className={`absolute bg-emerald-500 rounded-full flex items-center justify-center text-white font-black shadow-lg ${isPortraitMode ? '-top-1 -right-1 w-5 h-5 text-[10px]' : '-top-3 -right-3 w-10 h-10 text-xl border-4 border-slate-900'}`}>✓</div>}
+                            <span className={`transition-transform drop-shadow-xl ${isPortraitMode ? 'text-[70px] leading-none mb-3' : 'text-5xl'} ${lastAddedItem === item.id ? 'scale-125' : ''}`}>{item.emoji}</span>
+                            <span className={`text-white font-bold mt-2 ${isPortraitMode ? 'text-xl text-white/90' : 'text-sm'}`}>{item.name}</span>
+                            {inCart && <div className={`absolute bg-emerald-500 rounded-full flex items-center justify-center text-white font-black shadow-xl ${isPortraitMode ? '-top-3 -right-3 w-8 h-8 text-sm' : '-top-2 -right-2 w-8 h-8 text-sm border-2 border-slate-900'}`}>✓</div>}
                           </button>
                         );
                       })}
@@ -1613,31 +1617,31 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                   </div>
 
                   {/* Cart Area */}
-                  <div className={`${isPortraitMode ? 'relative z-10 w-full mx-auto pb-3 px-3 max-w-sm' : 'w-full px-8 pb-8 shrink-0 flex justify-center'}`}>
-                    <div className={`bg-gradient-to-br from-amber-600/40 to-orange-600/40 border-amber-400/50 backdrop-blur-xl rounded-2xl border-2 transition-all ${isPortraitMode ? 'p-3' : 'p-4 max-w-6xl w-full flex flex-col'}`}>
-                      <div className="flex items-center gap-3">
-                        <span className={isPortraitMode ? 'text-2xl' : 'text-3xl'}>🛒</span>
-                        <span className={`text-white font-black flex-1 ${isPortraitMode ? 'text-sm' : 'text-xl'}`}>장바구니</span>
-                        <span className={`text-amber-300 font-black ${isPortraitMode ? 'text-base' : 'text-2xl'}`}>{cartItems.length}/{MART_ITEMS_TO_REMEMBER}</span>
+                  <div className={`${isPortraitMode ? 'relative z-10 w-full mx-auto pb-8 px-6 max-w-xl' : 'w-full px-8 pb-4 shrink-0 flex justify-center'}`}>
+                    <div className={`bg-gradient-to-br from-amber-600/40 to-orange-600/40 border-amber-400/50 backdrop-blur-xl rounded-3xl border-2 transition-all ${isPortraitMode ? 'p-6 shadow-[0_0_40px_rgba(245,158,11,0.4)]' : 'p-3 max-w-5xl w-full flex flex-col'}`}>
+                      <div className="flex items-center gap-4">
+                        <span className={isPortraitMode ? 'text-3xl' : 'text-2xl'}>🛒</span>
+                        <span className={`text-white font-black flex-1 ${isPortraitMode ? 'text-xl' : 'text-lg'}`}>장바구니</span>
+                        <span className={`text-amber-300 font-black ${isPortraitMode ? 'text-2xl' : 'text-xl'}`}>{cartItems.length}/{MART_ITEMS_TO_REMEMBER}</span>
                       </div>
                       
-                      {!isPortraitMode && <div className="w-full h-px bg-white/20 my-3"></div>}
-
-                      <div className={`flex flex-wrap content-start mt-3 gap-3 ${isPortraitMode ? 'items-start min-h-[32px]' : 'items-center justify-center min-h-[100px]'}`}>
+                      {!isPortraitMode && <div className="w-full h-px bg-white/20 my-2"></div>}
+                      <div className={`flex flex-wrap content-start mt-4 gap-3 ${isPortraitMode ? 'items-start min-h-[48px]' : 'items-center justify-center min-h-[60px] max-h-[80px] overflow-y-auto overflow-x-hidden'}`}>
                         {cartItems.length === 0 ? (
-                          <div className={`w-full flex flex-col items-center justify-center opacity-40 ${isPortraitMode ? 'py-1' : 'py-2 gap-3'}`}>
-                            <span className={isPortraitMode ? 'hidden' : 'text-4xl'}>👆</span>
-                            <span className={`text-white font-bold text-center ${isPortraitMode ? 'text-xs' : 'text-lg'}`}>물건을 터치해서 담아주세요</span>
+                          <div className={`w-full flex flex-col items-center justify-center opacity-40 ${isPortraitMode ? 'py-3' : 'py-1 gap-2'}`}>
+                            <span className={isPortraitMode ? 'hidden' : 'text-2xl'}>👆</span>
+                            <span className={`text-white font-bold text-center ${isPortraitMode ? 'text-sm' : 'text-sm'}`}>물건을 터치해서 담아주세요</span>
                           </div>
                         ) : cartItems.map(id => { 
                           const it = MART_ITEMS.find(i => i.id === id); 
                           return (
                             <button key={id} 
                               onClick={() => { setCartItems(prev => prev.filter(x => x !== id)); speak(`${it?.name} 취소`); }}
-                              className={`bg-slate-800/80 border border-white/20 rounded-xl hover:bg-red-500/50 hover:border-red-400 active:scale-95 transition-all cursor-pointer shadow-lg flex items-center justify-center ${isPortraitMode ? 'px-3 py-2' : 'px-6 py-4 flex-col gap-2'}`}
+                              className={`bg-slate-800/80 border border-white/20 rounded-2xl hover:bg-red-500/50 hover:border-red-400 active:scale-95 transition-all cursor-pointer shadow-lg flex items-center justify-center ${isPortraitMode ? 'px-4 py-3 gap-2' : 'px-3 py-1.5 flex-row gap-2'}`}
                             >
-                              <span className={isPortraitMode ? 'text-xl' : 'text-5xl drop-shadow-md'}>{it?.emoji}</span>
-                              {!isPortraitMode && <span className="text-white font-bold text-sm">{it?.name}</span>}
+                              <span className={isPortraitMode ? 'text-3xl drop-shadow-md' : 'text-2xl drop-shadow-md'}>{it?.emoji}</span>
+                              <span className={isPortraitMode ? 'text-white font-bold text-sm' : 'hidden'}>{it?.name}</span>
+                              {!isPortraitMode && <span className="text-white font-bold text-xs">{it?.name}</span>}
                             </button>
                           ); 
                         })}
@@ -1677,29 +1681,31 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                   </div>
                 </div>
               )}
+
+              </div>
             </div>
           )}
 
           {/* RESULT PHASE */}
           {phase === 'result' && (
-            <div className="text-center space-y-4 max-w-sm bg-black/60 backdrop-blur-sm rounded-3xl p-8 mx-4">
-              <div className="text-4xl mb-1">🧠</div>
-              <h2 className="text-2xl font-black text-white">테스트 완료!</h2>
+            <div className="text-center space-y-6 max-w-lg w-full bg-black/60 backdrop-blur-sm rounded-[2rem] p-10 mx-4 shadow-2xl">
+              <div className="text-6xl mb-2">🧠</div>
+              <h2 className="text-4xl font-black text-white">테스트 완료!</h2>
               
-              <div className="space-y-3">
+              <div className="space-y-4 mt-6">
                 {testType === AssessmentStep.BRAIN_REACTION && (
                   <>
-                    <div className="bg-white/10 rounded-2xl p-4">
-                      <span className="text-white/60 text-xs font-bold">평균 반응시간</span>
-                      <div className="text-4xl font-black text-white">{resultData.reactionTimeMs}ms</div>
+                    <div className="bg-white/10 rounded-3xl p-6">
+                      <span className="text-white/60 text-lg font-bold">평균 반응시간</span>
+                      <div className="text-6xl font-black text-white mt-2">{resultData.reactionTimeMs}ms</div>
                     </div>
-                    <div className="bg-white/10 rounded-2xl p-3">
-                      <span className="text-white/60 text-xs font-bold">AI 측정 오답</span>
-                      <div className="text-xl font-black text-white">{resultData.reactionErrors}회</div>
+                    <div className="bg-white/10 rounded-3xl p-5">
+                      <span className="text-white/60 text-lg font-bold">AI 측정 오답</span>
+                      <div className="text-3xl font-black text-white mt-1">{resultData.reactionErrors}회</div>
                     </div>
                     {/* 원장님 수동 오답 수정 */}
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3">
-                      <label className="text-amber-300 text-xs font-bold block mb-2">
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-5">
+                      <label className="text-amber-300 text-sm font-bold block mb-3">
                         <i className="fas fa-edit mr-1"></i> 원장님 수동 오답 횟수 수정
                       </label>
                       <input 
@@ -1707,27 +1713,33 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                         value={manualReactionErrors}
                         onChange={(e) => setManualReactionErrors(e.target.value)}
                         placeholder={`AI 측정값: ${resultData.reactionErrors}회`}
-                        className="w-full text-center text-2xl font-black text-white py-2 bg-white/10 border-2 border-amber-500/30 rounded-xl focus:outline-none focus:border-amber-500 transition-colors"
+                        className="w-full text-center text-3xl font-black text-white py-3 bg-white/10 border-2 border-amber-500/30 rounded-2xl focus:outline-none focus:border-amber-500 transition-colors"
                       />
-                      <p className="text-[10px] text-amber-300/60 mt-1">비워두면 AI 측정값 사용</p>
+                      <p className="text-sm text-amber-300/60 mt-2">비워두면 AI 측정값 사용</p>
                     </div>
                   </>
                 )}
 
                 {testType === AssessmentStep.BRAIN_MEMORY && (
                   <>
-                    <div className="bg-white/10 rounded-2xl p-4">
-                      <span className="text-white/60 text-xs font-bold">기억력 정답</span>
-                      <div className="text-4xl font-black text-white">{resultData.memoryCorrect}/{MART_ITEMS_TO_REMEMBER}개</div>
-                      <p className="text-white/40 text-xs mt-1">틀린 개수: {MART_ITEMS_TO_REMEMBER - (resultData.memoryCorrect || 0)}개 (감점)</p>
+                    <div className="bg-white/10 rounded-3xl p-6">
+                      <span className="text-white/60 text-lg font-bold">기억력 정답</span>
+                      <div className="text-6xl font-black text-white mt-2">{resultData.memoryCorrect}/{MART_ITEMS_TO_REMEMBER}개</div>
+                      <p className="text-white/40 text-sm mt-2 font-bold">틀린 개수: {MART_ITEMS_TO_REMEMBER - (resultData.memoryCorrect || 0)}개 (감점)</p>
                     </div>
-                    <div className="bg-white/10 rounded-2xl p-3">
-                      <span className="text-white/60 text-xs font-bold">가격 계산</span>
-                      <div className="text-xl font-black text-white">{resultData.mathCorrect ? '✅ 정답' : '❌ 오답'}</div>
+                    {resultData.distractionCorrect !== undefined && (
+                      <div className="bg-white/10 rounded-3xl p-5">
+                        <span className="text-white/60 text-lg font-bold">사칙연산 (방해 자극)</span>
+                        <div className="text-3xl font-black text-white mt-1">{resultData.distractionCorrect}/2개 정답</div>
+                      </div>
+                    )}
+                    <div className="bg-white/10 rounded-3xl p-5">
+                      <span className="text-white/60 text-lg font-bold">총 금액 계산</span>
+                      <div className="text-3xl font-black text-white mt-1">{resultData.mathCorrect ? '✅ 정답' : '❌ 오답'}</div>
                     </div>
-                    <div className={`rounded-2xl p-4 ${(resultData.memoryCorrect || 0) >= 5 && resultData.mathCorrect ? 'bg-emerald-500/20 border border-emerald-500/30' : (resultData.memoryCorrect || 0) >= 3 ? 'bg-amber-500/20 border border-amber-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
-                      <span className="text-white/60 text-xs font-bold">종합 평가</span>
-                      <div className="text-2xl font-black text-white">
+                    <div className={`rounded-3xl p-6 mt-2 ${(resultData.memoryCorrect || 0) >= 5 && resultData.mathCorrect ? 'bg-emerald-500/20 border-2 border-emerald-500/30' : (resultData.memoryCorrect || 0) >= 3 ? 'bg-amber-500/20 border-2 border-amber-500/30' : 'bg-red-500/20 border-2 border-red-500/30'}`}>
+                      <span className="text-white/60 text-lg font-bold">종합 평가</span>
+                      <div className="text-4xl font-black text-white mt-2">
                         {(resultData.memoryCorrect || 0) >= 5 && resultData.mathCorrect ? '🌟 우수' : (resultData.memoryCorrect || 0) >= 3 ? '👍 보통' : '💪 노력 필요'}
                       </div>
                     </div>
@@ -1737,7 +1749,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
               <button
                 onClick={handleComplete}
-                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-lg font-black rounded-2xl shadow-lg hover:scale-[1.02] transition-all"
+                className="w-full py-5 mt-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-2xl font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
               >
                 다음 단계로 →
               </button>

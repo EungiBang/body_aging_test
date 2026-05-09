@@ -329,7 +329,7 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
     );
     fewShotBlock = buildFewShotPrompt(similarCases);
     if (fewShotBlock) {
-      console.log(`[Few-Shot] ${similarCases.length}건의 유사 사례를 프롬프트에 주입합니다.`);
+      console.log(`[Few-Shot] ${similarCases.positive.length + similarCases.negative.length}건의 유사/교정 사례를 프롬프트에 주입합니다.`);
     }
   } catch (e) {
     console.warn('[Few-Shot] 사례 검색 실패 (무시):', e);

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PhysiognomyReport } from '../types';
 import FaceFeedbackPanel from './FaceFeedbackPanel';
 
@@ -9,6 +9,7 @@ interface KFaceReportProps {
 }
 
 export default function KFaceReport({ report: rawReport, imageSrc, onClose }: KFaceReportProps) {
+  const [zoomLevel, setZoomLevel] = useState<number>(1.15);
   const userInfo = rawReport?.userInfo || { age: 0, gender: 'female' as const, name: '익명', memberType: 'new' as const };
 
   // AI 응답 데이터 누락 시 화면 다운(White Screen)을 방지하기 위한 안전한 기본값 병합
@@ -132,7 +133,17 @@ ${report.animalMorphology.animalMorphologyBlend?.map(b => `  - ${b.type} (${b.ma
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8 animate-fade-in-up pb-20">
+    <div className="w-full max-w-4xl mx-auto animate-fade-in-up pb-20 relative">
+      <div className="sticky top-4 right-4 z-50 flex justify-end print:hidden pointer-events-none" style={{ height: 0 }}>
+         <div className="bg-slate-800/90 backdrop-blur shadow-lg border border-slate-700 rounded-full px-4 py-2 flex items-center gap-3 pointer-events-auto">
+            <span className="text-xs font-bold text-slate-400">글자 크기</span>
+            <button onClick={() => setZoomLevel(prev => Math.max(0.8, prev - 0.1))} className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-200 font-bold transition-colors">-</button>
+            <span className="text-sm font-black text-fuchsia-400 w-12 text-center">{Math.round(zoomLevel * 100)}%</span>
+            <button onClick={() => setZoomLevel(prev => Math.min(1.8, prev + 0.1))} className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-200 font-bold transition-colors">+</button>
+         </div>
+      </div>
+      
+      <div className="space-y-8" style={{ zoom: zoomLevel }}>
       {/* Header Card */}
       <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700 shadow-2xl rounded-3xl p-8 text-center relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-cyan-500" />
@@ -710,6 +721,7 @@ ${report.animalMorphology.animalMorphologyBlend?.map(b => `  - ${b.type} (${b.ma
 
       {/* AI 관상 정확도 피드백 패널 (최하단) */}
       <FaceFeedbackPanel userInfo={userInfo as any} report={report} />
+      </div>
     </div>
   );
 }

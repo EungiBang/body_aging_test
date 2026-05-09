@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrainTestData } from '../types';
-import { speak } from '../services/ttsService';
+import { speak, stopSpeaking } from '../services/ttsService';
 
 interface TmtBrainTestModuleProps {
   onComplete: (dataUrl: string, brainTestData: BrainTestData) => void;
@@ -233,6 +233,7 @@ export const TmtBrainTestModule: React.FC<TmtBrainTestModuleProps> = ({ onComple
 
   const startGame = () => {
     initAudio();
+    stopSpeaking();
     setupRound1();
   };
 
@@ -391,11 +392,11 @@ export const TmtBrainTestModule: React.FC<TmtBrainTestModuleProps> = ({ onComple
       </div>
 
       {/* Game Area */}
-      <div className={`flex-1 min-h-0 w-full flex relative perspective-1000 p-2 md:p-8 ${isPortraitMode ? 'justify-center items-center' : 'flex-col'}`}>
+      <div className={`flex-1 min-h-0 w-full flex relative perspective-1000 p-2 md:p-8 ${isPortraitMode ? 'justify-center items-center bg-slate-950/50' : 'flex-col'}`}>
         <div 
           className={`relative w-full overflow-hidden bg-slate-900 shadow-2xl border border-slate-700/50 transition-all duration-500 
             ${phase === 'intro' ? 'shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)]' : 'shadow-none'}
-            ${isPortraitMode ? 'max-w-[calc((100vh-280px)*9/16)] aspect-[9/16] rounded-[2.5rem]' : 'flex-1 max-w-5xl mx-auto rounded-[2.5rem]'}
+            ${isPortraitMode ? 'w-[95%] max-w-5xl max-h-[85vh] aspect-[4/5] mx-auto rounded-[3rem]' : 'flex-1 max-w-5xl mx-auto rounded-[2.5rem]'}
           `}
           ref={containerRef}
         >
@@ -572,9 +573,9 @@ export const TmtBrainTestModule: React.FC<TmtBrainTestModuleProps> = ({ onComple
                           left: `${ball.x}%`,
                           top: `${ball.y}%`,
                           transform: 'translate(-50%, -50%)',
-                          width: isPortraitMode ? 'clamp(38px, 12vw, 55px)' : 'clamp(50px, 8vmin, 80px)',
-                          height: isPortraitMode ? 'clamp(38px, 12vw, 55px)' : 'clamp(50px, 8vmin, 80px)',
-                          fontSize: isPortraitMode ? 'clamp(16px, 5vw, 24px)' : 'clamp(20px, 3.5vmin, 36px)',
+                          width: isPortraitMode ? 'clamp(60px, 15vw, 90px)' : 'clamp(50px, 8vmin, 80px)',
+                          height: isPortraitMode ? 'clamp(60px, 15vw, 90px)' : 'clamp(50px, 8vmin, 80px)',
+                          fontSize: isPortraitMode ? 'clamp(24px, 6vw, 36px)' : 'clamp(20px, 3.5vmin, 36px)',
                           borderRadius: '50%',
                           background: `radial-gradient(circle at 30% 30%, ${ball.colorHex}, ${ball.colorHexDark})`,
                           color: '#ffffff',

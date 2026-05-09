@@ -37,6 +37,18 @@ const exportJson = (data: FeedbackRecord[]) => {
   a.remove();
 };
 
+const getRatingSummary = (r: FeedbackRecord): 'accurate' | 'partial' | 'inaccurate' | null => {
+  let rawRating;
+  if (r.feedbackType === 'face') rawRating = r.feedback.faceRating;
+  else if (r.feedbackType === 'tarot') rawRating = r.feedback.tarotRating;
+  else rawRating = r.feedback.physicalRating;
+
+  if (!rawRating) return null;
+  if (rawRating === 'very_satisfied' || rawRating === 'satisfied') return 'accurate';
+  if (rawRating === 'normal') return 'partial';
+  return 'inaccurate';
+};
+
 /* ── 메인 컴포넌트 ────────────────────────────────────────────────── */
 const FeedbackDashboard: React.FC = () => {
   const [records, setRecords] = useState<FeedbackRecord[]>([]);
@@ -50,10 +62,11 @@ const FeedbackDashboard: React.FC = () => {
   }, []);
 
   /* 통계 계산 */
-  const total      = records.length;
-  const accurate   = records.filter(r => r.feedback.rating === 'accurate').length;
-  const partial    = records.filter(r => r.feedback.rating === 'partial').length;
-  const inaccurate = records.filter(r => r.feedback.rating === 'inaccurate').length;
+  const validRecords = records.map(r => ({ ...r, summaryRating: getRatingSummary(r) })).filter(r => r.summaryRating !== null);
+  const total      = validRecords.length;
+  const accurate   = validRecords.filter(r => r.summaryRating === 'accurate').length;
+  const partial    = validRecords.filter(r => r.summaryRating === 'partial').length;
+  const inaccurate = validRecords.filter(r => r.summaryRating === 'inaccurate').length;
 
   const pieData = [
     { name: '정확', value: accurate,   key: 'accurate' },
@@ -77,11 +90,11 @@ const FeedbackDashboard: React.FC = () => {
 
   /* 연령대별 정확도 분포 */
   const ageGroups: Record<string, { accurate: number; total: number }> = {};
-  records.forEach(r => {
+  validRecords.forEach(r => {
     const band = `${Math.floor(r.userInfo.age / 10) * 10}대`;
     if (!ageGroups[band]) ageGroups[band] = { accurate: 0, total: 0 };
     ageGroups[band].total++;
-    if (r.feedback.rating === 'accurate') ageGroups[band].accurate++;
+    if (r.summaryRating === 'accurate') ageGroups[band].accurate++;
   });
   const ageBarData = Object.entries(ageGroups)
     .sort(([a], [b]) => a.localeCompare(b))
@@ -122,8 +135,9 @@ const FeedbackDashboard: React.FC = () => {
     <div className="space-y-8">
 
       {/* ① 요약 통계 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
+          { label: '종합 만족도', value: total ? Math.round((accurate/total)*100) : 0, unit: '%', color: 'bg-indigo-50 text-indigo-700 border-2 border-indigo-100', icon: '⭐', isSatisfaction: true },
           { label: '전체 피드백', value: total, unit: '건', color: 'bg-slate-100 text-slate-700', icon: '📊' },
           { label: '정확한 측정', value: accurate, unit: '건', color: 'bg-emerald-50 text-emerald-700', icon: '👍', pct: total ? Math.round(accurate/total*100) : 0 },
           { label: '일부 수정', value: partial, unit: '건', color: 'bg-amber-50 text-amber-700', icon: '🤔', pct: total ? Math.round(partial/total*100) : 0 },
@@ -139,6 +153,9 @@ const FeedbackDashboard: React.FC = () => {
               </div>
             )}
             {'pct' in card && <p className="text-xs font-bold opacity-60">{card.pct}%</p>}
+            {'isSatisfaction' in card && (
+              <p className="text-[10px] font-bold opacity-60 mt-1 leading-tight">전체 평가 중<br/>긍정(만족) 비율</p>
+            )}
           </div>
         ))}
       </div>
@@ -268,13 +285,16 @@ const FeedbackDashboard: React.FC = () => {
 
         <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
           {recent.map((r) => {
+            const sumRating = getRatingSummary(r);
+            if (!sumRating) return null;
+
             const ratingColor = {
               accurate:   'bg-emerald-100 text-emerald-700 border-emerald-200',
               partial:    'bg-amber-100 text-amber-700 border-amber-200',
               inaccurate: 'bg-rose-100 text-rose-700 border-rose-200',
-            }[r.feedback.rating];
+            }[sumRating];
 
-            const ratingIcon = { accurate: '👍', partial: '🤔', inaccurate: '👎' }[r.feedback.rating];
+            const ratingIcon = { accurate: '👍', partial: '🤔', inaccurate: '👎' }[sumRating];
             const hasCorrection =
               r.feedback.correctedOverallScore !== undefined ||
               r.feedback.correctedPhysicalAge !== undefined;
@@ -299,7 +319,7 @@ const FeedbackDashboard: React.FC = () => {
 
                 {/* 평가 배지 */}
                 <span className={`px-3 py-1 rounded-xl text-xs font-black border ${ratingColor}`}>
-                  {ratingIcon} {RATING_LABELS[r.feedback.rating]}
+                  {ratingIcon} {RATING_LABELS[sumRating]}
                 </span>
 
                 {/* 점수 비교 */}

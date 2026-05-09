@@ -12,6 +12,7 @@ interface ReportDashboardProps {
 
 const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRestart }) => {
   const [copied, setCopied] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState<number>(1.15);
   const radarData = (report?.postureMetrics || []).map(m => ({
     subject: m?.name || '항목',
     A: m.score,
@@ -188,20 +189,34 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
   };
 
   return (
-    <div className="flex-1 bg-white p-6 md:p-10 space-y-12 overflow-auto pb-24 print:p-0 print:overflow-visible">
-      {/* Header Info (Print only) */}
-      <div className="hidden print:flex justify-between items-center border-b pb-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-black uppercase">Neuro-Physical Report</h1>
-          <p className="text-base font-medium text-slate-500">브레인 트레이닝 센터 | {new Date(report.date).toLocaleDateString()}</p>
-        </div>
-        <div className="text-right">
-          <p className="font-bold text-lg">{report.userInfo.name} ({report.userInfo.gender === 'male' ? '남성' : '여성'})</p>
-          <p className="text-base font-medium">만 {report.userInfo.age}세</p>
-        </div>
+    <div className="flex-1 bg-white overflow-auto print:p-0 print:overflow-visible relative">
+      <div className="sticky top-6 right-6 z-50 flex justify-end print:hidden pointer-events-none" style={{ height: 0 }}>
+         <div className="bg-white/95 backdrop-blur-md shadow-[0_4px_20px_rgba(79,70,229,0.15)] border-2 border-indigo-100 rounded-2xl px-5 py-3 flex items-center gap-4 pointer-events-auto animate-fade-in transition-transform hover:scale-105">
+            <div className="flex flex-col">
+              <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">글자 크기 조정</span>
+              <span className="text-sm font-bold text-slate-600">보기 불편하신가요?</span>
+            </div>
+            <div className="w-px h-8 bg-slate-200 mx-1"></div>
+            <button onClick={() => setZoomLevel(prev => Math.max(0.8, prev - 0.1))} className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-slate-700 text-lg transition-all shadow-sm border border-slate-200"><i className="fas fa-minus"></i></button>
+            <span className="text-lg font-black text-indigo-600 w-14 text-center tabular-nums">{Math.round(zoomLevel * 100)}%</span>
+            <button onClick={() => setZoomLevel(prev => Math.min(1.8, prev + 0.1))} className="w-10 h-10 rounded-xl bg-indigo-100 hover:bg-indigo-200 active:scale-95 flex items-center justify-center text-indigo-700 text-lg transition-all shadow-sm border border-indigo-200"><i className="fas fa-plus"></i></button>
+         </div>
       </div>
+      
+      <div className="p-6 md:p-10 space-y-12 pb-24" style={{ zoom: zoomLevel }}>
+        {/* Header Info (Print only) */}
+        <div className="hidden print:flex justify-between items-center border-b pb-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-black uppercase">Neuro-Physical Report</h1>
+            <p className="text-base font-medium text-slate-500">브레인 트레이닝 센터 | {new Date(report.date).toLocaleDateString()}</p>
+          </div>
+          <div className="text-right">
+            <p className="font-bold text-lg">{report.userInfo.name} ({report.userInfo.gender === 'male' ? '남성' : '여성'})</p>
+            <p className="text-base font-medium">만 {report.userInfo.age}세</p>
+          </div>
+        </div>
 
-      {/* Hero Stats */}
+        {/* Hero Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 print:grid-cols-7">
         <div className="bg-slate-50 py-6 px-4 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center">
             <span className="text-slate-500 text-xs font-bold uppercase mb-2">생물학적 나이</span>
@@ -963,6 +978,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
           본 리포트는 의학적 진단·처방·치료를 대체하지 않습니다.{' '}
           근골격계의 심각한 물리적 통증이나 의학적 이상이 지속될 경우 전문 의료기관의 진료를 권장합니다.
         </p>
+      </div>
       </div>
     </div>
   );

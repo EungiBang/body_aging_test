@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { speak } from '../services/ttsService';
+import { speak, stopSpeaking } from '../services/ttsService';
 import { usePoseEstimation } from '../hooks/usePoseEstimation';
 import { useBackgroundBlur } from '../hooks/useBackgroundBlur';
 
@@ -377,6 +377,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
   // Auto-capture countdown (for posture front/side etc.)
   useEffect(() => {
     if (autoCapture && isCameraReady && isStarted) {
+      stopSpeaking();
       if (guidelineType === 'face') {
         speak("조명을 밝게 셋팅해 주세요. 5초 뒤에 촬영합니다. 준비해 주세요.");
       } else {
@@ -490,6 +491,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
 
   const startTestTimer = () => {
     if (!timerDuration) return;
+    stopSpeaking();
 
     // Appropriate narration per test type
     const narration = guidelineType === 'balance'

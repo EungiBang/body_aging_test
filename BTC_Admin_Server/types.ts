@@ -216,6 +216,7 @@ export interface MemberRecord {
   report: BodyReport;
   images: CapturedImage[];
   ownerUid?: string; // 로컬 DB 사용 시 필수 아님
+  sourceType?: 'PC' | 'LITE'; // 데이터 출처 구분 (PC 앱 또는 온라인 LITE)
   
   // 클라우드 동기화용 메타데이터 (선택적)
   branchId?: string;

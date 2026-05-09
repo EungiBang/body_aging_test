@@ -1,4 +1,4 @@
-import { doc, setDoc, getDocs, deleteDoc, query, collection, where, orderBy, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDocs, deleteDoc, query, collection, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { MemberRecord } from '../types';
 import logger from '../utils/logger';
@@ -89,8 +89,11 @@ export const syncFeedbackToCloud = async (record: any) => {
       }
     }
 
+    // undefined 값이 들어가면 Firebase에서 에러가 발생하므로, JSON 변환을 통해 필드 제거
+    const pureRecord = JSON.parse(JSON.stringify(record));
+
     const docData = {
-      ...record,
+      ...pureRecord,
       branchId,
       hardwareId,
       regionId,
@@ -106,6 +109,60 @@ export const syncFeedbackToCloud = async (record: any) => {
   } catch (e) {
     logger.error(TAG, `syncFeedbackToCloud 실패: ${record.id}`, e, true);
     return false;
+  }
+};
+
+/**
+ * AI 학습(Few-Shot)을 위해 클라우드(Firestore)에서 최신 피드백을 가져옵니다.
+ */
+export const fetchFeedbacksFromCloud = async (feedbackType: 'body' | 'face' | 'tarot', maxLimit = 100): Promise<any[]> => {
+  logger.debug(TAG, `fetchFeedbacksFromCloud 시작: type=${feedbackType}`);
+  const startTime = Date.now();
+  try {
+    logger.apiStart(TAG, `Firestore query: ai_feedbacks_v1 where feedbackType==${feedbackType}`);
+    const q = query(
+      collection(db, 'ai_feedbacks_v1'),
+      where('feedbackType', '==', feedbackType),
+      orderBy('createdAt', 'desc'),
+      limit(maxLimit)
+    );
+    const snap = await getDocs(q);
+    const feedbacks: any[] = [];
+    snap.forEach(doc => {
+      feedbacks.push({ id: doc.id, ...doc.data() });
+    });
+    const elapsed = Date.now() - startTime;
+    logger.apiEnd(TAG, 'fetchFeedbacksFromCloud', true, { count: feedbacks.length, elapsed: `${elapsed}ms` });
+    return feedbacks;
+  } catch (e) {
+    const elapsed = Date.now() - startTime;
+    logger.error(TAG, `fetchFeedbacksFromCloud 실패 (${elapsed}ms)`, e, true);
+    return [];
+  }
+};
+
+/**
+ * 관리자 대시보드용: 클라우드의 전체 피드백 데이터를 가져옵니다.
+ */
+export const fetchAllFeedbacksFromCloud = async (): Promise<any[]> => {
+  logger.debug(TAG, `fetchAllFeedbacksFromCloud 시작`);
+  const startTime = Date.now();
+  try {
+    logger.apiStart(TAG, `Firestore query: ai_feedbacks_v1 (ALL)`);
+    // 전체 통계용이므로 최신순으로 정렬해서 가져옴
+    const q = query(collection(db, 'ai_feedbacks_v1'), orderBy('createdAt', 'desc'));
+    const snap = await getDocs(q);
+    const feedbacks: any[] = [];
+    snap.forEach(doc => {
+      feedbacks.push({ id: doc.id, ...doc.data() });
+    });
+    const elapsed = Date.now() - startTime;
+    logger.apiEnd(TAG, 'fetchAllFeedbacksFromCloud', true, { count: feedbacks.length, elapsed: `${elapsed}ms` });
+    return feedbacks;
+  } catch (e) {
+    const elapsed = Date.now() - startTime;
+    logger.error(TAG, `fetchAllFeedbacksFromCloud 실패 (${elapsed}ms)`, e, true);
+    return [];
   }
 };
 

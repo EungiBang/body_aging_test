@@ -1,4 +1,4 @@
-import { doc, setDoc, getDocs, deleteDoc, query, collection, where, orderBy, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDocs, deleteDoc, query, collection, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { MemberRecord } from '../types';
 
@@ -55,6 +55,48 @@ export const syncMemberToCloud = async (
   } catch (e) {
     console.error('Failed to sync member to cloud', e);
     return false;
+  }
+};
+
+/**
+ * AI 학습(Few-Shot)을 위해 클라우드(Firestore)에서 최신 피드백을 가져옵니다.
+ */
+export const fetchFeedbacksFromCloud = async (feedbackType: 'body' | 'face' | 'tarot', maxLimit = 100): Promise<any[]> => {
+  try {
+    const q = query(
+      collection(db, 'ai_feedbacks_v1'),
+      where('feedbackType', '==', feedbackType),
+      orderBy('createdAt', 'desc'),
+      limit(maxLimit)
+    );
+    const snap = await getDocs(q);
+    const feedbacks: any[] = [];
+    snap.forEach(doc => {
+      feedbacks.push({ id: doc.id, ...doc.data() });
+    });
+    return feedbacks;
+  } catch (e) {
+    console.error(`Failed to fetch feedbacks for ${feedbackType}`, e);
+    return [];
+  }
+};
+
+/**
+ * 관리자 대시보드용: 클라우드의 전체 피드백 데이터를 가져옵니다.
+ */
+export const fetchAllFeedbacksFromCloud = async (): Promise<any[]> => {
+  try {
+    // 전체 통계용이므로 최신순으로 정렬해서 가져옴
+    const q = query(collection(db, 'ai_feedbacks_v1'), orderBy('createdAt', 'desc'));
+    const snap = await getDocs(q);
+    const feedbacks: any[] = [];
+    snap.forEach(doc => {
+      feedbacks.push({ id: doc.id, ...doc.data() });
+    });
+    return feedbacks;
+  } catch (e) {
+    console.error('Failed to fetch all feedbacks from cloud', e);
+    return [];
   }
 };
 

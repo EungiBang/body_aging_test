@@ -12,6 +12,7 @@ interface ReportDashboardProps {
 
 const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRestart }) => {
   const [copied, setCopied] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState<number>(1.15);
   const radarData = (report?.postureMetrics || []).map(m => ({
     subject: m?.name || '항목',
     A: m.score,
@@ -133,6 +134,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
   const renderImageWithOverlay = (img: CapturedImage, i: number) => {
     const isPosture = img.step.includes('POSTURE');
     const isFace = img.step.includes('FACE');
+    const isStrength = img.step.includes('STRENGTH');
 
     return (
       <div key={i} className="group relative rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-100 aspect-square">
@@ -172,7 +174,12 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
           </div>
         )}
 
-
+        {/* Strength Reps Overlay */}
+        {isStrength && img.reps !== undefined && (
+          <div className="absolute top-2 right-2 bg-indigo-600 text-white text-sm font-black px-3 py-1.5 rounded-lg shadow-md">
+            {img.reps}회
+          </div>
+        )}
 
         <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-sm p-3 text-sm text-white font-bold text-center">
           {img.step.replace('POSTURE_', '자세:').replace('STRENGTH_', '근력:').replace('_TEST', '').replace('_ANALYSIS', '')}
@@ -182,20 +189,30 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
   };
 
   return (
-    <div className="flex-1 bg-white p-6 md:p-10 space-y-12 overflow-auto pb-24 print:p-0 print:overflow-visible">
-      {/* Header Info (Print only) */}
-      <div className="hidden print:flex justify-between items-center border-b pb-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-black uppercase">Neuro-Physical Report</h1>
-          <p className="text-base font-medium text-slate-500">브레인 트레이닝 센터 | {new Date(report.date).toLocaleDateString()}</p>
-        </div>
-        <div className="text-right">
-          <p className="font-bold text-lg">{report.userInfo.name} ({report.userInfo.gender === 'male' ? '남성' : '여성'})</p>
-          <p className="text-base font-medium">만 {report.userInfo.age}세</p>
-        </div>
+    <div className="flex-1 bg-white overflow-auto print:p-0 print:overflow-visible relative">
+      <div className="sticky top-4 right-4 z-50 flex justify-end print:hidden pointer-events-none" style={{ height: 0 }}>
+         <div className="bg-white/90 backdrop-blur shadow-lg border border-slate-200 rounded-full px-4 py-2 flex items-center gap-3 pointer-events-auto">
+            <span className="text-xs font-bold text-slate-500">글자 크기</span>
+            <button onClick={() => setZoomLevel(prev => Math.max(0.8, prev - 0.1))} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 font-bold transition-colors">-</button>
+            <span className="text-sm font-black text-indigo-600 w-12 text-center">{Math.round(zoomLevel * 100)}%</span>
+            <button onClick={() => setZoomLevel(prev => Math.min(1.8, prev + 0.1))} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 font-bold transition-colors">+</button>
+         </div>
       </div>
+      
+      <div className="p-6 md:p-10 space-y-12 pb-24" style={{ zoom: zoomLevel }}>
+        {/* Header Info (Print only) */}
+        <div className="hidden print:flex justify-between items-center border-b pb-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-black uppercase">Neuro-Physical Report</h1>
+            <p className="text-base font-medium text-slate-500">브레인 트레이닝 센터 | {new Date(report.date).toLocaleDateString()}</p>
+          </div>
+          <div className="text-right">
+            <p className="font-bold text-lg">{report.userInfo.name} ({report.userInfo.gender === 'male' ? '남성' : '여성'})</p>
+            <p className="text-base font-medium">만 {report.userInfo.age}세</p>
+          </div>
+        </div>
 
-      {/* Hero Stats */}
+        {/* Hero Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 print:grid-cols-7">
         <div className="bg-slate-50 py-6 px-4 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center">
             <span className="text-slate-500 text-xs font-bold uppercase mb-2">생물학적 나이</span>
@@ -296,6 +313,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
       )}
 
       {/* Captured Evidence Section */}
+      {images && images.length > 0 && (
       <section>
         <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
           <i className="fas fa-camera text-indigo-500"></i>
@@ -305,6 +323,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
           {images.filter(img => !['FACE_ANALYSIS', 'BRAIN_REACTION', 'BRAIN_MEMORY', 'SEVEN_CODE_CHECK'].includes(img.step)).map((img, i) => renderImageWithOverlay(img, i))}
         </div>
       </section>
+      )}
 
       {/* Posture & Balance Detail */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -342,8 +361,12 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                         </span>
                       </div>
                       <div className="text-xs text-slate-500 mb-1">
-                        측정값: <strong className="text-slate-700">{item?.measuredValue}</strong>
-                        <span className="mx-1">|</span>
+                        {item?.measuredValue && !item.measuredValue.includes('N/A') && (
+                          <>
+                            측정값: <strong className="text-slate-700">{item?.measuredValue}</strong>
+                            <span className="mx-1">|</span>
+                          </>
+                        )}
                         정상: {item?.normalRange}
                       </div>
                       <p className="text-xs text-slate-600 leading-relaxed">{item?.impact}</p>
@@ -386,7 +409,19 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
             <div className="bg-white p-8 rounded-3xl border border-slate-200">
                 <h3 className="text-xl font-bold text-slate-800 mb-6">기능적 수행 능력 상세</h3>
                 <div className="grid grid-cols-1 gap-4">
-
+                    {report?.strengthMetrics?.map((item, i) => (
+                        <div key={i} className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100">
+                            <div className="flex justify-between items-center mb-2">
+                                <h5 className="font-bold text-indigo-900 text-base">{item?.exercise}</h5>
+                                <div className="text-right">
+                                  <span className="text-sm font-black text-indigo-600 block">자세 점수: {item?.formScore}점</span>
+                                  {item?.reps > 0 && <span className="text-sm font-bold text-indigo-500 block">수행 횟수: {item?.reps}회</span>}
+                                </div>
+                            </div>
+                            <p className="text-sm font-medium text-indigo-800 mb-3">{item?.performance}</p>
+                            <p className="text-sm font-bold text-indigo-700 bg-indigo-100/60 p-3 rounded-lg">💡 {item?.recommendation}</p>
+                        </div>
+                    ))}
                     {report?.agingMetrics?.map((item, i) => (
                         <div key={i} className="p-4 rounded-2xl bg-rose-50/50 border border-rose-100">
                             <div className="flex justify-between items-center mb-2">
@@ -939,6 +974,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
           본 리포트는 의학적 진단·처방·치료를 대체하지 않습니다.{' '}
           근골격계의 심각한 물리적 통증이나 의학적 이상이 지속될 경우 전문 의료기관의 진료를 권장합니다.
         </p>
+      </div>
       </div>
     </div>
   );

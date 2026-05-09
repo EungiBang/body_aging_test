@@ -30,6 +30,7 @@ const KTarotApp: React.FC<KTarotAppProps> = ({ onClose, onBack }) => {
   const [drawnCards, setDrawnCards] = useState<{ past: CheonbugyeongCharacter; present: CheonbugyeongCharacter; future: CheonbugyeongCharacter } | null>(null);
   const [reportData, setReportData] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState<number>(1.15);
   
   const [historyRecords, setHistoryRecords] = useState<MemberRecord[]>([]);
 
@@ -399,8 +400,18 @@ const KTarotApp: React.FC<KTarotAppProps> = ({ onClose, onBack }) => {
         )}
 
         {step === 'report' && drawnCards && (
-          <div className="max-w-5xl mx-auto w-full animate-fade-in flex flex-col gap-6">
+          <div className="max-w-5xl mx-auto w-full animate-fade-in flex flex-col gap-6 relative">
             
+            <div className="sticky top-0 z-50 flex justify-end print:hidden pointer-events-none mb-[-1rem]">
+               <div className="bg-slate-800/90 backdrop-blur shadow-lg border border-slate-700 rounded-full px-4 py-2 flex items-center gap-3 pointer-events-auto">
+                  <span className="text-xs font-bold text-slate-400">글자 크기</span>
+                  <button onClick={() => setZoomLevel(prev => Math.max(0.8, prev - 0.1))} className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-200 font-bold transition-colors">-</button>
+                  <span className="text-sm font-black text-fuchsia-400 w-12 text-center">{Math.round(zoomLevel * 100)}%</span>
+                  <button onClick={() => setZoomLevel(prev => Math.min(1.8, prev + 0.1))} className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-200 font-bold transition-colors">+</button>
+               </div>
+            </div>
+            
+            <div className="flex flex-col gap-6 pb-20" style={{ zoom: zoomLevel }}>
             {/* 리포트 상단 영역 */}
             <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 relative overflow-hidden">
                <div className="absolute top-0 right-0 w-64 h-64 bg-fuchsia-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
@@ -443,6 +454,7 @@ const KTarotApp: React.FC<KTarotAppProps> = ({ onClose, onBack }) => {
                </button>
             </div>
 
+            </div>
           </div>
         )}
 

@@ -1408,59 +1408,77 @@ const AssessmentFlow: React.FC = () => {
           { step: AssessmentStep.FACE_ANALYSIS, icon: '😊', label: '10. 얼굴 분석', hasImage: true },
           { step: AssessmentStep.SEVEN_CODE_CHECK, icon: '🔢', label: '11. 7코드 점검', hasImage: false },
         ];
+        const allStepsCompleted = stepChecklist.every(item => !!capturedImages.find(i => i.step === item.step));
+
         return (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-slate-900 animate-fade-in overflow-y-auto">
-            <div className="w-full max-w-lg">
-              <div className="text-center mb-5">
-                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <i className="fas fa-check text-3xl text-green-400"></i>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-900 animate-fade-in overflow-y-auto w-full">
+            <div className="w-full max-w-3xl">
+              <div className="text-center mb-8">
+                <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${allStepsCompleted ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                  <i className={`fas ${allStepsCompleted ? 'fa-check' : 'fa-times'} text-5xl`}></i>
                 </div>
-                <h3 className="text-2xl font-black text-white mb-1">모든 측정 완료!</h3>
-                <p className="text-slate-400 text-xs">아래 측정 내역 확인 후 AI 분석을 시작하세요.</p>
+                <h3 className="text-3xl font-black text-white mb-2">{allStepsCompleted ? '모든 측정 완료!' : '측정 미완료 안내'}</h3>
+                <p className="text-slate-400 text-sm">
+                  {allStepsCompleted ? '아래 측정 내역 확인 후 AI 분석을 시작하세요.' : '아직 진행하지 않은 측정 항목(❌)이 있습니다. 모든 항목을 완료해야 분석이 가능합니다.'}
+                </p>
               </div>
 
-              <div className="bg-slate-800/50 rounded-2xl p-3 mb-4 border border-slate-700/50">
-                <h4 className="text-white font-bold text-xs mb-2 flex items-center gap-2">
-                  <i className="fas fa-clipboard-check text-emerald-400"></i> 측정 완료 내역
+              <div className="bg-slate-800/50 rounded-3xl p-6 mb-6 border border-slate-700/50 shadow-xl">
+                <h4 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
+                  <i className="fas fa-clipboard-list text-emerald-400"></i> 측정 현황 내역
                 </h4>
-                <div className="space-y-1.5">
+                <div className="space-y-3">
                   {stepChecklist.map(item => {
                     const img = capturedImages.find(i => i.step === item.step);
                     const done = !!img;
                     return (
-                      <div key={item.step} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs ${
-                        done ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'
-                      }`}>
-                        <span>{item.icon}</span>
-                        <span className="text-white font-bold flex-1">{item.label}</span>
+                      <div 
+                        key={item.step} 
+                        onClick={() => !done && setStep(item.step)}
+                        className={`flex items-center gap-4 px-5 py-4 rounded-2xl text-base transition-all ${
+                          done 
+                            ? 'bg-emerald-500/10 border border-emerald-500/20' 
+                            : 'bg-rose-500/10 border border-rose-500/20 cursor-pointer hover:bg-rose-500/20 hover:border-rose-400 active:scale-[0.98] group shadow-sm hover:shadow-rose-500/10'
+                        }`}
+                      >
+                        <span className="text-2xl">{item.icon}</span>
+                        <span className={`font-bold flex-1 ${done ? 'text-white' : 'text-rose-200 group-hover:text-white transition-colors'}`}>{item.label}</span>
                         {item.hasImage && img?.dataUrl && (
-                          <img src={img.dataUrl} alt="" className="w-8 h-8 rounded object-cover border border-white/20" />
+                          <img src={img.dataUrl} alt="" className="w-12 h-12 rounded-lg object-cover border-2 border-white/20 shadow-md" />
                         )}
                         {!item.hasImage && img?.brainTestData?.reactionTimeMs && (
-                          <span className="text-emerald-300 text-[10px] font-bold">{img.brainTestData.reactionTimeMs}ms</span>
+                          <span className="text-emerald-300 text-sm font-black bg-emerald-900/40 px-3 py-1.5 rounded-xl border border-emerald-500/30">{img.brainTestData.reactionTimeMs}ms</span>
                         )}
                         {!item.hasImage && img?.brainTestData?.memoryCorrect !== undefined && (
-                          <span className="text-emerald-300 text-[10px] font-bold">{img.brainTestData.memoryCorrect}개정답</span>
+                          <span className="text-emerald-300 text-sm font-black bg-emerald-900/40 px-3 py-1.5 rounded-xl border border-emerald-500/30">{img.brainTestData.memoryCorrect}개 정답</span>
                         )}
                         {item.step === AssessmentStep.SEVEN_CODE_CHECK && img?.sevenCodeKeywords && (
-                          <span className="text-emerald-300 text-[10px] font-bold">{img.sevenCodeKeywords.length}항목</span>
+                          <span className="text-emerald-300 text-sm font-black bg-emerald-900/40 px-3 py-1.5 rounded-xl border border-emerald-500/30">{img.sevenCodeKeywords.length}개 항목</span>
                         )}
-                        <span className="font-black">{done ? '✅' : '❌'}</span>
+                        
+                        <div className={`flex items-center gap-2 ${done ? '' : 'text-rose-300'}`}>
+                          {!done && <span className="text-xs font-bold bg-rose-500/20 px-2.5 py-1.5 rounded-lg group-hover:bg-rose-500 group-hover:text-white transition-colors"><i className="fas fa-play mr-1 text-[10px]"></i>측정 시작</span>}
+                          <div className={`w-8 h-8 flex items-center justify-center rounded-full ml-1 transition-colors ${done ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400 group-hover:bg-rose-500 group-hover:text-white'}`}>
+                            <i className={`fas font-black text-lg ${done ? 'fa-check' : 'fa-times'}`}></i>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="bg-indigo-900/30 border border-indigo-500/20 rounded-xl p-3 mb-5 text-center">
-                <p className="text-indigo-200 text-[11px] font-bold leading-relaxed">
-                  💾 분석 시작 시 측정 데이터가 자동 저장됩니다.<br/>
+              <div className="bg-indigo-900/30 border border-indigo-500/20 rounded-2xl p-5 mb-8 text-center shadow-lg">
+                <p className="text-indigo-200 text-sm font-bold leading-relaxed">
+                  <i className="fas fa-save mr-1"></i> 분석 시작 시 측정 데이터가 자동 저장됩니다.<br/>
                   분석 오류 시에도 <strong className="text-amber-300">재측정 없이</strong> 저장된 데이터로 재분석이 가능합니다.
                 </p>
               </div>
 
               <button 
+                disabled={!allStepsCompleted}
                 onClick={async () => {
+                  if (!allStepsCompleted) return;
                   try {
                     const resizedForDb = await Promise.all(capturedImages.map(async (img) => ({
                       ...img,
@@ -1483,9 +1501,14 @@ const AssessmentFlow: React.FC = () => {
                   }
                   runAnalysis(capturedImages);
                 }}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-5 px-12 rounded-2xl shadow-[0_10px_30px_-5px_rgba(99,102,241,0.6)] transition-all active:scale-95 text-xl flex items-center gap-3 w-full justify-center"
+                className={`w-full py-6 rounded-2xl transition-all text-2xl font-black flex items-center gap-3 justify-center shadow-xl ${
+                  allStepsCompleted 
+                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white active:scale-95 shadow-[0_10px_30px_-5px_rgba(99,102,241,0.6)] cursor-pointer' 
+                    : 'bg-slate-800 border-2 border-slate-700 text-slate-500 opacity-60 cursor-not-allowed'
+                }`}
               >
-                <i className="fas fa-microchip"></i> AI 종합 분석 시작하기
+                <i className={allStepsCompleted ? 'fas fa-microchip' : 'fas fa-lock'}></i> 
+                {allStepsCompleted ? 'AI 종합 분석 시작하기' : '모든 단계를 측정해야 분석 가능합니다'}
               </button>
             </div>
           </div>

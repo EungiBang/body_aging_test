@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PhysiognomyReport } from '../types';
 import FaceFeedbackPanel from './FaceFeedbackPanel';
 
@@ -9,6 +9,7 @@ interface KFaceReportProps {
 }
 
 export default function KFaceReport({ report: rawReport, imageSrc, onClose }: KFaceReportProps) {
+  const [zoomLevel, setZoomLevel] = useState<number>(1.15);
   const userInfo = rawReport?.userInfo || { age: 0, gender: 'female' as const, name: '익명', memberType: 'new' as const };
 
   // AI 응답 데이터 누락 시 화면 다운(White Screen)을 방지하기 위한 안전한 기본값 병합
@@ -132,7 +133,17 @@ ${report.animalMorphology.animalMorphologyBlend?.map(b => `  - ${b.type} (${b.ma
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8 animate-fade-in-up pb-20">
+    <div className="w-full max-w-4xl mx-auto animate-fade-in-up pb-20 relative">
+      <div className="sticky top-4 right-4 z-50 flex justify-end print:hidden pointer-events-none" style={{ height: 0 }}>
+         <div className="bg-slate-800/90 backdrop-blur shadow-lg border border-slate-700 rounded-full px-4 py-2 flex items-center gap-3 pointer-events-auto">
+            <span className="text-xs font-bold text-slate-400">글자 크기</span>
+            <button onClick={() => setZoomLevel(prev => Math.max(0.8, prev - 0.1))} className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-200 font-bold transition-colors">-</button>
+            <span className="text-sm font-black text-fuchsia-400 w-12 text-center">{Math.round(zoomLevel * 100)}%</span>
+            <button onClick={() => setZoomLevel(prev => Math.min(1.8, prev + 0.1))} className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-200 font-bold transition-colors">+</button>
+         </div>
+      </div>
+      
+      <div className="space-y-8" style={{ zoom: zoomLevel }}>
       {/* Header Card */}
       <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700 shadow-2xl rounded-3xl p-8 text-center relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-cyan-500" />
@@ -204,8 +215,7 @@ ${report.animalMorphology.animalMorphologyBlend?.map(b => `  - ${b.type} (${b.ma
         </div>
       </div>
 
-      {/* AI 학습 피드백 패널 */}
-      <FaceFeedbackPanel userInfo={userInfo as any} report={report} />
+      {/* AI 학습 피드백 패널은 최하단으로 이동 */}
 
       {/* Animal Morphology section */}
       <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700 text-white rounded-3xl p-8 shadow-2xl relative overflow-hidden">
@@ -610,6 +620,81 @@ ${report.animalMorphology.animalMorphologyBlend?.map(b => `  - ${b.type} (${b.ma
         </div>
       </div>
 
+      {/* ── 전체 종합 총평 (3바디 7코드 이후) ── */}
+      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-fuchsia-950 backdrop-blur-xl border border-fuchsia-500/30 text-white rounded-3xl p-8 md:p-10 shadow-2xl relative overflow-hidden">
+        <div className="absolute -top-24 -left-24 w-80 h-80 bg-fuchsia-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl" />
+        
+        <div className="relative z-10">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-br from-fuchsia-500 to-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl shadow-fuchsia-500/30">
+              <i className="fas fa-scroll text-2xl text-white" />
+            </div>
+            <span className="text-fuchsia-300 text-sm font-bold uppercase tracking-[0.3em]">Final Comprehensive Verdict</span>
+            <h3 className="text-3xl font-black mt-3">🔮 AI 관상 종합 총평</h3>
+            <p className="text-indigo-300/80 text-sm mt-2 font-medium">물형분석 · 이목구비 · 3바디 7코드 에너지를 모두 종합한 최종 평가</p>
+          </div>
+
+          {/* 한줄 총평 */}
+          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 mb-6 text-center">
+            <p className="text-xl font-bold text-fuchsia-200 leading-relaxed italic">
+              "{report.summary}"
+            </p>
+          </div>
+
+          {/* 핵심 종합 정보 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-700">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-full bg-fuchsia-500/20 flex items-center justify-center">
+                  <i className="fas fa-star text-fuchsia-400" />
+                </div>
+                <h4 className="font-bold text-slate-100">종합 에너지 점수</h4>
+              </div>
+              <div className="text-4xl font-black bg-gradient-to-r from-fuchsia-400 to-indigo-400 bg-clip-text text-transparent mb-2">
+                {report.score}<span className="text-xl text-slate-600">/100</span>
+              </div>
+              <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-fuchsia-500 to-indigo-500 rounded-full" style={{ width: `${report.score}%` }} />
+              </div>
+            </div>
+
+            <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-700">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                  <i className="fas fa-lightbulb text-amber-400" />
+                </div>
+                <h4 className="font-bold text-slate-100">맞춤 성공 전략</h4>
+              </div>
+              <p className="text-sm text-slate-300 leading-relaxed mb-2"><strong className="text-amber-300">💼 커리어:</strong> {report.lifeStrategy.career}</p>
+              <p className="text-sm text-slate-300 leading-relaxed"><strong className="text-emerald-300">💰 금전운:</strong> {report.lifeStrategy.wealth}</p>
+            </div>
+          </div>
+
+          {/* 3바디 관점 종합 */}
+          <div className="bg-slate-900/80 p-6 rounded-2xl border border-indigo-500/30">
+            <div className="flex items-center gap-3 mb-3">
+              <i className="fas fa-project-diagram text-indigo-400 text-xl" />
+              <h4 className="text-lg font-bold text-indigo-300">3-Body 7-Code 최종 통합 평가</h4>
+            </div>
+            <p className="text-base text-slate-200 leading-relaxed italic border-l-4 border-fuchsia-500 pl-4">
+              "{report.comprehensiveEvaluation?.threeBodySynthesis}"
+            </p>
+          </div>
+
+          {/* AI 전문가 조언 */}
+          <div className="mt-6 bg-gradient-to-r from-fuchsia-900/40 to-indigo-900/40 border border-fuchsia-500/20 rounded-2xl p-6">
+            <div className="flex items-start gap-4">
+              <i className="fas fa-sparkles text-2xl text-yellow-400 shrink-0 mt-1" />
+              <div>
+                <h4 className="text-white font-bold mb-2">AI 마스터의 최종 조언</h4>
+                <p className="text-slate-300 leading-relaxed">{report.advice}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-wrap justify-center gap-4 pt-6">
         <button
           onClick={handleShare}
@@ -632,6 +717,10 @@ ${report.animalMorphology.animalMorphologyBlend?.map(b => `  - ${b.type} (${b.ma
           <i className="fas fa-redo"></i>
           <span>완료 / 다시하기</span>
         </button>
+      </div>
+
+      {/* AI 관상 정확도 피드백 패널 (최하단) */}
+      <FaceFeedbackPanel userInfo={userInfo as any} report={report} />
       </div>
     </div>
   );
