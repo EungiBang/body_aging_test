@@ -42,7 +42,11 @@ export const saveRecordLocally = async (record: MemberRecord): Promise<boolean> 
   let pureRecord: MemberRecord;
   try {
     pureRecord = JSON.parse(JSON.stringify(record));
-    logger.debug(TAG, `직렬화 성공, 이미지 수: ${pureRecord.images?.length ?? 0}`);
+    // PC 앱에서 생성된 데이터는 sourceType='PC' 자동 주입
+    if (!pureRecord.sourceType) {
+      pureRecord.sourceType = 'PC';
+    }
+    logger.debug(TAG, `직렬화 성공, 이미지 수: ${pureRecord.images?.length ?? 0}, sourceType: ${pureRecord.sourceType}`);
   } catch (e) {
     logger.error(TAG, 'JSON 직렬화 실패 — 원본 레코드 사용', e, true);
     pureRecord = record; // 최후의 수단

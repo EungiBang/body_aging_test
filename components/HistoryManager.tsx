@@ -14,9 +14,10 @@ interface HistoryManagerProps {
 
 const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeAnalysis, onClose }) => {
   const [activeTab, setActiveTab] = useState<'records' | 'pending' | 'feedback'>('records');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'my_pc' | 'other_pc' | 'lite'>('all');
   const [records, setRecords] = useState<MemberRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [pcFilter, setPcFilter] = useState<'all' | 'mine' | 'remote'>('all'); // PC 필터
+  const [currentDeviceId, setCurrentDeviceId] = useState<string>('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false);
@@ -34,18 +35,41 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
 
   useEffect(() => {
     fetchRecords();
+    try {
+      const deviceStr = localStorage.getItem('currentDevice');
+      if (deviceStr) {
+        const device = JSON.parse(deviceStr);
+        setCurrentDeviceId(device.id || '');
+      }
+    } catch (e) {}
   }, []);
 
-  const filteredRecords = records.filter(r => {
-    const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const isRemote = !!(r as any)._isRemote;
-    if (pcFilter === 'mine') return matchesSearch && !isRemote;
-    if (pcFilter === 'remote') return matchesSearch && isRemote;
-    return matchesSearch;
-  });
+  const filteredRecords = records.filter(r =>
+    r.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const completedRecords = filteredRecords.filter(r => r.report?.overallScore !== undefined);
-  const pendingRecords = filteredRecords.filter(r => r.report?.overallScore === undefined);
+  const completedRecordsAll = filteredRecords.filter(r => r.report?.overallScore !== undefined);
+  const pendingRecordsAll = filteredRecords.filter(r => r.report?.overallScore === undefined);
+
+  // sourceType 기반 카운트 (기존 _isRemote도 하위 호환으로 고려)
+  const isLiteRecord = (r: MemberRecord) => r.sourceType === 'LITE';
+  const isMyPcRecord = (r: MemberRecord) => !isLiteRecord(r) && (r.hardwareId === currentDeviceId || (!(r as any)._isRemote && !r.hardwareId));
+  const isOtherPcRecord = (r: MemberRecord) => !isLiteRecord(r) && !isMyPcRecord(r);
+
+  const myPcCount = completedRecordsAll.filter(isMyPcRecord).length;
+  const otherPcCount = completedRecordsAll.filter(isOtherPcRecord).length;
+  const liteCount = completedRecordsAll.filter(isLiteRecord).length;
+
+  const filterBySource = (r: MemberRecord) => {
+    if (sourceFilter === 'all') return true;
+    if (sourceFilter === 'lite') return isLiteRecord(r);
+    if (sourceFilter === 'my_pc') return isMyPcRecord(r);
+    if (sourceFilter === 'other_pc') return isOtherPcRecord(r);
+    return true;
+  };
+
+  const completedRecords = completedRecordsAll.filter(filterBySource);
+  const pendingRecords = pendingRecordsAll.filter(filterBySource);
 
   const uniqueNames = Array.from(new Set(completedRecords.map(r => r.name)));
   const showChart = uniqueNames.length === 1 && completedRecords.length > 1;
@@ -345,22 +369,41 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
       {/* 탭 콘텐츠 — 회원 기록 */}
       {activeTab === 'records' && (
         <>
-      {/* PC 필터 버튼 */}
-      <div className="flex gap-2 mb-4">
-        {(['all','mine','remote'] as const).map((key) => {
-          const label = key === 'all' ? '전체' : key === 'mine' ? '나의 PC' : '다른 PC';
-          const icon = key === 'all' ? 'fas fa-globe' : key === 'mine' ? 'fas fa-desktop' : 'fas fa-cloud';
-          const cnt = key === 'all' ? completedRecords.length : key === 'mine' ? completedRecords.filter(r => !(r as any)._isRemote).length : completedRecords.filter(r => (r as any)._isRemote).length;
-          const isActive = pcFilter === key;
-          return (
-            <button key={key} onClick={() => setPcFilter(key)}
-              className={'px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ' + (isActive ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}
-            >
-              <i className={icon + ' text-xs'}></i> {label} <span className="text-xs opacity-70">({cnt})</span>
-            </button>
-          );
-        })}
-      </div>      <div className="mb-8 relative">      </div>
+      {/* 서브 필터 (소스 구분) */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setSourceFilter('all')}
+          className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center ${
+            sourceFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <i className="fas fa-globe mr-2"></i> 전체 ({completedRecordsAll.length})
+        </button>
+        <button
+          onClick={() => setSourceFilter('my_pc')}
+          className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center ${
+            sourceFilter === 'my_pc' ? 'bg-blue-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <i className="fas fa-desktop mr-2"></i> 나의 PC ({myPcCount})
+        </button>
+        <button
+          onClick={() => setSourceFilter('other_pc')}
+          className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center ${
+            sourceFilter === 'other_pc' ? 'bg-slate-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <i className="fas fa-cloud mr-2"></i> 다른 PC ({otherPcCount})
+        </button>
+        <button
+          onClick={() => setSourceFilter('lite')}
+          className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center ${
+            sourceFilter === 'lite' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <i className="fas fa-mobile-alt mr-2"></i> 온라인 LITE ({liteCount})
+        </button>
+      </div>
       <div className="mb-8 relative">
         <i className="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"></i>
         <input
@@ -445,20 +488,13 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
       {completedRecords.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {completedRecords.map(record => (
-            <div key={record.id} className={`bg-white p-6 rounded-[32px] border ${selectedIds.includes(record.id) ? 'border-indigo-500 ring-2 ring-indigo-100' : (record as any)._isRemote ? 'border-cyan-300' : 'border-slate-200'} shadow-sm hover:shadow-lg transition-all group overflow-hidden relative`}>
-              {/* 다른 PC 배지 */}
-              {(record as any)._isRemote && (
-                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 px-2 py-1 bg-cyan-50 border border-cyan-200 rounded-full">
-                  <i className="fas fa-cloud-download-alt text-cyan-500 text-[10px]"></i>
-                  <span className="text-[10px] font-bold text-cyan-600">다른 PC</span>
-                </div>
-              )}
+            <div key={record.id} className={`bg-white p-6 rounded-[32px] border ${selectedIds.includes(record.id) ? 'border-indigo-500 ring-2 ring-indigo-100' : isLiteRecord(record) ? 'border-emerald-300' : isOtherPcRecord(record) ? 'border-cyan-300' : 'border-slate-200'} shadow-sm hover:shadow-lg transition-all group overflow-hidden relative`}>
               <div className="absolute top-6 left-6 z-10">
                 <input 
                   type="checkbox" 
                   className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   checked={selectedIds.includes(record.id)}
-                  disabled={!!(record as any)._isRemote}
+                  disabled={isOtherPcRecord(record) || isLiteRecord(record)}
                   onChange={(e) => {
                     if (e.target.checked) setSelectedIds([...selectedIds, record.id]);
                     else setSelectedIds(selectedIds.filter(id => id !== record.id));
@@ -467,18 +503,25 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
               </div>
               <div className="flex justify-between items-start mb-4 pl-8">
                 <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 ${(record as any)._isRemote ? 'bg-cyan-50' : 'bg-indigo-50'} rounded-2xl flex items-center justify-center ${(record as any)._isRemote ? 'text-cyan-600' : 'text-indigo-600'} font-bold text-xl shrink-0`}>
+                    <div className={`w-12 h-12 ${isLiteRecord(record) ? 'bg-emerald-50' : isOtherPcRecord(record) ? 'bg-cyan-50' : 'bg-indigo-50'} rounded-2xl flex items-center justify-center ${isLiteRecord(record) ? 'text-emerald-600' : isOtherPcRecord(record) ? 'text-cyan-600' : 'text-indigo-600'} font-bold text-xl shrink-0`}>
                       {record.name[0]}
                     </div>
                     <div>
-                        <h4 className="text-lg font-bold text-slate-800">
+                        <h4 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                           {record.name}
-                          {record.report?.userInfo?.phone && <span className="ml-2 text-sm text-slate-500 font-normal">{record.report.userInfo.phone}</span>}
+                          {isLiteRecord(record) ? (
+                            <span className="bg-emerald-100 text-emerald-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-mobile-alt mr-1"></i>온라인 LITE</span>
+                          ) : isOtherPcRecord(record) ? (
+                            <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-cloud mr-1"></i>다른 PC</span>
+                          ) : (
+                            <span className="bg-blue-100 text-blue-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-desktop mr-1"></i>나의 PC</span>
+                          )}
+                          {record.report?.userInfo?.phone && <span className="ml-1 text-sm text-slate-500 font-normal">{record.report.userInfo.phone}</span>}
                         </h4>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(record.lastTestDate).toLocaleDateString()}</span>
                     </div>
                 </div>
-                {!(record as any)._isRemote && (
+                {isMyPcRecord(record) && (
                 <button 
                   onClick={() => setDeleteId(record.id)}
                   className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-rose-500 transition-colors"
@@ -488,11 +531,17 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
               )}
               </div>
 
-              {/* Preview Image - 다른 PC 데이터는 이미지 없음 안내 */}
+              {/* Preview Image */}
               <div className="mb-4 h-32 rounded-2xl bg-slate-100 overflow-hidden border border-slate-100">
                 {record.images && record.images[0] && record.images[0].dataUrl ? (
                   <img src={record.images[0].dataUrl} className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" alt="Preview" />
-                ) : (record as any)._isRemote ? (
+                ) : isLiteRecord(record) ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-emerald-400 bg-emerald-50/50">
+                    <i className="fas fa-mobile-alt text-2xl mb-1"></i>
+                    <span className="text-[10px] font-bold text-emerald-500">온라인 LITE에서 동기화된 데이터</span>
+                    <span className="text-[10px] text-emerald-400">텍스트 리포트 열람 가능</span>
+                  </div>
+                ) : isOtherPcRecord(record) ? (
                   <div className="w-full h-full flex flex-col items-center justify-center text-cyan-400 bg-cyan-50/50">
                     <i className="fas fa-cloud text-2xl mb-1"></i>
                     <span className="text-[10px] font-bold text-cyan-500">다른 PC에서 동기화된 데이터</span>
@@ -522,12 +571,14 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
                 className={`w-full text-white text-sm font-bold py-4 rounded-xl transition-all shadow-md ${
                   !record.report?.overallScore
                     ? 'bg-slate-300 cursor-not-allowed shadow-none'
-                    : (record as any)._isRemote 
+                    : isLiteRecord(record)
+                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                    : isOtherPcRecord(record)
                     ? 'bg-cyan-600 hover:bg-cyan-700 shadow-cyan-200'
                     : 'bg-slate-900 hover:bg-black shadow-slate-200'
                 }`}
               >
-                {!record.report?.overallScore ? '분석 미완료 (대기중)' : (record as any)._isRemote ? '📄 텍스트 리포트 보기' : '상세 리포트 보기'}
+                {!record.report?.overallScore ? '분석 미완료 (대기중)' : isLiteRecord(record) ? '📱 LITE 리포트 보기' : isOtherPcRecord(record) ? '📄 텍스트 리포트 보기' : '상세 리포트 보기'}
               </button>
             </div>
           ))}

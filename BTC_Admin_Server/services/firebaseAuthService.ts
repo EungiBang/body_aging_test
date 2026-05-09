@@ -115,14 +115,18 @@ export const getSystemSettings = async () => {
   const docRef = doc(db, 'system_settings', 'config');
   const snap = await getDoc(docRef);
   if (snap.exists()) {
-    return snap.data() as { autoApproveCode?: string };
+    return snap.data() as { autoApproveCode?: string; liteAutoApproveCode?: string };
   }
-  return { autoApproveCode: '' };
+  return { autoApproveCode: '', liteAutoApproveCode: '' };
 };
 
-export const updateSystemSettings = async (autoApproveCode: string) => {
+export const updateSystemSettings = async (autoApproveCode: string, liteAutoApproveCode?: string) => {
   const docRef = doc(db, 'system_settings', 'config');
-  await setDoc(docRef, { autoApproveCode: autoApproveCode || '' }, { merge: true });
+  const updateData: any = { autoApproveCode: autoApproveCode || '' };
+  if (liteAutoApproveCode !== undefined) {
+    updateData.liteAutoApproveCode = liteAutoApproveCode || '';
+  }
+  await setDoc(docRef, updateData, { merge: true });
 };
 
 // 2. 지역(Region) 및 지점(Branch) 관리
@@ -219,9 +223,11 @@ export const requestDeviceRegistration = async (
   appVersion?: string
 ): Promise<{ success: boolean; status: 'active' | 'pending'; error?: string }> => {
   
-  // 1. 배포 코드 확인
+  // 1. 배포 코드 확인 (LITE 전용 코드 우선, 없으면 PC 코드도 허용)
   const settings = await getSystemSettings();
-  const isCodeValid = settings.autoApproveCode && settings.autoApproveCode === inputCode;
+  const liteCode = settings.liteAutoApproveCode;
+  const pcCode = settings.autoApproveCode;
+  const isCodeValid = (liteCode && liteCode === inputCode) || (!liteCode && pcCode && pcCode === inputCode);
   
   if (!isCodeValid) {
     return { success: false, status: 'pending', error: '유효하지 않은 배포 코드입니다.' };

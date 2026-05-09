@@ -24,7 +24,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [regions, setRegions] = useState<Region[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [devices, setDevices] = useState<DeviceLicense[]>([]);
-  const [settings, setSettings] = useState({ autoApproveCode: '' });
+  const [settings, setSettings] = useState({ autoApproveCode: '', liteAutoApproveCode: '' });
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<{ dailyStats: any[], branchStats: any[] }>({ dailyStats: [], branchStats: [] });
 
@@ -70,7 +70,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       setRegions(r);
       setBranches(b);
       setDevices(d);
-      setSettings((s as any) || { autoApproveCode: '' });
+      setSettings((s as any) || { autoApproveCode: '', liteAutoApproveCode: '' });
       setAdminUsers(au);
       setStats(dashStats);
       setAllFeedbacks(feedbacks);
@@ -205,7 +205,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
   const handleSaveSettings = async () => {
     try {
-      await updateSystemSettings(settings.autoApproveCode);
+      await updateSystemSettings(settings.autoApproveCode, settings.liteAutoApproveCode);
       alert('설정이 저장되었습니다.');
     } catch (e: any) {
       console.error('설정 저장 실패:', e);
@@ -1480,9 +1480,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                   <h2 className="text-lg font-bold mb-6">시스템 환경 설정</h2>
                   
                   <div className="mb-6 p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                    <h3 className="font-bold text-slate-800 mb-2">초기 배포용 자동 승인 코드</h3>
+                    <h3 className="font-bold text-slate-800 mb-2">🖥️ PC 버전 배포 승인 코드</h3>
                     <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                      새 지점에서 프로그램 설치 시 이 코드를 입력하면 중앙 관리자의 승인 클릭 없이 
+                      새 지점에서 PC 버전 프로그램 설치 시 이 코드를 입력하면 중앙 관리자의 승인 클릭 없이 
                       지정된 할당량(Quota) 한도 내에서 즉시 라이센스가 승인됩니다.<br/>
                       (배포가 끝난 후에는 코드를 지워서 보안을 유지하세요.)
                     </p>
@@ -1495,12 +1495,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         value={settings.autoApproveCode || ''}
                         onChange={e => setSettings({ ...settings, autoApproveCode: e.target.value })}
                       />
-                      <button 
-                        onClick={handleSaveSettings}
-                        className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl"
-                      >저장</button>
                     </div>
                   </div>
+
+                  <div className="mb-6 p-6 bg-fuchsia-50 rounded-2xl border border-fuchsia-200">
+                    <h3 className="font-bold text-fuchsia-800 mb-2">📱 Online LITE 버전 배포 승인 코드</h3>
+                    <p className="text-xs text-fuchsia-600 mb-4 leading-relaxed">
+                      야외 행사용 Online Lite 버전 전용 승인 코드입니다.<br/>
+                      PC 코드와 분리하여 보안을 강화할 수 있습니다. 비워두면 PC 코드로 대체 적용됩니다.
+                    </p>
+                    
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        className="flex-1 p-3 border border-fuchsia-200 rounded-xl bg-white"
+                        placeholder="예: BTCLITE2026 (비워두면 PC 코드 공용)"
+                        value={settings.liteAutoApproveCode || ''}
+                        onChange={e => setSettings({ ...settings, liteAutoApproveCode: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleSaveSettings}
+                    className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors"
+                  >💾 승인 코드 저장</button>
                 </div>
 
                 <div>
