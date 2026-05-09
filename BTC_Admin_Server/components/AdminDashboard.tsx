@@ -1502,7 +1502,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     <h3 className="font-bold text-fuchsia-800 mb-2">📱 Online LITE 버전 배포 승인 코드</h3>
                     <p className="text-xs text-fuchsia-600 mb-4 leading-relaxed">
                       야외 행사용 Online Lite 버전 전용 승인 코드입니다.<br/>
-                      PC 코드와 분리하여 보안을 강화할 수 있습니다. 비워두면 PC 코드로 대체 적용됩니다.
+                      PC 코드와 완전히 분리되어 PC 코드로는 LITE 등록이 불가합니다.<br/>
+                      <strong>비워두면 LITE 신규 등록이 차단됩니다.</strong>
                     </p>
                     
                     <div className="flex gap-2">

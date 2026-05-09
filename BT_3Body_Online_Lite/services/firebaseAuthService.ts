@@ -190,11 +190,10 @@ export const requestDeviceRegistration = async (
   appVersion?: string
 ): Promise<{ success: boolean; status: 'active' | 'pending'; error?: string }> => {
   
-  // 1. 배포 코드 확인 (LITE 전용 코드 우선, 없으면 PC 코드도 허용)
+  // 1. 배포 코드 확인 (LITE 전용 코드만 허용, PC 코드와 완전 분리)
   const settings = await getSystemSettings();
   const liteCode = settings.liteAutoApproveCode;
-  const pcCode = settings.autoApproveCode;
-  const isCodeValid = (liteCode && liteCode === inputCode) || (!liteCode && pcCode && pcCode === inputCode);
+  const isCodeValid = liteCode && liteCode === inputCode;
   
   if (!isCodeValid) {
     return { success: false, status: 'pending', error: '유효하지 않은 배포 코드입니다.' };
