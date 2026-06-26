@@ -38,7 +38,7 @@ const KFaceApp: React.FC<KFaceAppProps> = ({ userInfo: parentUserInfo, onClose, 
       const loadRecords = async () => {
         const records = await getRecordsLocally();
         // 얼굴 사진이 있는 기록만 필터링 (최신순)
-        const validRecords = records.filter(r => r.images?.some(img => img.type === 'face'))
+        const validRecords = records.filter(r => r.images?.some(img => img.step === 'FACE_ANALYSIS'))
           .sort((a, b) => new Date(b.lastTestDate).getTime() - new Date(a.lastTestDate).getTime());
         setHistoryRecords(validRecords);
       };
@@ -117,7 +117,7 @@ const KFaceApp: React.FC<KFaceAppProps> = ({ userInfo: parentUserInfo, onClose, 
   };
 
   const handleSelectHistory = async (record: MemberRecord) => {
-    const faceImg = record.images?.find(img => img.type === 'face')?.dataUrl;
+    const faceImg = record.images?.find(img => img.step === 'FACE_ANALYSIS')?.dataUrl;
     if (!faceImg) {
       alert("해당 기록에 얼굴 사진이 존재하지 않습니다.");
       return;
@@ -313,7 +313,7 @@ const KFaceApp: React.FC<KFaceAppProps> = ({ userInfo: parentUserInfo, onClose, 
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {historyRecords.map(record => {
-                  const faceImg = record.images?.find(img => img.type === 'face');
+                  const faceImg = record.images?.find(img => img.step === 'FACE_ANALYSIS');
                   return (
                     <div 
                       key={record.id} 
@@ -323,7 +323,7 @@ const KFaceApp: React.FC<KFaceAppProps> = ({ userInfo: parentUserInfo, onClose, 
                       <img src={faceImg?.dataUrl} alt="Face" className="w-20 h-20 object-cover rounded-xl bg-black" />
                       <div>
                         <h4 className="font-bold text-lg">{record.report?.userInfo?.name || '익명'}</h4>
-                        <p className="text-sm text-slate-400">{new Date(record.timestamp).toLocaleString()}</p>
+                        <p className="text-sm text-slate-400">{new Date(record.lastTestDate).toLocaleString()}</p>
                       </div>
                     </div>
                   )

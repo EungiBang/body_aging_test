@@ -1688,68 +1688,69 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
           {/* RESULT PHASE */}
           {phase === 'result' && (
-            <div className="text-center space-y-6 max-w-lg w-full bg-black/60 backdrop-blur-sm rounded-[2rem] p-10 mx-4 shadow-2xl">
-              <div className="text-6xl mb-2">🧠</div>
-              <h2 className="text-4xl font-black text-white">테스트 완료!</h2>
+            <div className={`text-center w-full bg-black/60 backdrop-blur-sm rounded-[2rem] shadow-2xl mx-4
+              ${isPortraitMode ? 'max-w-lg p-6 space-y-3' : 'max-w-3xl p-5'}`}>
+              <div className={isPortraitMode ? 'text-4xl mb-1' : 'text-3xl'}>{testType === AssessmentStep.BRAIN_REACTION ? '🧠' : '🧠'}</div>
+              <h2 className={`font-black text-white ${isPortraitMode ? 'text-3xl' : 'text-2xl'}`}>테스트 완료!</h2>
               
-              <div className="space-y-4 mt-6">
-                {testType === AssessmentStep.BRAIN_REACTION && (
-                  <>
-                    <div className="bg-white/10 rounded-3xl p-6">
-                      <span className="text-white/60 text-lg font-bold">평균 반응시간</span>
-                      <div className="text-6xl font-black text-white mt-2">{resultData.reactionTimeMs}ms</div>
-                    </div>
-                    <div className="bg-white/10 rounded-3xl p-5">
-                      <span className="text-white/60 text-lg font-bold">AI 측정 오답</span>
-                      <div className="text-3xl font-black text-white mt-1">{resultData.reactionErrors}회</div>
-                    </div>
-                    {/* 원장님 수동 오답 수정 */}
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-5">
-                      <label className="text-amber-300 text-sm font-bold block mb-3">
-                        <i className="fas fa-edit mr-1"></i> 원장님 수동 오답 횟수 수정
-                      </label>
-                      <input 
-                        type="number" 
-                        value={manualReactionErrors}
-                        onChange={(e) => setManualReactionErrors(e.target.value)}
-                        placeholder={`AI 측정값: ${resultData.reactionErrors}회`}
-                        className="w-full text-center text-3xl font-black text-white py-3 bg-white/10 border-2 border-amber-500/30 rounded-2xl focus:outline-none focus:border-amber-500 transition-colors"
-                      />
-                      <p className="text-sm text-amber-300/60 mt-2">비워두면 AI 측정값 사용</p>
-                    </div>
-                  </>
-                )}
+              {/* 뇌기능 1단계 - 반응속도 결과 */}
+              {testType === AssessmentStep.BRAIN_REACTION && (
+                <div className={`mt-3 ${isPortraitMode ? 'space-y-3' : 'grid grid-cols-3 gap-3'}`}>
+                  <div className="bg-white/10 rounded-2xl p-3">
+                    <span className="text-white/60 text-xs font-bold">평균 반응시간</span>
+                    <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-5xl' : 'text-3xl'}`}>{resultData.reactionTimeMs}ms</div>
+                  </div>
+                  <div className="bg-white/10 rounded-2xl p-3">
+                    <span className="text-white/60 text-xs font-bold">AI 측정 오답</span>
+                    <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-2xl' : 'text-xl'}`}>{resultData.reactionErrors}회</div>
+                  </div>
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3">
+                    <label className="text-amber-300 text-xs font-bold block mb-1">
+                      <i className="fas fa-edit mr-1"></i> 수동 오답 수정
+                    </label>
+                    <input 
+                      type="number" 
+                      value={manualReactionErrors}
+                      onChange={(e) => setManualReactionErrors(e.target.value)}
+                      placeholder={`AI: ${resultData.reactionErrors}회`}
+                      className="w-full text-center text-xl font-black text-white py-1.5 bg-white/10 border-2 border-amber-500/30 rounded-xl focus:outline-none focus:border-amber-500 transition-colors"
+                    />
+                    <p className="text-[10px] text-amber-300/60 mt-1">비워두면 AI 측정값 사용</p>
+                  </div>
+                </div>
+              )}
 
-                {testType === AssessmentStep.BRAIN_MEMORY && (
-                  <>
-                    <div className="bg-white/10 rounded-3xl p-6">
-                      <span className="text-white/60 text-lg font-bold">기억력 정답</span>
-                      <div className="text-6xl font-black text-white mt-2">{resultData.memoryCorrect}/{MART_ITEMS_TO_REMEMBER}개</div>
-                      <p className="text-white/40 text-sm mt-2 font-bold">틀린 개수: {MART_ITEMS_TO_REMEMBER - (resultData.memoryCorrect || 0)}개 (감점)</p>
+              {/* 뇌기능 2단계 - 마트 장보기 결과 */}
+              {testType === AssessmentStep.BRAIN_MEMORY && (
+                <div className={`mt-3 ${isPortraitMode ? 'space-y-3' : 'grid grid-cols-2 gap-3'}`}>
+                  <div className="bg-white/10 rounded-2xl p-3">
+                    <span className="text-white/60 text-xs font-bold">기억력 정답</span>
+                    <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-5xl' : 'text-3xl'}`}>{resultData.memoryCorrect}/{MART_ITEMS_TO_REMEMBER}개</div>
+                    <p className="text-white/40 text-[10px] mt-1 font-bold">틀린 개수: {MART_ITEMS_TO_REMEMBER - (resultData.memoryCorrect || 0)}개 (감점)</p>
+                  </div>
+                  {resultData.distractionCorrect !== undefined && (
+                    <div className="bg-white/10 rounded-2xl p-3">
+                      <span className="text-white/60 text-xs font-bold">사칙연산 (방해 자극)</span>
+                      <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-2xl' : 'text-xl'}`}>{resultData.distractionCorrect}/2개 정답</div>
                     </div>
-                    {resultData.distractionCorrect !== undefined && (
-                      <div className="bg-white/10 rounded-3xl p-5">
-                        <span className="text-white/60 text-lg font-bold">사칙연산 (방해 자극)</span>
-                        <div className="text-3xl font-black text-white mt-1">{resultData.distractionCorrect}/2개 정답</div>
-                      </div>
-                    )}
-                    <div className="bg-white/10 rounded-3xl p-5">
-                      <span className="text-white/60 text-lg font-bold">총 금액 계산</span>
-                      <div className="text-3xl font-black text-white mt-1">{resultData.mathCorrect ? '✅ 정답' : '❌ 오답'}</div>
+                  )}
+                  <div className="bg-white/10 rounded-2xl p-3">
+                    <span className="text-white/60 text-xs font-bold">총 금액 계산</span>
+                    <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-2xl' : 'text-xl'}`}>{resultData.mathCorrect ? '✅ 정답' : '❌ 오답'}</div>
+                  </div>
+                  <div className={`rounded-2xl p-3 ${(resultData.memoryCorrect || 0) >= 5 && resultData.mathCorrect ? 'bg-emerald-500/20 border-2 border-emerald-500/30' : (resultData.memoryCorrect || 0) >= 3 ? 'bg-amber-500/20 border-2 border-amber-500/30' : 'bg-red-500/20 border-2 border-red-500/30'}`}>
+                    <span className="text-white/60 text-xs font-bold">종합 평가</span>
+                    <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-3xl' : 'text-2xl'}`}>
+                      {(resultData.memoryCorrect || 0) >= 5 && resultData.mathCorrect ? '🌟 우수' : (resultData.memoryCorrect || 0) >= 3 ? '👍 보통' : '💪 노력 필요'}
                     </div>
-                    <div className={`rounded-3xl p-6 mt-2 ${(resultData.memoryCorrect || 0) >= 5 && resultData.mathCorrect ? 'bg-emerald-500/20 border-2 border-emerald-500/30' : (resultData.memoryCorrect || 0) >= 3 ? 'bg-amber-500/20 border-2 border-amber-500/30' : 'bg-red-500/20 border-2 border-red-500/30'}`}>
-                      <span className="text-white/60 text-lg font-bold">종합 평가</span>
-                      <div className="text-4xl font-black text-white mt-2">
-                        {(resultData.memoryCorrect || 0) >= 5 && resultData.mathCorrect ? '🌟 우수' : (resultData.memoryCorrect || 0) >= 3 ? '👍 보통' : '💪 노력 필요'}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={handleComplete}
-                className="w-full py-5 mt-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-2xl font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
+                className={`w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-all
+                  ${isPortraitMode ? 'py-4 mt-3 text-xl' : 'py-3 mt-3 text-lg'}`}
               >
                 다음 단계로 →
               </button>

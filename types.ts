@@ -50,8 +50,8 @@ export interface PhysiognomyReport {
   wealthAndCareer: string;
   animalMorphology: {
     type: string;
-    englishType: string;
-    description: string;
+    englishType?: string;
+    description?: string;
     detailedAnalysis: string;
     traits: string[];
     visualCharacteristics: string;
@@ -74,7 +74,7 @@ export interface PhysiognomyReport {
     ears: string;
     skin: string; 
   };
-  lifeStrategy: { career: string; wealth: string; relationship: string; };
+  lifeStrategy: { career: string; wealth: string; relationship?: string; };
   comprehensiveEvaluation: {
     health: string;
     wealthAndSuccess: string;
@@ -88,6 +88,8 @@ export interface UserInfo {
   name: string;
   gender: 'male' | 'female' | 'other';
   age: number;
+  birthDate?: string; // 생년월일 추가
+  isAgreed?: boolean; // 약관 동의 여부 추가
   phone?: string;
   resultDelivery?: 'none' | 'sms' | 'kakao';
   memberType: 'new' | 'existing';
@@ -185,6 +187,18 @@ export interface BodyReport {
     reason: string;
     duration: string;
   };
+  energy3Body7Code?: {
+    threeBodyAnalysis?: string;
+    sevenCodeDetailed: { name: string; region: string; bodyPart: string; state: 'Positive' | 'Negative' | 'Neutral'; interpretation: string; score: number; }[];
+  };
+  bodyAlignmentAnalysis?: {
+    issue: string;
+    severity: string;
+    measuredValue: string;
+    normalRange: string;
+    impact: string;
+    recommendation?: string;
+  }[];
   // 재측정 비교 분석 (이전 기록 대비)
   comparisonAnalysis?: {
     previousDate: string;
@@ -199,6 +213,18 @@ export interface BodyReport {
     }[];
     programEffect: string;        // 프로그램 효과 평가
   };
+}
+
+export interface CaseReport {
+  clientProfile: string;      // 1. 내담자 핵심 프로파일
+  complaint: string;          // 2. 호소문 & 니즈
+  diagnosisSummary: string;   // 3. 진단 요약 (AI + 수정가능)
+  causeAnalysis: string;      // 4. 핵심 원인 분석 (AI + 수정가능)
+  interventionStrategy: string; // 5. 개입 전략 (AI + 수정가능)
+  changeResults: string;      // 6. 변화 결과 (수동 작성, After 기록 기반)
+  afterRecordId?: string;     // 매핑된 수련 후 기록 ID
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CapturedImage {
@@ -228,6 +254,8 @@ export interface MemberRecord {
   branchId?: string;
   hardwareId?: string;
   regionId?: string;
+  
+  caseReport?: CaseReport; // 지점 관리자 작성용 사례보고서 데이터
 }
 
 /**
@@ -252,6 +280,8 @@ export interface DiagnosticFeedback {
   faceRating?: 'very_satisfied' | 'satisfied' | 'normal' | 'dissatisfied' | 'very_dissatisfied';
   brainRating?: 'very_satisfied' | 'satisfied' | 'normal' | 'dissatisfied' | 'very_dissatisfied';
   tarotRating?: 'very_satisfied' | 'satisfied' | 'normal' | 'dissatisfied' | 'very_dissatisfied';
+  correctedOverallScore?: number;
+  correctedPhysicalAge?: number;
   notes?: string;
   submittedAt: string;
 }
@@ -286,7 +316,7 @@ export interface BranchAuth {
   adminName: string;
   contact: string;
   installer: string;
-  authCode: string; // "BTC15771785"
+  authCode: string; // 지점 인증 코드 (본사 배포)
   verifiedAt: string;
   machineId?: string; // 통계 카운트를 위한 고유 문서 ID
   hardwareId?: string; // 불법 복제 방지를 위한 물리적 보드 UUID
@@ -310,6 +340,11 @@ declare global {
       saveFeedbackRecords: (records: FeedbackRecord[]) => Promise<boolean>;
       getFeedbackRecords: () => Promise<FeedbackRecord[]>;
       getHardwareId: () => Promise<string>;
+      checkForUpdates?: () => Promise<boolean>;
+      downloadUpdate?: () => Promise<boolean>;
+      installUpdate?: () => Promise<boolean>;
+      onUpdaterMessage?: (callback: (message: string) => void) => () => void;
+      onUpdaterProgress?: (callback: (progress: any) => void) => () => void;
     };
   }
 }

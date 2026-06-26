@@ -4,6 +4,55 @@ import { BodyReport, CapturedImage } from '../types';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import FeedbackPanel from './FeedbackPanel';
 
+const CODE_PRESCRIPTIONS: Record<number, {
+  bodyFocus: string;
+  mindFocus: string;
+  brainFocus: string;
+}> = {
+  1: {
+    bodyFocus: "척추 정렬 및 하체 정체 해소를 위한 기마 자세와 코어 강화 훈련에 집중합니다.",
+    mindFocus: "생존 불안과 두려움을 완화하고 대지의 안정적인 기운을 느끼는 이완 명상에 집중합니다.",
+    brainFocus: "신체 고유 수용 감각을 깨워 두뇌와 하체의 신경 연결망을 활성화하는 인지 훈련에 집중합니다."
+  },
+  2: {
+    bodyFocus: "골반 내 기혈 순환을 돕고 고관절의 긴장을 풀어주는 골반 이완 체조에 집중합니다.",
+    mindFocus: "억압된 감정과 관계에서 오는 스트레스를 자연스럽게 정화하는 감정 배출 호흡에 집중합니다.",
+    brainFocus: "두뇌의 우반구를 자극하여 감정적 인지 유연성과 창의성을 높이는 감각 통합 훈련에 집중합니다."
+  },
+  3: {
+    bodyFocus: "소화 장기와 명치 부위 긴장을 풀어주는 코어 활성화 및 위장 마사지 운동에 집중합니다.",
+    mindFocus: "자신감 결여와 추진력 정체를 극복하고 내면의 에너지를 깨우는 활력 호흡에 집중합니다.",
+    brainFocus: "판단 억제력과 실행 능력을 다스리는 전두엽 인지 훈련 및 의사결정 트레이닝에 집중합니다."
+  },
+  4: {
+    bodyFocus: "가슴(단중혈)을 활짝 열어 호흡량을 늘리고 흉추의 유연성을 강화하는 흉곽 확장 체조에 집중합니다.",
+    mindFocus: "가슴 속 답답한 화기와 스트레스를 비우고 사랑과 용서의 에너지를 기르는 자애 명상에 집중합니다.",
+    brainFocus: "자율신경계를 안정시켜 심장 박동 변이(HRV)를 최적화하는 호흡 동조 뇌파 조율에 집중합니다."
+  },
+  5: {
+    bodyFocus: "목, 어깨, 성대 주변 근육의 긴장을 해소하고 림프 순환을 돕는 경추 스트레칭에 집중합니다.",
+    mindFocus: "생각이나 감정을 솔직하게 표현하고 언어적 소통 장애를 풀어내는 음성 허밍 명상에 집중합니다.",
+    brainFocus: "언어적 유창성과 논리적 사고를 관장하는 뇌 영역을 자극하는 소통형 두뇌 인지 훈련에 집중합니다."
+  },
+  6: {
+    bodyFocus: "시각적 피로를 풀어주고 머리로 쏠린 기운을 아래로 내리는 눈 운동 및 전신 이완 체조에 집중합니다.",
+    mindFocus: "잡념과 망상을 잠재우고 내면의 직관과 통찰력을 명료하게 다듬는 지감(知感) 명상에 집중합니다.",
+    brainFocus: "시각적 기억력, 작업 기억(Working Memory), 그리고 주의력 분산 억제 기능을 강화하는 고집중 훈련에 집중합니다."
+  },
+  7: {
+    bodyFocus: "척추 전체를 곧게 펴서 머리끝 정수리까지 에너지가 곧게 흐르도록 돕는 척추 정렬 운동에 집중합니다.",
+    mindFocus: "개인의 에고를 넘어 우주 및 자연의 통합적 생명 의식과 동조하는 깊은 정좌 참선 명상에 집중합니다.",
+    brainFocus: "뇌 전체의 뇌파(Alpha, Theta파)를 안정시키고 전체 신경망의 통합적 시너지를 높이는 초월적 브레인 훈련에 집중합니다."
+  }
+};
+
+const replaceTerminology = (text: string | undefined | null): string => {
+  if (!text) return '';
+  return text
+    .replace(/광명차크라/g, '충전명상')
+    .replace(/차크라/g, '7코드');
+};
+
 interface ReportDashboardProps {
   report: BodyReport;
   images: CapturedImage[];
@@ -13,6 +62,23 @@ interface ReportDashboardProps {
 const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRestart }) => {
   const [copied, setCopied] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(1.15);
+
+  const getWeakestCodeInfo = () => {
+    if (!report.sevenCodeAnalysis) return null;
+    const codes = [
+      { num: 1, label: '기본 에너지 (기초, 생명)', score: report.sevenCodeAnalysis.code1?.score ?? 100, desc: report.sevenCodeAnalysis.code1?.description },
+      { num: 2, label: '창조 에너지 (감정, 창조)', score: report.sevenCodeAnalysis.code2?.score ?? 100, desc: report.sevenCodeAnalysis.code2?.description },
+      { num: 3, label: '자신감 에너지 (의지, 추진)', score: report.sevenCodeAnalysis.code3?.score ?? 100, desc: report.sevenCodeAnalysis.code3?.description },
+      { num: 4, label: '조화 에너지 (순환, 포용)', score: report.sevenCodeAnalysis.code4?.score ?? 100, desc: report.sevenCodeAnalysis.code4?.description },
+      { num: 5, label: '표현 에너지 (소통, 균형)', score: report.sevenCodeAnalysis.code5?.score ?? 100, desc: report.sevenCodeAnalysis.code5?.description },
+      { num: 6, label: '직관 에너지 (집중, 통찰)', score: report.sevenCodeAnalysis.code6?.score ?? 100, desc: report.sevenCodeAnalysis.code6?.description },
+      { num: 7, label: '영성 에너지 (조화, 통합)', score: report.sevenCodeAnalysis.code7?.score ?? 100, desc: report.sevenCodeAnalysis.code7?.description },
+    ];
+    const sorted = [...codes].sort((a, b) => a.score - b.score);
+    return sorted[0];
+  };
+
+  const weakestCode = getWeakestCodeInfo();
   const radarData = (report?.postureMetrics || []).map(m => ({
     subject: m?.name || '항목',
     A: m.score,
@@ -44,6 +110,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
       `📊 핵심 수치`,
       `  • 생물학적 나이: ${report.userInfo.age}세`,
       `  • 신체 나이: ${report.physicalAge}세`,
+      `  • 마음 나이: ${report.mindAge || '측정 안됨'}세`,
       `  • 뇌 나이: ${report.brainAge || '측정 안됨'}세`,
       `  • 얼굴 나이: ${report.faceAgeEstimate}세`,
       `  • 3바디 통합 밸런스 나이: ${report.comprehensiveAge || report.physicalAge}세`,
@@ -57,7 +124,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
         ``,
       ] : []),
       ...(chakra ? [
-        `✨ 광명차크라 수련 필요도: ${chakra.needLevel}`,
+        `✨ 충전명상 수련 필요도: ${chakra.needLevel}`,
         ``,
       ] : []),
       ...(program ? [
@@ -117,14 +184,14 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
         bodyFree: true,
         cleanBreath: true,
         mindFree: false,
-        reason: "하위 차크라(1, 2번)의 에너지가 저하된 패턴입니다. 신체의 근원적인 에너지를 채우고 활력을 회복하기 위해 '바디프리 명상'과 '클린호흡'을 우선적으로 추천합니다."
+        reason: "하위 7코드(1, 2번)의 에너지가 저하된 패턴입니다. 신체의 근원적인 에너지를 채우고 활력을 회복하기 위해 '바디프리 명상'과 '클린호흡'을 우선적으로 추천합니다."
       };
     } else {
       return {
         bodyFree: false,
         cleanBreath: true,
         mindFree: true,
-        reason: "중위/상위 차크라(3, 4번 이상)의 에너지가 정체된 패턴입니다. 가슴의 답답함을 풀고 내면의 감정을 정화하기 위해 '클린호흡'과 '마음프리 명상'을 우선적으로 추천합니다."
+        reason: "중위/상위 7코드(3, 4번 이상)의 에너지가 정체된 패턴입니다. 가슴의 답답함을 풀고 내면의 감정을 정화하기 위해 '클린호흡'과 '마음프리 명상'을 우선적으로 추천합니다."
       };
     }
   };
@@ -227,16 +294,16 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
             <div className="text-4xl font-black text-indigo-600 mb-1">{report.physicalAge}<span className="text-xl ml-1">세</span></div>
         </div>
         <div className="bg-slate-50 py-6 px-4 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center">
-            <span className="text-slate-500 text-xs font-bold uppercase mb-2">얼굴 나이</span>
-            <div className="text-4xl font-black text-rose-500 mb-1">{report.faceAgeEstimate}<span className="text-xl ml-1">세</span></div>
+            <span className="text-slate-500 text-xs font-bold uppercase mb-2">마음 나이</span>
+            <div className="text-4xl font-black text-fuchsia-500 mb-1">{report.mindAge || '-'}<span className="text-xl ml-1">세</span></div>
         </div>
         <div className="bg-slate-50 py-6 px-4 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center">
             <span className="text-slate-500 text-xs font-bold uppercase mb-2">뇌 나이</span>
             <div className="text-4xl font-black text-amber-500 mb-1">{report.brainAge || '-'}<span className="text-xl ml-1">세</span></div>
         </div>
         <div className="bg-slate-50 py-6 px-4 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center">
-            <span className="text-slate-500 text-xs font-bold uppercase mb-2">마음 나이</span>
-            <div className="text-4xl font-black text-fuchsia-500 mb-1">{report.mindAge || '-'}<span className="text-xl ml-1">세</span></div>
+            <span className="text-slate-500 text-xs font-bold uppercase mb-2">얼굴 나이</span>
+            <div className="text-4xl font-black text-rose-500 mb-1">{report.faceAgeEstimate}<span className="text-xl ml-1">세</span></div>
         </div>
 
         <div className="bg-emerald-600 py-6 px-4 rounded-3xl flex flex-col items-center justify-center text-center text-white shadow-md shadow-emerald-200">
@@ -563,6 +630,19 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                     <div className="text-center">
                       <span className="text-sm font-bold text-slate-500">평균 반응시간</span>
                       <div className="text-4xl font-black text-indigo-600">{reactionData.reactionTimeMs}ms</div>
+                      {(() => {
+                        const ms = reactionData.reactionTimeMs || 999;
+                        const speedLabel = ms <= 600 ? { text: '매우 빠름', color: '#059669', bg: '#ecfdf5' }
+                          : ms <= 800 ? { text: '빠름', color: '#2563eb', bg: '#eff6ff' }
+                          : ms <= 1000 ? { text: '보통', color: '#d97706', bg: '#fffbeb' }
+                          : ms <= 1200 ? { text: '느림', color: '#e11d48', bg: '#fff1f2' }
+                          : { text: '매우 느림', color: '#be123c', bg: '#ffe4e6' };
+                        return (
+                          <span className="inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-bold" style={{ color: speedLabel.color, backgroundColor: speedLabel.bg }}>
+                            {speedLabel.text} (기준: 40대 평균 약 800ms)
+                          </span>
+                        );
+                      })()}
                     </div>
                     
                     {/* Gauge */}
@@ -574,14 +654,19 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                     </div>
                     <div className="flex justify-between text-[10px] text-slate-400 font-bold">
                       <span>빠름 (400ms)</span>
+                      <span className="text-indigo-400">◆ 평균 (800ms)</span>
                       <span>느림 (1200ms)</span>
                     </div>
 
                     <div className="flex items-center justify-between bg-slate-50 rounded-xl p-3">
-                      <span className="text-sm text-slate-600">억제 실패</span>
+                      <span className="text-sm font-semibold text-slate-700">억제 실패</span>
+                          <p className="text-[10px] text-slate-400 mt-0.5">멈춰야 할 때 반응하거나 잘못된 선택을 한 횟수</p>
                       <span className={`font-black text-lg ${(reactionData.reactionErrors || 0) === 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                         {reactionData.reactionErrors || 0}회
                       </span>
+                      <p className={`text-[10px] font-medium mt-0.5 ${(reactionData.reactionErrors || 0) === 0 ? 'text-emerald-500' : 'text-rose-400'}`}>
+                        {(reactionData.reactionErrors || 0) === 0 ? '✓ 완벽한 억제력' : '⚠ 충동 통제 훈련 필요'}
+                      </p>
                     </div>
 
                     {(() => {
@@ -695,7 +780,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                 <div className="h-3 bg-white/10 rounded-full overflow-hidden mb-4">
                   <div className={`h-full bg-gradient-to-r ${item.color} rounded-full transition-all duration-1000`} style={{ width: `${item.data?.score || 0}%` }} />
                 </div>
-                <p className="text-base text-slate-200 leading-relaxed font-medium">{item.data?.description || ''}</p>
+                <p className="text-base text-slate-200 leading-relaxed font-medium">{replaceTerminology(item.data?.description) || ''}</p>
               </div>
             ))}
           </div>
@@ -704,45 +789,45 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
           {report.sevenCodeAnalysis && (
             <div className="mt-10">
               <div className="text-center mb-8">
-                <span className="text-amber-400 text-sm font-bold uppercase tracking-[0.3em]">7CODE ENERGY</span>
+                <span className="text-cyan-400 text-sm font-bold uppercase tracking-[0.3em]">7CODE ENERGY</span>
                 <h3 className="text-3xl font-black mt-3">7코드 에너지 분석</h3>
                 <p className="text-slate-300 text-base mt-2 font-medium">당신의 에너지 흐름을 7가지 코드로 분석합니다</p>
               </div>
               <div className="space-y-4">
                 {[
-                  { code: report.sevenCodeAnalysis.code1, num: 1, defaultLabel: '기초 에너지', color: 'from-red-500 to-red-600' },
-                  { code: report.sevenCodeAnalysis.code2, num: 2, defaultLabel: '감정 흐름', color: 'from-orange-500 to-orange-600' },
-                  { code: report.sevenCodeAnalysis.code3, num: 3, defaultLabel: '추진력', color: 'from-yellow-500 to-yellow-600' },
-                  { code: report.sevenCodeAnalysis.code4, num: 4, defaultLabel: '정서 안정', color: 'from-emerald-500 to-emerald-600' },
-                  { code: report.sevenCodeAnalysis.code5, num: 5, defaultLabel: '소통', color: 'from-cyan-500 to-cyan-600' },
-                  { code: report.sevenCodeAnalysis.code6, num: 6, defaultLabel: '집중·통찰', color: 'from-indigo-500 to-indigo-600' },
-                  { code: report.sevenCodeAnalysis.code7, num: 7, defaultLabel: '삶의 방향', color: 'from-violet-500 to-violet-600' }
+                                    { code: report.sevenCodeAnalysis.code1, num: 1, defaultLabel: '기본 에너지 (기초, 생명)', color: 'from-red-500 to-red-600' },
+                  { code: report.sevenCodeAnalysis.code2, num: 2, defaultLabel: '창조 에너지 (감정, 창조)', color: 'from-orange-500 to-orange-600' },
+                  { code: report.sevenCodeAnalysis.code3, num: 3, defaultLabel: '자신감 에너지 (의지, 추진)', color: 'from-yellow-500 to-yellow-600' },
+                  { code: report.sevenCodeAnalysis.code4, num: 4, defaultLabel: '조화 에너지 (순환, 포용)', color: 'from-emerald-500 to-emerald-600' },
+                  { code: report.sevenCodeAnalysis.code5, num: 5, defaultLabel: '표현 에너지 (소통, 균형)', color: 'from-cyan-500 to-cyan-600' },
+                  { code: report.sevenCodeAnalysis.code6, num: 6, defaultLabel: '직관 에너지 (집중, 통찰)', color: 'from-indigo-500 to-indigo-600' },
+                  { code: report.sevenCodeAnalysis.code7, num: 7, defaultLabel: '영성 에너지 (조화, 통합)', color: 'from-violet-500 to-violet-600' }
                 ].map(item => (
                   <div key={item.num} className="bg-white/5 rounded-2xl p-5 border border-white/10">
-                    <div className="flex items-center gap-5">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center font-black text-white text-lg shrink-0`}>
-                        {item.num}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-bold text-base text-white">{item.code?.label || item.defaultLabel}</span>
-                          <span className="text-base font-black text-white">{item.code?.score || 0}점</span>
-                        </div>
-                        <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-2">
-                          <div className={`h-full bg-gradient-to-r ${item.color} rounded-full transition-all duration-1000`} style={{ width: `${item.code?.score || 0}%` }} />
-                        </div>
-                        <p className="text-sm font-medium text-slate-300 mb-2">{item.code?.description || ''}</p>
-                        {item.code?.evidence && item.code.evidence.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {item.code.evidence.map((ev, idx) => (
-                              <span key={idx} className="px-2 py-1 bg-white/10 rounded-md text-[11px] text-emerald-200 border border-emerald-500/30">
-                                🔍 {ev}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                     <div className="flex items-center gap-5">
+                       <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center font-black text-white text-lg shrink-0`}>
+                         {item.num}
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <div className="flex justify-between items-center mb-2">
+                           <span className="font-bold text-base text-white">{item.defaultLabel}</span>
+                           <span className="text-base font-black text-white">{item.code?.score || 0}점</span>
+                         </div>
+                         <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-2">
+                           <div className={`h-full bg-gradient-to-r ${item.color} rounded-full transition-all duration-1000`} style={{ width: `${item.code?.score || 0}%` }} />
+                         </div>
+                         <p className="text-sm font-medium text-slate-300 mb-2">{item.code?.description || ''}</p>
+                         {item.code?.evidence && item.code.evidence.length > 0 && (
+                           <div className="flex flex-wrap gap-2 mt-2">
+                             {item.code.evidence.map((ev, idx) => (
+                               <span key={idx} className="px-2 py-1 bg-white/10 rounded-md text-[11px] text-emerald-200 border border-emerald-500/30">
+                                 🔍 {ev}
+                               </span>
+                             ))}
+                           </div>
+                         )}
+                       </div>
+                     </div>
                   </div>
                 ))}
               </div>
@@ -751,209 +836,287 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
         </section>
       )}
 
-      {/* Kwangmyung Chakra Recommendation */}
-      {report.kwangmyungChakra && (
-        <section className="relative overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 rounded-[40px] p-8 md:p-12 border border-amber-200/50">
-          <div className="absolute -right-20 -top-20 w-80 h-80 bg-amber-200/30 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -left-10 -bottom-10 w-60 h-60 bg-orange-200/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative z-10">
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl shadow-amber-200/50">
-                <span className="text-3xl">✨</span>
+      {/* 3BODY 통합 솔루션 가이드 (몸·마음·뇌 종합 관리법) */}
+      {report.threeBodyAnalysis && (
+        <section className="bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 rounded-[40px] p-8 md:p-12 border border-slate-200 relative overflow-hidden shadow-sm">
+          <div className="text-center mb-10">
+            <span className="text-indigo-600 text-sm font-bold uppercase tracking-[0.3em]">3BODY INTEGRATED SOLUTION</span>
+            <h3 className="text-4xl font-black text-slate-900 mt-3">몸 · 마음 · 뇌 통합 솔루션 제언</h3>
+            <p className="text-slate-500 text-base mt-3 font-medium">3BODY 균형 상태를 진단하여 종합적인 조화와 치유 방안을 제시합니다.</p>
+          </div>
+
+          {/* 최우선 취약 코드 요약 패널 */}
+          {weakestCode && (
+            <div className="max-w-2xl mx-auto mb-10 p-5 bg-gradient-to-r from-rose-50 to-amber-50 border-2 border-rose-200 rounded-3xl flex items-center gap-4 shadow-sm">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center font-black text-white text-2xl shrink-0 shadow-md">
+                {weakestCode.num}
               </div>
-              <span className="text-amber-600 text-sm font-bold uppercase tracking-[0.3em]">special program</span>
-              <h3 className="text-4xl font-black text-slate-900 mt-3">광명차크라 특별수련</h3>
-              <p className="text-amber-800/80 text-base font-medium mt-3">7CODE 에너지의 균형 회복과 충전을 돕는 핵심 프로그램</p>
+              <div className="text-left">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-black text-rose-500 bg-rose-100 px-2 py-0.5 rounded-md uppercase tracking-wider">최우선 취약 에너지 코드</span>
+                  <span className="text-sm font-black text-rose-600 font-mono">최저 점수: {weakestCode.score}점</span>
+                </div>
+                <h4 className="text-lg font-black text-slate-800">
+                  {replaceTerminology(weakestCode.label)} 코드가 취약하여 해당 부문의 케어가 시급합니다.
+                </h4>
+                {weakestCode.desc && (
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{replaceTerminology(weakestCode.desc)}</p>
+                )}
+              </div>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 md:p-10 shadow-lg border border-amber-100 max-w-2xl mx-auto">
-              <div className="flex items-center gap-3 mb-6">
-                <span className="text-base font-bold text-slate-600">필요 정도</span>
-                <span className={`px-5 py-2 rounded-full font-black text-base ${
-                  report.kwangmyungChakra.needLevel === '매우 높음' ? 'bg-rose-100 text-rose-600' :
-                  report.kwangmyungChakra.needLevel === '높음' ? 'bg-amber-100 text-amber-600' :
-                  'bg-emerald-100 text-emerald-600'
-                }`}>
-                  ⚡ {report.kwangmyungChakra.needLevel}
-                </span>
+          )}
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* PHYSICAL BODY 솔루션 */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">🏃</span>
+                  <div>
+                    <h4 className="font-bold text-lg text-slate-800">PHYSICAL BODY (몸)</h4>
+                    <span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded-md mt-1 ${
+                      (report.threeBodyAnalysis.body?.score ?? 0) < 70 ? 'bg-rose-100 text-rose-700' :
+                      (report.threeBodyAnalysis.body?.score ?? 0) < 85 ? 'bg-amber-100 text-amber-700' :
+                      'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {(report.threeBodyAnalysis.body?.score ?? 0) < 70 ? '집중 케어 필요' :
+                       (report.threeBodyAnalysis.body?.score ?? 0) < 85 ? '유지 및 보완' :
+                       '우수 상태 유지'}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-slate-600 leading-relaxed mb-6">
+                  {CODE_PRESCRIPTIONS[weakestCode.num]?.bodyFocus || "신체 활력과 척추 중심축 정렬 상태를 보완하기 위한 관리가 필요합니다. 골반 틀어짐과 하체 근력 불균형을 개선하는 맞춤 교정 체조가 권장됩니다."}
+                </p>
               </div>
-              <div className="space-y-5">
-                <div>
-                  <h5 className="text-sm font-bold text-amber-700 uppercase mb-2">왜 광명차크라가 필요한가요?</h5>
-                  <p className="text-base text-slate-800 leading-relaxed font-medium">{report.kwangmyungChakra.reason}</p>
-                </div>
-                <div className="bg-amber-50 rounded-2xl p-5 border border-amber-100">
-                  <h5 className="text-sm font-bold text-amber-700 uppercase mb-2">기대 효과</h5>
-                  <p className="text-base text-amber-900 leading-relaxed font-bold">{report.kwangmyungChakra.expectedBenefit}</p>
-                </div>
+              <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
+                <span className="text-xs font-bold text-emerald-700 block mb-1">💡 일일 실천 과제</span>
+                <p className="text-xs text-emerald-900 font-semibold leading-relaxed">하루 3회 척추 세우기 스트레칭 및 골반 균형 운동 10분 수행</p>
               </div>
-              <div className="mt-8 text-center">
-                <div className="inline-flex items-center gap-2 text-sm text-slate-500 font-medium">
-                  <span className="w-2 h-2 bg-amber-400 rounded-full" />
-                  {report.userInfo?.memberType === 'existing' 
-                    ? '다음 단계의 의식 성장과 에너지 정화를 위한 핵심 수련'
-                    : '66일·100일 프로그램의 깊이를 만들어주는 에너지 핵심축'}
+            </div>
+
+            {/* ENERGY BODY 솔루션 */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">💚</span>
+                  <div>
+                    <h4 className="font-bold text-lg text-slate-800">ENERGY BODY (마음)</h4>
+                    <span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded-md mt-1 ${
+                      (report.threeBodyAnalysis.mind?.score ?? 0) < 70 ? 'bg-rose-100 text-rose-700' :
+                      (report.threeBodyAnalysis.mind?.score ?? 0) < 85 ? 'bg-amber-100 text-amber-700' :
+                      'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {(report.threeBodyAnalysis.mind?.score ?? 0) < 70 ? '집중 케어 필요' :
+                       (report.threeBodyAnalysis.mind?.score ?? 0) < 85 ? '유지 및 보완' :
+                       '우수 상태 유지'}
+                    </span>
+                  </div>
                 </div>
+                <p className="text-sm font-medium text-slate-600 leading-relaxed mb-6">
+                  정서 및 기 에너지 밸런스를 개선하기 위해 감정적 억압을 완화해야 합니다. 가슴과 중완 부위의 정체된 에너지를 이완하고, 깊은 호흡을 통해 감정을 흘려보내야 합니다.
+                </p>
+              </div>
+              <div className="bg-violet-50/50 p-4 rounded-2xl border border-violet-100">
+                <span className="text-xs font-bold text-violet-700 block mb-1">💡 일일 실천 과제</span>
+                <p className="text-xs text-violet-900 font-semibold leading-relaxed">취침 전 10분 동안 명치 부위 이완 및 편안한 단전 호흡 명상 진행</p>
+              </div>
+            </div>
+
+            {/* INFORMATION BODY 솔루션 */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">🧠</span>
+                  <div>
+                    <h4 className="font-bold text-lg text-slate-800">INFORMATION BODY (뇌)</h4>
+                    <span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded-md mt-1 ${
+                      (report.threeBodyAnalysis.brain?.score ?? 0) < 70 ? 'bg-rose-100 text-rose-700' :
+                      (report.threeBodyAnalysis.brain?.score ?? 0) < 85 ? 'bg-amber-100 text-amber-700' :
+                      'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {(report.threeBodyAnalysis.brain?.score ?? 0) < 70 ? '집중 케어 필요' :
+                       (report.threeBodyAnalysis.brain?.score ?? 0) < 85 ? '유지 및 보완' :
+                       '우수 상태 유지'}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-slate-600 leading-relaxed mb-6">
+                  {CODE_PRESCRIPTIONS[weakestCode.num]?.brainFocus || "두뇌 인지 기능과 정보 처리 능력을 우수하게 유지하기 위해 두뇌 훈련이 필요합니다. 주의력 억제 통제력 강화를 위해 인지적 부조화를 극복하는 정기적인 브레인 트레이닝이 유용합니다."}
+                </p>
+              </div>
+              <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
+                <span className="text-xs font-bold text-amber-700 block mb-1">💡 일일 실천 과제</span>
+                <p className="text-xs text-amber-900 font-semibold leading-relaxed">아침 기상 후 5분간 머리를 맑게 하는 뇌파 진동 및 뇌 스트레칭 수행</p>
               </div>
             </div>
           </div>
         </section>
       )}
 
-      {/* Program Recommendation */}
-      {report.programRecommendation && (
-        <section className="bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15),_transparent_50%)]" />
-          <div className="relative z-10">
-            <div className="text-center mb-8">
-              <span className="text-indigo-200 text-sm font-bold uppercase tracking-[0.3em]">맞춤 프로그램</span>
-              <h3 className="text-4xl font-black mt-3">당신을 위한 추천</h3>
-            </div>
-            <div className="max-w-2xl mx-auto">
-              <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 md:p-10 border border-white/20 text-center mb-8">
-                <div className={`${report.programRecommendation.recommended?.length > 15 ? 'text-3xl md:text-4xl' : 'text-5xl md:text-6xl'} font-black text-white mb-4 leading-tight`}>{report.programRecommendation.recommended}</div>
-                <p className="text-indigo-50 text-lg leading-relaxed font-medium mb-6">{report.programRecommendation.reason}</p>
-                <div className="bg-white/10 rounded-2xl p-5 text-base font-bold text-white">{report.programRecommendation.duration}</div>
-              </div>
-              {(!report.userInfo?.memberType || report.userInfo?.memberType === 'new') && (
-                <>
-                  <div className="grid grid-cols-3 gap-4 text-center mb-10">
-                    {[
-                      { label: '21일', desc: '변화 시작', active: report.programRecommendation.recommended?.includes('21') },
-                      { label: '66일', desc: '습관 정착', active: report.programRecommendation.recommended?.includes('66') },
-                      { label: '100일', desc: '삶의 전환', active: report.programRecommendation.recommended?.includes('100') }
-                    ].map(p => (
-                      <div key={p.label} className={`rounded-2xl p-5 border ${p.active ? 'bg-white text-indigo-700 border-white shadow-xl' : 'bg-white/5 border-white/10 text-indigo-200'}`}>
-                        <div className="text-2xl font-black">{p.label}</div>
-                        <div className="text-sm mt-2 font-bold">{p.desc}</div>
-                      </div>
-                    ))}
-                  </div>
+      
 
-                  {/* 7-CODE 맞춤 특화 프로그램 */}
-                  <div className="mt-10 pt-10 border-t border-white/10 relative">
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-800 px-6 py-2 rounded-full text-sm font-black text-indigo-200 border border-white/10 shadow-lg tracking-widest whitespace-nowrap">
-                      7-CODE 맞춤 특화 수련
-                    </div>
-                    
-                    <div className="text-center mt-8 mb-6">
-                      <p className="text-indigo-100 text-lg font-medium bg-white/5 inline-block px-6 py-3 rounded-2xl border border-white/10">
-                        {specialized.reason}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left max-w-4xl mx-auto">
-                      {/* Body Free */}
-                      {specialized.bodyFree && (
-                        <div className="block rounded-3xl p-6 border transition-all bg-gradient-to-br from-amber-400 to-orange-500 border-white/50 shadow-2xl shadow-orange-500/50 transform -translate-y-2">
-                          <div className="text-[10px] font-black bg-white text-orange-600 inline-block px-3 py-1.5 rounded-full mb-3 shadow-md uppercase tracking-wider">AI 강력 추천</div>
-                          <h4 className="text-2xl font-black text-white mb-3">바디프리 명상</h4>
-                          <div className="flex gap-2 mb-5">
-                            <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#에너지순환</span>
-                            <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#활력충전</span>
-                          </div>
-                          <div className="flex justify-between items-center text-sm text-white/90 font-bold border-t border-white/20 pt-4 mt-auto">
-                            <span>신체 에너지 회복</span>
-                            <span>근원적 생명력 강화</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Clean Breath */}
-                      {specialized.cleanBreath && (
-                        <div className="block rounded-3xl p-6 border transition-all bg-gradient-to-br from-emerald-400 to-teal-500 border-white/50 shadow-2xl shadow-teal-500/50 transform -translate-y-2">
-                          <div className="text-[10px] font-black bg-white text-teal-600 inline-block px-3 py-1.5 rounded-full mb-3 shadow-md uppercase tracking-wider">AI 강력 추천</div>
-                          <h4 className="text-2xl font-black text-white mb-3">클린호흡 1, 2</h4>
-                          <div className="flex gap-2 mb-5">
-                            <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#감정정화</span>
-                            <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#체형밸런스</span>
-                          </div>
-                          <div className="flex justify-between items-center text-sm text-white/90 font-bold border-t border-white/20 pt-4 mt-auto">
-                            <span>자연치유력 회복</span>
-                            <span>단전호흡 기초</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Mind Free */}
-                      {specialized.mindFree && (
-                        <div className="block rounded-3xl p-6 border transition-all bg-gradient-to-br from-pink-400 to-rose-500 border-white/50 shadow-2xl shadow-rose-500/50 transform -translate-y-2">
-                          <div className="text-[10px] font-black bg-white text-rose-600 inline-block px-3 py-1.5 rounded-full mb-3 shadow-md uppercase tracking-wider">AI 강력 추천</div>
-                          <h4 className="text-2xl font-black text-white mb-3">마음프리 명상</h4>
-                          <div className="flex flex-wrap gap-2 mb-5">
-                            <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#자아성찰</span>
-                            <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#의식성장</span>
-                          </div>
-                          <div className="flex justify-between items-center text-sm text-white/90 font-bold border-t border-white/20 pt-4 mt-auto">
-                            <span>내면의 평화</span>
-                            <span>러브마이셀프</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Brain Training Links Section */}
-      {report?.recommendations && (
-      <section className="bg-slate-900 rounded-[40px] p-8 md:p-12 text-white">
-        <h3 className="text-3xl font-black mb-10 text-center">맞춤형 브레인 트레이닝 추천</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="space-y-4">
-                <div className="w-16 h-16 bg-indigo-500 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/20">
-                    <i className="fas fa-om"></i>
-                </div>
-                <h4 className="text-2xl font-bold">맞춤 명상 (Meditation)</h4>
-                <p className="text-base font-medium text-slate-300 leading-relaxed">{report.recommendations.meditation}</p>
-            </div>
-            <div className="space-y-4">
-                <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-emerald-500/20">
-                    <i className="fas fa-walking"></i>
-                </div>
-                <h4 className="text-2xl font-bold">교정 체조 (Gymnastics)</h4>
-                <p className="text-base font-medium text-slate-300 leading-relaxed">{report.recommendations.gymnastics}</p>
-            </div>
-            <div className="space-y-4">
-                <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-amber-500/20">
-                    <i className="fas fa-puzzle-piece"></i>
-                </div>
-                <h4 className="text-2xl font-bold">뇌 기능 훈련 (Brain Training)</h4>
-                <p className="text-base font-medium text-slate-300 leading-relaxed">{report.recommendations.brainTraining}</p>
-            </div>
+      {/* 🎯 당신에게 제안하는 체험 추천 프로그램 그룹 */}
+      <section className="bg-slate-50 border border-slate-200 rounded-[50px] p-8 md:p-12 space-y-12">
+        <div className="text-center max-w-2xl mx-auto">
+          <span className="text-indigo-600 text-xs font-black uppercase tracking-[0.3em]">experience recommendation</span>
+          <h3 className="text-4xl font-black text-slate-900 mt-3">체험 추천 프로그램</h3>
+          <p className="text-slate-500 text-base mt-2 font-medium">검사 결과를 기반으로 귀하의 근원적인 에너지 조화와 체력 개선을 위해 최적화된 맞춤 프로그램입니다.</p>
         </div>
-      </section>
-      )}
 
-      {/* K-Tarot & K-Face Section */}
-      <section className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-[40px] p-8 md:p-12 text-center border border-pink-100 print:hidden relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 text-pink-200 pointer-events-none">
-            <i className="fas fa-sparkles text-6xl opacity-50"></i>
+        {/* 1. 7코드 충전명상 특별수련 */}
+        {report.kwangmyungChakra && (
+          <div className="relative overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 rounded-[40px] p-8 md:p-12 border border-amber-200/50 shadow-sm">
+            <div className="absolute -right-20 -top-20 w-80 h-80 bg-amber-200/30 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -left-10 -bottom-10 w-60 h-60 bg-orange-200/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10">
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl shadow-amber-200/50">
+                  <span className="text-3xl">✨</span>
+                </div>
+                <span className="text-amber-600 text-sm font-bold uppercase tracking-[0.3em]">special program</span>
+                <h3 className="text-3xl font-black text-slate-900 mt-2">7코드 충전명상 특별수련</h3>
+                <p className="text-amber-800/80 text-base font-medium mt-2">7CODE 에너지의 균형 회복과 충전을 돕는 핵심 프로그램 (강력 추천)</p>
+              </div>
+              <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-md border border-amber-100 max-w-2xl mx-auto">
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="text-base font-bold text-slate-600">필요 정도</span>
+                  <span className={`px-5 py-2 rounded-full font-black text-base ${
+                    report.kwangmyungChakra.needLevel === '매우 높음' ? 'bg-rose-100 text-rose-600' :
+                    report.kwangmyungChakra.needLevel === '높음' ? 'bg-amber-100 text-amber-600' :
+                    'bg-emerald-100 text-emerald-600'
+                  }`}>
+                    ⚡ {report.kwangmyungChakra.needLevel}
+                  </span>
+                </div>
+                <div className="space-y-5">
+                  <div>
+                    <h5 className="text-sm font-bold text-amber-700 uppercase mb-2">왜 충전명상이 필요한가요?</h5>
+                    <p className="text-base text-slate-800 leading-relaxed font-medium">{replaceTerminology(report.kwangmyungChakra.reason)}</p>
+                  </div>
+                  <div className="bg-amber-50 rounded-2xl p-5 border border-amber-100">
+                    <h5 className="text-sm font-bold text-amber-700 uppercase mb-2">기대 효과</h5>
+                    <p className="text-base text-amber-900 leading-relaxed font-bold">{replaceTerminology(report.kwangmyungChakra.expectedBenefit)}</p>
+                  </div>
+                </div>
+                <div className="mt-8 text-center">
+                  <div className="inline-flex items-center gap-2 text-sm text-slate-500 font-medium">
+                    <span className="w-2 h-2 bg-amber-400 rounded-full" />
+                    {report.userInfo?.memberType === 'existing' 
+                      ? '다음 단계의 의식 성장과 에너지 정화를 위한 핵심 수련'
+                      : '66일·100일 프로그램의 깊이를 만들어주는 에너지 핵심축'}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <h3 className="text-3xl font-black text-slate-800 mb-2 flex items-center justify-center gap-3">
-              <i className="fas fa-magic text-pink-500"></i> AI K관상 & K타로
-          </h3>
-          <p className="text-xs font-bold text-rose-500 mb-4">(※ 이 서비스는 정식 등록 회원에게만 제공됩니다.)</p>
-          <p className="text-slate-600 mb-8 font-medium">재미로 보는 맞춤형 운세! 건강 데이터와 연동된 특별한 해석을 확인해보세요.</p>
-          <div className="flex flex-col sm:flex-row justify-center gap-6">
-              <button onClick={() => window.dispatchEvent(new CustomEvent('nav:kface'))} className="px-8 py-6 bg-white text-pink-600 font-bold rounded-[30px] border-2 border-pink-200 hover:border-pink-400 hover:bg-pink-50 transition-all flex flex-col items-center gap-3 shadow-md">
-                  <span className="text-5xl">🎭</span>
-                  <span className="text-lg">K관상 보러가기</span>
-              </button>
-              <button onClick={() => window.dispatchEvent(new CustomEvent('nav:ktarot'))} className="px-8 py-6 bg-white text-purple-600 font-bold rounded-[30px] border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50 transition-all flex flex-col items-center gap-3 shadow-md">
-                  <span className="text-5xl">🔮</span>
-                  <span className="text-lg">K타로 보러가기</span>
-              </button>
+        )}
+
+        {/* 2. 맞춤 프로그램 & 7-CODE 맞춤 특화 수련 */}
+        {report.programRecommendation && (
+          <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden shadow-md">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15),_transparent_50%)]" />
+            <div className="relative z-10">
+              <div className="text-center mb-8">
+                <span className="text-indigo-200 text-sm font-bold uppercase tracking-[0.3em]">맞춤 프로그램</span>
+                <h3 className="text-3xl font-black mt-2">정규 맞춤 프로그램</h3>
+              </div>
+              <div className="max-w-2xl mx-auto">
+                <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 text-center mb-8">
+                  <div className={`${report.programRecommendation.recommended?.length > 15 ? 'text-3xl' : 'text-4xl md:text-5xl'} font-black text-white mb-4 leading-tight`}>{replaceTerminology(report.programRecommendation.recommended)}</div>
+                  <p className="text-indigo-50 text-base leading-relaxed font-medium mb-6">{replaceTerminology(report.programRecommendation.reason)}</p>
+                  <div className="bg-white/10 rounded-2xl p-4 text-base font-bold text-white">{replaceTerminology(report.programRecommendation.duration)}</div>
+                </div>
+                {(!report.userInfo?.memberType || report.userInfo?.memberType === 'new') && (
+                  <>
+                    <div className="grid grid-cols-3 gap-4 text-center mb-10">
+                      {[
+                        { label: '21일', desc: '변화 시작', active: report.programRecommendation.recommended?.includes('21') },
+                        { label: '66일', desc: '습관 정착', active: report.programRecommendation.recommended?.includes('66') },
+                        { label: '100일', desc: '삶의 전환', active: report.programRecommendation.recommended?.includes('100') }
+                      ].map(p => (
+                        <div key={p.label} className={`rounded-2xl p-5 border ${p.active ? 'bg-white text-indigo-700 border-white shadow-xl' : 'bg-white/5 border-white/10 text-indigo-200'}`}>
+                          <div className="text-2xl font-black">{p.label}</div>
+                          <div className="text-sm mt-2 font-bold">{p.desc}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 7-CODE 맞춤 특화 프로그램 */}
+                    <div className="mt-10 pt-10 border-t border-white/10 relative">
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-800 px-6 py-2 rounded-full text-xs font-black text-indigo-200 border border-white/10 shadow-lg tracking-widest whitespace-nowrap">
+                        7-CODE 맞춤 특화 수련
+                      </div>
+                      
+                      <div className="text-center mt-8 mb-6">
+                        <p className="text-indigo-100 text-base font-medium bg-white/5 inline-block px-6 py-3 rounded-2xl border border-white/10">
+                          {replaceTerminology(specialized.reason)}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left max-w-4xl mx-auto">
+                        {/* Body Free */}
+                        {specialized.bodyFree && (
+                          <div className="block rounded-3xl p-6 border transition-all bg-gradient-to-br from-amber-400 to-orange-500 border-white/50 shadow-2xl shadow-orange-500/50 transform -translate-y-2">
+                            <div className="text-[10px] font-black bg-white text-orange-600 inline-block px-3 py-1.5 rounded-full mb-3 shadow-md uppercase tracking-wider">AI 강력 추천</div>
+                            <h4 className="text-2xl font-black text-white mb-3">바디프리 명상</h4>
+                            <div className="flex gap-2 mb-5">
+                              <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#에너지순환</span>
+                              <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#활력충전</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm text-white/90 font-bold border-t border-white/20 pt-4 mt-auto">
+                              <span>신체 에너지 회복</span>
+                              <span>근원적 생명력 강화</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Clean Breath */}
+                        {specialized.cleanBreath && (
+                          <div className="block rounded-3xl p-6 border transition-all bg-gradient-to-br from-emerald-400 to-teal-500 border-white/50 shadow-2xl shadow-teal-500/50 transform -translate-y-2">
+                            <div className="text-[10px] font-black bg-white text-teal-600 inline-block px-3 py-1.5 rounded-full mb-3 shadow-md uppercase tracking-wider">AI 강력 추천</div>
+                            <h4 className="text-2xl font-black text-white mb-3">클린호흡 1, 2</h4>
+                            <div className="flex gap-2 mb-5">
+                              <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#감정정화</span>
+                              <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#체형밸런스</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm text-white/90 font-bold border-t border-white/20 pt-4 mt-auto">
+                              <span>자연치유력 회복</span>
+                              <span>호흡 기초</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Mind Free */}
+                        {specialized.mindFree && (
+                          <div className="block rounded-3xl p-6 border transition-all bg-gradient-to-br from-pink-400 to-rose-500 border-white/50 shadow-2xl shadow-rose-500/50 transform -translate-y-2">
+                            <div className="text-[10px] font-black bg-white text-rose-600 inline-block px-3 py-1.5 rounded-full mb-3 shadow-md uppercase tracking-wider">AI 강력 추천</div>
+                            <h4 className="text-2xl font-black text-white mb-3">마음프리 명상</h4>
+                            <div className="flex flex-wrap gap-2 mb-5">
+                              <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#자아성찰</span>
+                              <span className="text-xs font-bold bg-black/20 text-white px-2 py-1 rounded-md">#의식성장</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm text-white/90 font-bold border-t border-white/20 pt-4 mt-auto">
+                              <span>내면의 평화</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
+        )}
+
+        
       </section>
 
       {/* Overall Summary */}
       <div className="bg-slate-50 p-10 rounded-[40px] border border-slate-200 text-center max-w-4xl mx-auto">
           <h4 className="text-3xl font-black text-slate-800 mb-6">종합 평가 리포트</h4>
-          <p className="text-lg font-medium text-slate-700 leading-relaxed mb-8 italic">"{report.summary}"</p>
+          <p className="text-lg font-medium text-slate-700 leading-relaxed mb-8 italic">"{replaceTerminology(report.summary)}"</p>
           <div className="flex flex-wrap justify-center gap-4 print:hidden">
               <button onClick={handleShare} className={`px-8 py-3 font-bold rounded-2xl flex items-center gap-2 shadow-sm transition-all ${copied ? 'bg-emerald-500 text-white border border-emerald-500' : 'bg-white text-slate-900 border border-slate-300'}`}>
                   <i className={`fas ${copied ? 'fa-check' : 'fa-copy'}`}></i> {copied ? '복사 완료! 카톡에 붙여넣기 하세요' : '카톡 공유용 복사'}
@@ -967,17 +1130,28 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
       {/* 관리자 피드백 패널 — Few-Shot 학습 데이터 누적 */}
       <FeedbackPanel report={report} />
 
-      {/* ⚠️ 법적 면책 고지 (의료법 준수) */}
-      <div className="mt-4 mb-2 px-6 py-4 bg-amber-50 border border-amber-200 rounded-2xl text-center print:block">
-        <p className="text-amber-800 text-xs font-bold mb-1">
-          ⚠️ 서비스 이용 안내 (법적 고지)
-        </p>
-        <p className="text-amber-700 text-[11px] leading-relaxed">
-          본 결과는 뇌파와 생체 에너지 균형을 파악하기 위한 <strong>웰니스 스크리닝 지표</strong>입니다.{' '}
-          의료기기법에 따른 의료기기 또는 의료행위가 <strong>아닙니다</strong>.<br />
-          본 리포트는 의학적 진단·처방·치료를 대체하지 않습니다.{' '}
-          근골격계의 심각한 물리적 통증이나 의학적 이상이 지속될 경우 전문 의료기관의 진료를 권장합니다.
-        </p>
+      {/* ⚠️ 법적 면책 고지 및 산출 근거 (의료법 준수) */}
+      <div className="mt-8 mb-2 px-6 py-5 bg-slate-50 border border-slate-200 rounded-2xl text-left print:block">
+        <div className="flex items-center gap-2 mb-3 justify-center">
+          <i className="fas fa-book-medical text-slate-400"></i>
+          <p className="text-slate-600 text-xs font-bold uppercase tracking-wider">
+            서비스 산출 근거 및 이용 안내 (법적 고지)
+          </p>
+        </div>
+        <div className="text-slate-500 text-[11px] leading-relaxed space-y-3">
+          <p>
+            <strong>📌 학술적 측정 기반 (Academic Basis):</strong> 본 서비스의 웰니스 지표는 다음의 인지과학 및 생체역학적 연구 방법론을 기초로 당사의 AI 알고리즘에 맞게 재구성되었습니다.
+            <br />• <strong>신체 분석:</strong> Kendall의 자세 평가(Posture Analysis) 및 플럼라인(Plumb Line) 생체역학 정렬 기준
+            <br />• <strong>두뇌 분석:</strong> J.R. Stroop(1935)의 인지 간섭 현상(Stroop Effect) 및 A. Baddeley(1974)의 작업기억(Working Memory) 모델
+            <br />• <strong>안면 분석:</strong> Computer Vision 기반 안면 랜드마크(Facial Landmark) 텍스처 및 비대칭성 분석
+          </p>
+          <p>
+            <strong>📌 연령 지표 산출 근거:</strong> 위 학술적 기반과 Vision AI(자세 정렬, 안면 근육, 인지 반응 속도 등) 측정 데이터를 종합하여, 당사 고유의 <strong>통계적·휴리스틱 알고리즘</strong>을 통해 산출된 <strong>건강관리 및 동기부여 목적의 참고 지표</strong>입니다.
+          </p>
+          <p>
+            <strong>⚠️ 비의료 건강관리서비스 안내:</strong> 본 테스트는 보건복지부의 「비의료 건강관리서비스 가이드라인」을 준수합니다. 본 결과는 질병의 진단을 위한 의학적 수치가 아니며, 의료법에 따른 의료행위(진찰, 검사, 진단, 처방 등)를 대체할 수 없습니다. 질환이 의심되거나 신체적 이상이 있는 경우 반드시 전문 의료기관을 방문하여 진료를 받으시기 바랍니다.
+          </p>
+        </div>
       </div>
       </div>
     </div>

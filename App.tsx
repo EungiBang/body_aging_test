@@ -7,6 +7,16 @@ import { checkDeviceStatus } from './services/firebaseAuthService';
 
 type DeviceState = 'loading' | 'active' | 'pending' | 'revoked' | 'unregistered';
 
+// Firebase 호출 무한 대기 방지용 타임아웃 헬퍼
+const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`[Timeout] ${label}: ${ms}ms 초과`)), ms)
+    )
+  ]);
+};
+
 const App: React.FC = () => {
   const [deviceState, setDeviceState] = useState<DeviceState>('loading');
   useEffect(() => {
@@ -33,7 +43,8 @@ const App: React.FC = () => {
           console.warn('Hardware ID could not be determined. Using fallback.');
         }
 
-        const device = await checkDeviceStatus(hardwareId, appVersion);
+        console.log(`[Auth] checkDeviceStatus 호출 시작: hardwareId=${hardwareId.substring(0, 8)}...`);
+        const device = await withTimeout(checkDeviceStatus(hardwareId, appVersion), 10000, 'checkDeviceStatus');
         
         if (!device) {
           setDeviceState('unregistered');
@@ -42,8 +53,14 @@ const App: React.FC = () => {
           setDeviceState(device.status);
           localStorage.setItem('currentDevice', JSON.stringify(device));
         }
-      } catch (e) {
-        console.error("Auth check failed:", e);
+      } catch (e: any) {
+        console.error("[Auth] 인증 확인 실패:", e?.message || e);
+        // 타임아웃인 경우 캐시 사용하지 않고 바로 인증 화면 표시
+        if (e?.message?.includes('[Timeout]')) {
+          console.warn('[Auth] Firebase 응답 시간 초과. 인증 화면으로 전환합니다.');
+          setDeviceState('unregistered');
+          return;
+        }
         // 네트워크 오류 시, 이전에 인증 성공한 기록이 있으면 오프라인 허용
         const cached = localStorage.getItem('currentDevice');
         if (cached) {

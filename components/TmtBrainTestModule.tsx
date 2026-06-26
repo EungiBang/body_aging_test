@@ -102,7 +102,7 @@ export const TmtBrainTestModule: React.FC<TmtBrainTestModuleProps> = ({ onComple
   const [balls, setBalls] = useState<Ball[]>([]);
   
   // Round states
-  const [targetColor, setTargetColor] = useState<typeof COLORS[0]>(COLORS[0]);
+  const [targetColor, setTargetColor] = useState<typeof COLORS[number]>(COLORS[0]);
   const [currentNumber, setCurrentNumber] = useState<number>(1);
   const [timeLeft, setTimeLeft] = useState(ROUND_TIME_LIMIT);
   const [timeMs, setTimeMs] = useState(ROUND_TIME_LIMIT * 1000);

@@ -177,3 +177,23 @@ export const deleteMemberFromCloud = async (memberId: string): Promise<boolean> 
     return false;
   }
 };
+
+/**
+ * 본사 관리자용: 전체 연합 행사 목록을 가져옵니다.
+ */
+export const fetchAllEvents = async (): Promise<any[]> => {
+  try {
+    const q = query(collection(db, 'active_events'));
+    const snap = await getDocs(q);
+    const events: any[] = [];
+    snap.forEach(d => {
+      events.push({ id: d.id, ...d.data() });
+    });
+    // 생성일자 기준 정렬 (최신순)
+    events.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return events;
+  } catch (e) {
+    console.error('Failed to fetch all events', e);
+    return [];
+  }
+};

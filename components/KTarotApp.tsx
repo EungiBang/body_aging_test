@@ -14,17 +14,18 @@ import remarkGfm from 'remark-gfm';
 interface KTarotAppProps {
   onClose: () => void;
   onBack?: () => void;
+  userInfo?: UserInfo;
 }
 
 type Step = 'welcome' | 'history_select' | 'info_input' | 'concern_input' | 'master_selection' | 'shuffling' | 'analyzing' | 'report';
 
-const KTarotApp: React.FC<KTarotAppProps> = ({ onClose, onBack }) => {
-  const [step, setStep] = useState<Step>('welcome');
+const KTarotApp: React.FC<KTarotAppProps> = ({ onClose, onBack, userInfo: propUserInfo }) => {
+  const [step, setStep] = useState<Step>(propUserInfo ? 'concern_input' : 'welcome');
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null);
   const [branchId, setBranchId] = useState<string>('');
   
   // 상태 변수들
-  const [userInfo, setUserInfo] = useState<UserInfo>({ name: '', age: 30, gender: 'female', isAgreed: true });
+  const [userInfo, setUserInfo] = useState<UserInfo>(propUserInfo || { name: '', age: 30, gender: 'female', isAgreed: true, memberType: 'new' });
   const [concern, setConcern] = useState<string>('');
   const [selectedMaster, setSelectedMaster] = useState<string>('');
   const [drawnCards, setDrawnCards] = useState<{ past: CheonbugyeongCharacter; present: CheonbugyeongCharacter; future: CheonbugyeongCharacter } | null>(null);
@@ -80,7 +81,7 @@ const KTarotApp: React.FC<KTarotAppProps> = ({ onClose, onBack }) => {
       setUserInfo(record.report.userInfo);
     } else {
       // report에 userInfo가 없는 예전 기록일 경우 대비 (추정)
-      setUserInfo({ name: record.name, age: record.age, gender: record.gender, isAgreed: true });
+      setUserInfo({ name: record.name, age: 30, gender: 'female', isAgreed: true, memberType: 'new' });
     }
     setStep('concern_input');
   };
@@ -279,10 +280,10 @@ const KTarotApp: React.FC<KTarotAppProps> = ({ onClose, onBack }) => {
                       className="p-4 bg-slate-800 border border-slate-600 rounded-xl hover:border-fuchsia-500 hover:shadow-[0_0_15px_rgba(147,51,234,0.3)] cursor-pointer transition-all flex items-center gap-4"
                     >
                       <div className="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center text-xl text-slate-300">
-                        {record.gender === 'male' ? <i className="fas fa-mars text-blue-400"></i> : <i className="fas fa-venus text-rose-400"></i>}
+                        {record.report?.userInfo?.gender === 'male' ? <i className="fas fa-mars text-blue-400"></i> : <i className="fas fa-venus text-rose-400"></i>}
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-bold text-lg">{record.name} <span className="text-sm font-normal text-slate-400">({record.age}세)</span></h4>
+                        <h4 className="font-bold text-lg">{record.name} <span className="text-sm font-normal text-slate-400">({record.report?.userInfo?.age || '-'}세)</span></h4>
                         <p className="text-xs text-slate-500">최근 진단: {new Date(record.lastTestDate).toLocaleDateString()}</p>
                       </div>
                       <i className="fas fa-chevron-right text-slate-600"></i>
@@ -439,7 +440,11 @@ const KTarotApp: React.FC<KTarotAppProps> = ({ onClose, onBack }) => {
               <TarotFeedbackPanel
                 userInfo={userInfo}
                 concern={concern}
-                cards={drawnCards}
+                cards={{
+                  past: drawnCards.past.char,
+                  present: drawnCards.present.char,
+                  future: drawnCards.future.char
+                }}
                 reportData={reportData}
               />
             )}

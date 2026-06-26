@@ -25,5 +25,22 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "src/**/*",
+    "components/**/*",
+    "hooks/**/*",
+    "services/**/*",
+    "types.ts",
+    "electron/**/*",
+    "main.tsx",
+    "vite-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "BTC_Admin_Server",
+    "BT_3Body_Online_Lite",
+    "ai-관상-분석기-v3"
+  ]
 }

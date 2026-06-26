@@ -1243,9 +1243,16 @@ const AssessmentFlow: React.FC = () => {
               <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 via-white to-indigo-200 mb-2 tracking-tight drop-shadow-sm">
                 BTC 3바디 AI 측정 센터
               </h2>
-              <p className="text-indigo-300/80 mb-10 text-sm font-medium italic">
+              <p className="text-indigo-300/80 mb-6 text-sm font-medium italic">
                 AI 신체 균형 &amp; 건강 상태 측정 시스템
               </p>
+
+              {/* 법적 고지 한 줄 안내 */}
+              <div className="mb-8 p-3 rounded-xl bg-indigo-900/40 border border-indigo-500/20 backdrop-blur-md shadow-inner">
+                <p className="text-slate-300 text-xs leading-relaxed font-semibold">
+                  <i className="fas fa-info-circle text-indigo-400 mr-1"></i> 본 테스트는 질병 진단 등의 의료행위가 아니며, 평소 건강 관리를 돕기 위한 <strong>건강 상태 점검(체크) 서비스</strong>입니다.
+                </p>
+              </div>
 
               {/* ★ v4.2.6: 이어하기 배너 */}
               {resumePendingData && (
@@ -1380,7 +1387,7 @@ const AssessmentFlow: React.FC = () => {
         return renderCameraStep("근력 테스트 01", "15초 스쿼트", 6, <CameraModule key="squat" onCapture={handleCapture} guidelineType="squat" timerDuration={15} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
 
       case AssessmentStep.STRENGTH_PUSHUP:
-        return renderCameraStep("근력 테스트 02", "15초 푸시업", 7, <CameraModule key="pushup" onCapture={handleCapture} guidelineType="pushup" timerDuration={15} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} userAge={userInfo?.age} userGender={userInfo?.gender} />);
+        return renderCameraStep("근력 테스트 02", "15초 푸시업", 7, <CameraModule key="pushup" onCapture={handleCapture} guidelineType="pushup" timerDuration={15} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
 
       case AssessmentStep.BRAIN_REACTION:
         return <TmtBrainTestModule key={AssessmentStep.BRAIN_REACTION} onComplete={(dataUrl, testData) => proceedToNextStep(AssessmentStep.BRAIN_REACTION, dataUrl, testData.reactionTimeMs, testData.reactionErrors, undefined, undefined, undefined, undefined, undefined, testData)} />;
@@ -1528,15 +1535,26 @@ const AssessmentFlow: React.FC = () => {
               </div>
             </div>
             <h3 className="text-3xl font-black text-white mb-4 tracking-tight">AI 데이터 분석 중</h3>
-            <p className="text-slate-400 max-w-md mx-auto text-base leading-relaxed font-medium mt-4">
-              <span className="block text-indigo-200 mb-2 font-bold bg-indigo-900/40 p-3 rounded-lg border border-indigo-500/20">
-                이 분석은 브레인트레이닝센터와 연구원, 대학교 등 전문가들이 연구, 개발하였고,<br/>
-                최신 AI의 기술을 접목하여 개발한 프로그램입니다.<br/>
-                <span className="text-[11px] text-indigo-300 mt-1 block">※ 본 시스템은 건강 관리에 도움을 주고자 자세, 동작, 기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다.</span>
-              </span>
-              3바디 측정 모델이 수집된 체형과 동작 데이터를 다각도로 종합 분석하고 있습니다.<br/>
-              <span className="text-indigo-400 mt-2 inline-block text-sm">약 1분 정도 소요됩니다</span>
-            </p>
+            <div className="text-slate-300 max-w-2xl mx-auto text-base leading-relaxed mt-8 bg-indigo-900/40 p-6 rounded-2xl border border-indigo-500/20 backdrop-blur-sm text-left shadow-2xl">
+              <h4 className="text-indigo-200 font-black text-lg mb-3 flex items-center gap-2">
+                <i className="fas fa-book-medical"></i> 서비스 산출 근거 및 이용 안내
+              </h4>
+              <div className="space-y-4 text-sm">
+                <div>
+                  <strong className="text-indigo-300 block mb-1">📌 학술적 측정 기반</strong>
+                  <p className="text-slate-400">Kendall의 자세 평가(Posture Analysis), J.R. Stroop의 인지 간섭 현상, A. Baddeley의 작업기억 모델, 그리고 최신 안면 랜드마크 기술 등 검증된 인지과학 및 생체역학 방법론을 기초로 AI 알고리즘화 되었습니다.</p>
+                </div>
+                <div>
+                  <strong className="text-indigo-300 block mb-1">📌 연령 지표 산출 원리</strong>
+                  <p className="text-slate-400">제공되는 건강나이(신체/뇌/얼굴/마음)는 측정 데이터를 종합하여 통계적 알고리즘으로 산출한 맞춤형 참고 지표입니다.</p>
+                </div>
+                <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
+                  <strong className="text-amber-400/90 block mb-1 text-xs">⚠️ 비의료 건강관리서비스 안내</strong>
+                  <p className="text-slate-500 text-xs">본 테스트는 보건복지부의 가이드라인을 준수합니다. 본 결과는 질병 진단이나 의료행위를 대체할 수 없으며, 질환이 의심될 경우 전문 의료기관을 방문하시기 바랍니다.</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-indigo-400 mt-6 font-bold animate-pulse">약 10~15초 정도 소요됩니다</p>
           </div>
         );
 

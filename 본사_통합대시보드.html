@@ -135,16 +135,37 @@
 
   let allBranches = [];
 
-  // 1. Password Verification
-  const verifyPassword = () => {
-    if (pwInput.value === 'BTC15771785') {
-      loginScreen.classList.add('hidden');
-      dashboardScreen.classList.remove('hidden');
-      fetchData();
-    } else {
-      alert('비밀번호가 일치하지 않습니다.');
-      pwInput.value = '';
-      pwInput.focus();
+  // 보안: SHA-256 해시 함수
+  const hashPassword = async (password) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  // 1. Password Verification (Firestore 기반 인증으로 전환 - 하드코딩 패스워드 제거)
+  const verifyPassword = async () => {
+    try {
+      const configDoc = await getDoc(doc(db, 'system_settings', 'dashboard_auth'));
+      if (!configDoc.exists()) {
+        alert('인증 설정이 존재하지 않습니다. 본사에 문의해주세요.');
+        return;
+      }
+      const storedHash = configDoc.data().passwordHash;
+      const inputHash = await hashPassword(pwInput.value);
+      if (inputHash === storedHash) {
+        loginScreen.classList.add('hidden');
+        dashboardScreen.classList.remove('hidden');
+        fetchData();
+      } else {
+        alert('비밀번호가 일치하지 않습니다.');
+        pwInput.value = '';
+        pwInput.focus();
+      }
+    } catch (e) {
+      console.error('인증 오류:', e);
+      alert('인증 서버 연결에 실패했습니다.');
     }
   };
 

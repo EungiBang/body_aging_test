@@ -89,53 +89,38 @@ export const SevenCodeChecklist: React.FC<Props> = ({ onNext, onPrev }) => {
   const currentItems = getPageItems(currentPage);
 
   return (
-    <div className={`flex flex-col items-center justify-center min-h-[90vh] p-8 mx-auto transition-all ${layoutMode === 'horizontal' ? 'max-w-7xl' : 'max-w-4xl'}`}>
-      <div className="text-center mb-10">
-        <h2 className="text-5xl font-black text-white mb-6">7-CODE 건강 점검</h2>
-        <p className="text-gray-300 text-2xl font-bold">
+    <div className="flex flex-col items-center h-[calc(100vh-80px)] p-4 mx-auto max-w-5xl transition-all">
+      {/* 헤더 영역 */}
+      <div className="text-center mb-3 shrink-0">
+        <h2 className="text-3xl font-black text-white mb-2">7-CODE 건강 점검</h2>
+        <p className="text-gray-300 text-lg font-bold">
           다음 중 현재 나에게 해당되거나 평소 자주 겪는 증상을 모두 선택해주세요.
         </p>
-        <p className="text-gray-400 text-xl font-medium mt-4">
+        <p className="text-gray-400 text-base font-medium mt-1">
           직관적으로 와닿는 단어를 편하게 고르시면 됩니다. (현재 {currentPage + 1} / {totalPages} 페이지)
         </p>
       </div>
 
-      <div className="w-full h-4 bg-gray-800 rounded-full mb-10">
+      {/* 진행 바 */}
+      <div className="w-full h-3 bg-gray-800 rounded-full mb-4 shrink-0">
         <div 
           className="h-full bg-blue-500 rounded-full transition-all duration-300 shadow-[0_0_15px_rgba(59,130,246,0.6)]"
           style={{ width: `${((currentPage + 1) / totalPages) * 100}%` }}
         />
       </div>
 
-      {/* 모드 선택 토글 */}
-      <div className="flex justify-end w-full mb-8">
-         <div className="bg-gray-800/80 p-2 rounded-2xl flex gap-2 border border-gray-700">
-           <button 
-             onClick={() => setLayoutMode('vertical')}
-             className={`px-8 py-4 rounded-xl text-xl font-bold transition-all flex items-center ${layoutMode === 'vertical' ? 'bg-blue-600 text-white shadow-xl' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
-           >
-             <i className="fas fa-mobile-alt mr-3 text-2xl"></i>세로 모드
-           </button>
-           <button 
-             onClick={() => setLayoutMode('horizontal')}
-             className={`px-8 py-4 rounded-xl text-xl font-bold transition-all flex items-center ${layoutMode === 'horizontal' ? 'bg-blue-600 text-white shadow-xl' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
-           >
-             <i className="fas fa-tablet-alt mr-3 text-2xl"></i>가로 모드
-           </button>
-         </div>
-      </div>
-
-      <div className={`grid gap-6 w-full mb-12 ${layoutMode === 'vertical' ? 'grid-cols-2' : 'grid-cols-3 md:grid-cols-4'}`}>
+      {/* 키워드 그리드 - 3열 고정, 남는 공간 활용 */}
+      <div className="grid grid-cols-3 md:grid-cols-4 gap-3 w-full flex-1 min-h-0 content-center overflow-y-auto">
         {currentItems.map((item) => {
           const isSelected = selectedKeywords.has(item.keyword);
           return (
             <button
               key={item.keyword}
               onClick={() => toggleKeyword(item.keyword)}
-              className={`p-6 md:p-10 rounded-3xl text-2xl md:text-3xl font-black transition-all duration-200 transform hover:scale-[1.02] active:scale-95 leading-snug break-keep ${
+              className={`p-4 md:p-5 rounded-2xl text-xl md:text-2xl font-black transition-all duration-200 transform hover:scale-[1.02] active:scale-95 leading-snug break-keep ${
                 isSelected 
-                  ? 'bg-blue-600 text-white shadow-[0_0_30px_rgba(59,130,246,0.6)] border-4 border-blue-300' 
-                  : 'bg-gray-800 text-gray-200 hover:bg-gray-700 border-4 border-gray-700 hover:border-gray-500 shadow-lg'
+                  ? 'bg-blue-600 text-white shadow-[0_0_30px_rgba(59,130,246,0.6)] border-2 border-blue-300' 
+                  : 'bg-gray-800 text-gray-200 hover:bg-gray-700 border-2 border-gray-700 hover:border-gray-500 shadow-lg'
               }`}
             >
               {item.keyword}
@@ -144,16 +129,17 @@ export const SevenCodeChecklist: React.FC<Props> = ({ onNext, onPrev }) => {
         })}
       </div>
 
-      <div className="flex justify-between w-full max-w-2xl mt-12">
+      {/* 네비게이션 버튼 - 항상 하단에 고정 */}
+      <div className="flex justify-between w-full max-w-2xl mt-4 pb-2 shrink-0">
         <button
           onClick={currentPage === 0 ? onPrev : () => setCurrentPage(prev => prev - 1)}
-          className="px-8 py-5 rounded-2xl text-2xl font-bold bg-gray-700 text-white hover:bg-gray-600 transition-colors shadow-lg"
+          className="px-6 py-4 rounded-2xl text-xl font-bold bg-gray-700 text-white hover:bg-gray-600 transition-colors shadow-lg"
         >
           {currentPage === 0 ? '이전 단계' : '이전 페이지'}
         </button>
         <button
           onClick={handleNext}
-          className="px-12 py-5 rounded-2xl text-2xl font-black bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 transition-all shadow-xl hover:shadow-blue-500/40"
+          className="px-10 py-4 rounded-2xl text-xl font-black bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 transition-all shadow-xl hover:shadow-blue-500/40"
         >
           {currentPage === totalPages - 1 ? '점검 완료' : '다음 페이지'}
         </button>

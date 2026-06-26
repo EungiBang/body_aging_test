@@ -3,6 +3,7 @@ import { MemberRecord } from '../types';
 import Modal from './Modal';
 import Toast from './Toast';
 import FeedbackDashboard from './FeedbackDashboard';
+import CaseReportBuilder from './CaseReportBuilder';
 import { getRecordsLocally, deleteRecordLocally, saveRecordLocally } from '../services/localDb';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
@@ -21,6 +22,7 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false);
+  const [reportRecord, setReportRecord] = useState<MemberRecord | null>(null);
 
   const fetchRecords = async () => {
     try {
@@ -238,6 +240,22 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
       setToast({ isVisible: true, message: "웹 환경에서는 지원하지 않는 기능입니다.", type: 'error' });
     }
   };
+
+  if (reportRecord) {
+    return (
+      <CaseReportBuilder
+        record={reportRecord}
+        allRecords={completedRecords}
+        onClose={() => setReportRecord(null)}
+        onSave={async (updatedRecord) => {
+          await saveRecordLocally(updatedRecord);
+          await fetchRecords();
+          setToast({ isVisible: true, message: '사례보고서가 저장되었습니다.', type: 'success' });
+          setReportRecord(null);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto w-full">
@@ -580,6 +598,14 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
               >
                 {!record.report?.overallScore ? '분석 미완료 (대기중)' : isLiteRecord(record) ? '📱 LITE 리포트 보기' : isOtherPcRecord(record) ? '📄 텍스트 리포트 보기' : '상세 리포트 보기'}
               </button>
+              {!isLiteRecord(record) && record.report?.overallScore && (
+                <button
+                  onClick={() => setReportRecord(record)}
+                  className="w-full flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 text-sm font-bold mt-2 py-3 rounded-xl hover:bg-indigo-100 transition-colors border border-indigo-100"
+                >
+                  <i className="fas fa-file-word"></i> IBEL 사례보고서 작성
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -687,3 +713,4 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
 };
 
 export default HistoryManager;
+

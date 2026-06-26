@@ -1,0 +1,123 @@
+﻿
+============================================================
+  SAMPLE #1: 김기숙
+============================================================
+
+  [최상위 키]
+    id: 0012af99-a639-4a11-b4cb-e22974ae2b00
+    hardwareId: web-mpwehztl-olcgeb1dh
+    syncedAt: {'type': 'firestore/timestamp/1.0', 'seconds': 1780975524, 'nanoseconds': 765000
+    branchId: kWksyntEc1euX5jmo6iN
+    name: 김기숙
+    lastTestDate: 2026-06-09T03:25:24.271Z
+    regionId: region_제주
+    ownerUid: local-branch
+    sourceType: LITE
+
+  [report 키]
+    bodyAlignmentAnalysis: list(len=2)
+    summary: 김기숙 회원님은 실제 나이 57세이나, 두뇌 인지 기능은 36세 수준으로 매우 젊고 활기찬 뇌를 가지고 계십니다. 안면 피부 나이 또한 52세로
+    agingMetrics: list(len=1)
+    postureScore: 78
+    postureMetrics: list(len=5)
+    programRecommendation: dict(['recommended', 'duration', 'reason'])
+    brainTestEvaluation: 두뇌 인지 반응 속도는 500ms, 오류는 0회로 매우 빠르고 정확합니다. 장보기 기억력 및 가격 계산 능력도 완벽하여 인지 능력이 실제 나이보
+    kwangmyungChakra: dict(['needLevel', 'reason', 'expectedBenefit'])
+    sevenCodeAnalysis: dict(['code3', 'code1', 'code7', 'code5', 'code2', 'code4', 'code6'])
+    physicalAge: 58
+    bodyTypeAnalysis: 경미한 거북목 및 라운드 숄더 경향
+    mindAge: 58
+    date: 2026-06-09T03:25:24.271Z
+    id: 0012af99-a639-4a11-b4cb-e22974ae2b00
+    faceAgeEstimate: 52
+    brainAge: 40
+    userInfo: dict(['name', 'resultDelivery', 'gender', 'memberType', 'age', 'phone'])
+    brainHealthImplication: 전반적인 뇌 기능이 매우 활발하며, 빠른 인지 속도와 정확한 기억력을 통해 일상생활에서 명료한 판단과 학습 능력을 유지할 수 있음을 시사합니다.
+    comprehensiveAge: 52
+    threeBodyAnalysis: dict(['mind', 'body', 'brain'])
+    overallScore: 80
+    faceAnalysis: dict(['elasticity', 'skinTone', 'recommendation', 'summary', 'wrinkles'])
+    recommendations: dict(['gymnastics', 'brainTraining', 'meditation'])
+
+============================================================
+  SAMPLE #2: 정윤선
+============================================================
+
+  [최상위 키]
+    id: 003541b3-addc-4992-ac8a-f49260d2c84e
+    ownerUid: local-branch
+    regionId: region_경남
+    name: 정윤선
+    lastTestDate: 2026-05-15T03:29:12.973Z
+    branchId: 2PpaJJ0AZtoToYCNhcZy
+    syncedAt: {'type': 'firestore/timestamp/1.0', 'seconds': 1778815753, 'nanoseconds': 524000
+    hardwareId: 0a2796d64bccfad509b9cf03d895233c22ed838d4e5928174c7cb6d2e9355267
+
+  [report 키]
+    recommendations: dict(['meditation', 'brainTraining', 'gymnastics'])
+    threeBodyAnalysis: dict(['mind', 'body', 'brain'])
+    flexibilityScore: 75
+    brainHealthImplication: 전반적인 뇌 활성도는 우수하나, 인지 반응 속도 관리가 필요합니다. 뇌 건강은 전신 건강과 밀접하게 연관되어 있습니다.
+    userInfo: dict(['age', 'phone', 'name', 'gender', 'memberType', 'resultDelivery'])
+    faceAgeEstimate: 78
+    brainAge: 59
+    mindAge: 85
+    bodyTypeAnalysis: 경미한 거북목 및 편평등 복합 체형
+    sevenCodeAnalysis: dict(['code3', 'code7', 'code1', 'code6', 'code2', 'code5', 'code4'])
+    kwangmyungChakra: dict(['reason', 'needLevel', 'expectedBenefit'])
+    brainTestEvaluation: 두뇌 인지 반응 속도는 실제 나이에 비해 다소 느리게 나타나지만, 장보기 기억력과 계산 능력은 매우 우수하여 전반적인 뇌 활성도 관리가 잘 되고
+    postureScore: 74
+    bodyAlignmentAnalysis: list(len=0)
+    armRaiseScore: 55
+    faceAnalysis: dict(['summary', 'wrinkles', 'elasticity', 'skinTone', 'recommendation'])
+    overallScore: 74
+    strengthMetrics: list(len=2)
+    comprehensiveAge: 71
+    date: 2026-05-15T03:29:12.973Z
+    id: 003541b3-addc-4992-ac8a-f49260d2c84e
+    physicalAge: 73
+    postureMetrics: list(len=5)
+    programRecommendation: dict(['recommended', 'reason', 'duration'])
+    agingMetrics: list(len=3)
+    summary: 정윤선 회원님은 실제 나이 73세이시지만, 종합 신체 기능 나이는 76세로 측정되어 전반적인 신체 활력 관리가 필요한 시점입니다. 특히 푸시업을
+
+============================================================
+  SAMPLE #3: 최귀은
+============================================================
+
+  [최상위 키]
+    id: 0037bc33-6350-4a80-b5b9-1abf04285843
+    name: 최귀은
+    lastTestDate: 2026-06-07T06:55:57.361Z
+    branchId: vpLcMhoWsZn2WBP9IREN
+    hardwareId: web-mpzjjmy6-g0ppwwz9e
+    syncedAt: {'type': 'firestore/timestamp/1.0', 'seconds': 1781657443, 'nanoseconds': 650000
+    eventCode: EVT_상주_260607_5LPL
+    ownerUid: local-branch
+    sourceType: LITE
+    regionId: region_경북
+
+  [report 키]
+    overallScore: 83
+    faceAnalysis: dict(['summary', 'wrinkles', 'recommendation', 'skinTone', 'elasticity'])
+    recommendations: dict(['meditation', 'gymnastics', 'brainTraining'])
+    threeBodyAnalysis: dict(['body', 'mind', 'brain'])
+    comprehensiveAge: 50
+    userInfo: dict(['age', 'phone', 'resultDelivery', 'gender', 'memberType', 'name'])
+    brainHealthImplication: 신체 정렬 불균형과 에너지 방전은 뇌로 가는 혈류와 신경 흐름에 영향을 주어 인지 기능을 저하시킬 수 있습니다. 현재의 우수한 뇌 기능을 유지하
+    brainAge: 40
+    faceAgeEstimate: 52
+    id: 0037bc33-6350-4a80-b5b9-1abf04285843
+    date: 2026-06-07T06:55:57.361Z
+    mindAge: 66
+    physicalAge: 50
+    bodyTypeAnalysis: 거북목-굽은등 복합 체형
+    sevenCodeAnalysis: dict(['code3', 'code6', 'code2', 'code5', 'code4', 'code7', 'code1'])
+    kwangmyungChakra: dict(['needLevel', 'reason', 'expectedBenefit'])
+    postureMetrics: list(len=5)
+    programRecommendation: dict(['recommended', 'reason', 'duration'])
+    brainTestEvaluation: 두뇌 인지 반응 속도와 기억력 테스트에서 실제 나이보다 훨씬 젊은 36세 수준의 뇌 나이를 보였습니다. 특히 반응 속도와 정확성이 우수하여 인지
+    postureScore: 69
+    summary: 최귀은 회원님의 건강 상태를 종합적으로 평가한 결과, 뛰어난 두뇌 인지 기능과 양호한 균형감각을 유지하고 계십니다. 특히 뇌 기능은 실제 연령보
+    agingMetrics: list(len=1)
+    bodyAlignmentAnalysis: list(len=3)

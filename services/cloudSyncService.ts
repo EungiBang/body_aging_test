@@ -120,20 +120,26 @@ export const fetchFeedbacksFromCloud = async (feedbackType: 'body' | 'face' | 't
   const startTime = Date.now();
   try {
     logger.apiStart(TAG, `Firestore query: ai_feedbacks_v1 where feedbackType==${feedbackType}`);
+    // 복합 인덱스 없이 동작하도록 where만 사용하고 클라이언트에서 정렬
     const q = query(
       collection(db, 'ai_feedbacks_v1'),
-      where('feedbackType', '==', feedbackType),
-      orderBy('createdAt', 'desc'),
-      limit(maxLimit)
+      where('feedbackType', '==', feedbackType)
     );
     const snap = await getDocs(q);
     const feedbacks: any[] = [];
     snap.forEach(doc => {
       feedbacks.push({ id: doc.id, ...doc.data() });
     });
+    // 클라이언트 사이드 정렬 (최신순) + limit
+    feedbacks.sort((a, b) => {
+      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+      return dateB.getTime() - dateA.getTime();
+    });
+    const limited = feedbacks.slice(0, maxLimit);
     const elapsed = Date.now() - startTime;
-    logger.apiEnd(TAG, 'fetchFeedbacksFromCloud', true, { count: feedbacks.length, elapsed: `${elapsed}ms` });
-    return feedbacks;
+    logger.apiEnd(TAG, 'fetchFeedbacksFromCloud', true, { count: limited.length, elapsed: `${elapsed}ms` });
+    return limited;
   } catch (e) {
     const elapsed = Date.now() - startTime;
     logger.error(TAG, `fetchFeedbacksFromCloud 실패 (${elapsed}ms)`, e, true);

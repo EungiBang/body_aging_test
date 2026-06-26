@@ -1,0 +1,34 @@
+﻿=== ENERGY ===
+{"높음": 3179, "매우 높음": 68, "미측정": 12, "보통": 8}
+
+=== WEAK CODES ===
+{"1": 1343, "6": 416, "5": 491, "3": 286, "2": 373, "7": 137, "4": 210}
+
+=== FITNESS by AGE ===
+10대이하 {"squat_avg_reps": 8.6, "squat_avg_form": 74.4, "pushup_avg_reps": 6.8, "pushup_avg_form": 65.6, "flexibility_avg": 72.1, "arm_raise_avg": 69.6, "sample": 31}
+20대 {"squat_avg_reps": 7.3, "squat_avg_form": 74.7, "pushup_avg_reps": 7.5, "pushup_avg_form": 65.5, "flexibility_avg": 79.9, "arm_raise_avg": 72.6, "sample": 109}
+30대 {"squat_avg_reps": 8.1, "squat_avg_form": 74.1, "pushup_avg_reps": 7.5, "pushup_avg_form": 62.8, "flexibility_avg": 76.2, "arm_raise_avg": 71.8, "sample": 202}
+40대 {"squat_avg_reps": 8.3, "squat_avg_form": 73.0, "pushup_avg_reps": 8.4, "pushup_avg_form": 64.7, "flexibility_avg": 79.4, "arm_raise_avg": 73.6, "sample": 341}
+50대 {"squat_avg_reps": 8.4, "squat_avg_form": 71.3, "pushup_avg_reps": 8.2, "pushup_avg_form": 63.2, "flexibility_avg": 78.1, "arm_raise_avg": 71.4, "sample": 790}
+60대 {"squat_avg_reps": 6.9, "squat_avg_form": 67.4, "pushup_avg_reps": 6.3, "pushup_avg_form": 61.0, "flexibility_avg": 78.2, "arm_raise_avg": 69.6, "sample": 1006}
+70대 {"squat_avg_reps": 6.6, "squat_avg_form": 67.6, "pushup_avg_reps": 6.7, "pushup_avg_form": 61.5, "flexibility_avg": 77.9, "arm_raise_avg": 67.3, "sample": 640}
+80대이상 {"squat_avg_reps": 5.2, "squat_avg_form": 65.0, "pushup_avg_reps": 4.6, "pushup_avg_form": 52.1, "flexibility_avg": 77.3, "arm_raise_avg": 65.5, "sample": 148}
+
+=== AGING by AGE ===
+10대이하 {"physical_age_avg": 22.1, "brain_age_avg": 36.7, "mind_age_avg": 25.5, "face_age_avg": 17.5, "comprehensive_age_avg": 26.2, "overall_score_avg": 57.0, "actual_age_avg": 14.8, "sample": 31}
+20대 {"physical_age_avg": 26.9, "brain_age_avg": 35.8, "mind_age_avg": 35.9, "face_age_avg": 25.0, "comprehensive_age_avg": 30.7, "overall_score_avg": 65.4, "actual_age_avg": 25.6, "sample": 109}
+30대 {"physical_age_avg": 33.4, "brain_age_avg": 37.4, "mind_age_avg": 47.4, "face_age_avg": 32.3, "comprehensive_age_avg": 36.4, "overall_score_avg": 70.1, "actual_age_avg": 34.0, "sample": 202}
+40대 {"physical_age_avg": 43.4, "brain_age_avg": 41.4, "mind_age_avg": 56.7, "face_age_avg": 42.1, "comprehensive_age_avg": 44.5, "overall_score_avg": 75.1, "actual_age_avg": 45.1, "sample": 341}
+50대 {"physical_age_avg": 53.5, "brain_age_avg": 47.3, "mind_age_avg": 66.6, "face_age_avg": 51.9, "comprehensive_age_avg": 53.3, "overall_score_avg": 75.8, "actual_age_avg": 55.0, "sample": 790}
+60대 {"physical_age_avg": 65.1, "brain_age_avg": 54.8, "mind_age_avg": 75.0, "face_age_avg": 61.8, "comprehensive_age_avg": 63.0, "overall_score_avg": 74.3, "actual_age_avg": 64.6, "sample": 1006}
+70대 {"physical_age_avg": 74.5, "brain_age_avg": 58.7, "mind_age_avg": 81.3, "face_age_avg": 71.0, "comprehensive_age_avg": 70.2, "overall_score_avg": 75.8, "actual_age_avg": 73.8, "sample": 640}
+80대이상 {"physical_age_avg": 82.3, "brain_age_avg": 60.7, "mind_age_avg": 84.7, "face_age_avg": 78.2, "comprehensive_age_avg": 75.5, "overall_score_avg": 79.5, "actual_age_avg": 123.8, "sample": 148}
+
+=== POSTURE GRADES ===
+거북목 (FHP) 및 경추 정렬 {"Good_pct": 0.5, "Fair_pct": 79.1, "Poor_pct": 20.4, "sample": 3008}
+어깨 / 골반 좌우 대칭 {"Good_pct": 59.4, "Fair_pct": 38.7, "Poor_pct": 1.9, "sample": 3008}
+측면 척추 정렬 (흉추/요추) {"Good_pct": 3.4, "Fair_pct": 77.0, "Poor_pct": 19.6, "sample": 3008}
+하체 기저면 (무릎/다리/발목) {"Good_pct": 90.0, "Fair_pct": 8.0, "Poor_pct": 2.0, "sample": 3008}
+귀-어깨-고관절-무릎 수직선 이탈 {"Good_pct": 1.4, "Fair_pct": 76.2, "Poor_pct": 22.4, "sample": 3008}
+어깨 {"Good_pct": 10.2, "Fair_pct": 89.2, "Poor_pct": 0.6, "sample": 157}
+골반 {"Good_pct": 66.9, "Fair_pct": 33.1, "Poor_pct": 0.0, "sample": 121}

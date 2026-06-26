@@ -24,7 +24,7 @@ async function analyze() {
   const devicesSnap = await getDocs(collection(db, 'devices'));
   const devices = [];
   devicesSnap.forEach(doc => {
-    devices.push(doc.data());
+    devices.push({ id: doc.id, ...doc.data() });
   });
 
   const regionsSnap = await getDocs(collection(db, 'regions'));
@@ -33,8 +33,20 @@ async function analyze() {
     regions[doc.id] = doc.data();
   });
 
+  const liteDevicesSnap = await getDocs(collection(db, 'lite_devices'));
+  const liteDevices = [];
+  liteDevicesSnap.forEach(doc => {
+    liteDevices.push({ id: doc.id, ...doc.data() });
+  });
+
+  const errorLogsSnap = await getDocs(collection(db, 'error_logs'));
+  const errorLogs = [];
+  errorLogsSnap.forEach(doc => {
+    errorLogs.push({ id: doc.id, ...doc.data() });
+  });
+
   const fs = require('fs');
-  fs.writeFileSync('firebase_dump.json', JSON.stringify({regions, branches, devices}, null, 2));
+  fs.writeFileSync('firebase_dump.json', JSON.stringify({regions, branches, devices, liteDevices, errorLogs}, null, 2));
   console.log('Done mapping devices. Saved to firebase_dump.json');
   process.exit(0);
 }

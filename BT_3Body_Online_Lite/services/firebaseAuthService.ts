@@ -32,22 +32,33 @@ export interface AdminUser {
   name: string;
   role: 'master' | 'manager';
   createdAt: any;
-  password?: string; // DB 저장 시 해시 권장되나, 여기서는 암호화된 상태로 가정 (비밀번호 비교용)
+  password?: string; // SHA-256 해시 저장
 }
 
-// 0. 관리자(Admin) 인증 및 계정 관리
-export const adminLogin = async (userId: string, passwordInput: string): Promise<AdminUser | null> => {
-  // 마스터 백도어 (하드코딩 유지 - DB에러 대비용)
-  if (userId === 'admin' && passwordInput === 'BTCADMIN2026') {
-    return { id: 'admin', name: 'Master', role: 'master', createdAt: serverTimestamp() };
-  }
+// 보안: SHA-256 해시 유틸리티 (Web Crypto API)
+const hashPassword = async (password: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
 
+// 0. 관리자(Admin) 인증 및 계정 관리 (보안 강화: 백도어 제거, SHA-256 해시 비교)
+export const adminLogin = async (userId: string, passwordInput: string): Promise<AdminUser | null> => {
   const docRef = doc(db, 'admin_users', userId);
   const snap = await getDoc(docRef);
   if (snap.exists()) {
     const data = snap.data();
-    // 간단한 평문 비교 (실서비스 시 Firebase Auth 활용 고려)
+    const inputHash = await hashPassword(passwordInput);
+
+    if (data.password === inputHash) {
+      return { id: snap.id, name: data.name, role: data.role, createdAt: data.createdAt };
+    }
+
+    // 기존 평문 패스워드 하위 호환 (마이그레이션)
     if (data.password === passwordInput) {
+      await updateDoc(docRef, { password: inputHash });
       return { id: snap.id, name: data.name, role: data.role, createdAt: data.createdAt };
     }
   }
@@ -64,10 +75,11 @@ export const getAdminUsers = async (): Promise<AdminUser[]> => {
 
 export const saveAdminUser = async (user: Omit<AdminUser, 'createdAt'> & { password: string }) => {
   const docRef = doc(db, 'admin_users', user.id);
+  const hashedPw = await hashPassword(user.password);
   await setDoc(docRef, {
     name: user.name,
     role: user.role,
-    password: user.password,
+    password: hashedPw,
     createdAt: serverTimestamp()
   });
 };

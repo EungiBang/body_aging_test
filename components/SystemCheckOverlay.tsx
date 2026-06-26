@@ -132,7 +132,7 @@ export const SystemCheckOverlay: React.FC<SystemCheckOverlayProps> = ({ onComple
           <div className="w-full flex justify-center z-10" style={{ transform: 'scale(0.85)', transformOrigin: 'top center', marginBottom: '-10%' }}>
              <CameraModule 
                onCapture={handleCameraCapture} 
-               guidelineType="intro" 
+               guidelineType="front" 
                autoCapture={true} 
              />
           </div>

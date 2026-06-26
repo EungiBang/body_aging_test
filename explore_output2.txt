@@ -1,0 +1,170 @@
+﻿
+============================================================
+SAMPLE #1: id=0012af99-a639-4a11-b
+
+  [userInfo]
+    name: 김기숙
+    resultDelivery: kakao
+    gender: female
+    memberType: new
+    age: 57
+    phone: 010-4690-2464
+
+  [threeBodyAnalysis]
+    mind: {"score": 60, "description": "1코드 에너지가 방전되어 삶의 활력이 저하되고 있으며, 6코드 에너지 저하로 시각 피로와 집중력 문제가 나타날 수 있습니다. 
+    body: {"score": 70, "description": "자세 정렬은 양호하나 경미한 거북목과 라운드 숄더 경향이 있습니다. 균형 감각은 50대 평균 수준으로, 꾸준한 관리가 필요합니
+    brain: {"description": "뇌 인지 반응 속도와 기억력 테스트 결과가 매우 우수하며, 실제 나이보다 훨씬 젊은 뇌 기능을 유지하고 있습니다.", "score": 95}
+
+  [sevenCodeAnalysis]
+    code3: {"evidence": ["강한 책임감", "뚜렷한 자기 의지"], "score": 80, "description": "3코드(자아 및 의지) 에너지는 충만한 편으로, 강한 책임감과 실행력을 바탕으로 목표를 달성합니
+    code1: {"label": "삶의 기반과 활력", "description": "1코드(생존 및 안정) 에너지가 방전되어 삶의 기반이 불안정하고 활력이 저하될 수 있습니다.", "evidence": ["활동력 저하", "삶의 
+    code7: {"score": 75, "evidence": ["정신적 성장 추구", "내면의 평화"], "description": "7코드(영성 및 지혜) 에너지는 양호하여 내면의 평화와 지혜를 탐구하는 데 열려 있습니다.", 
+    code5: {"description": "5코드(표현 및 소통) 에너지는 보통 수준으로, 자신의 생각과 감정을 적절히 표현할 수 있습니다.", "label": "표현과 소통", "evidence": ["원활한 의사소통", "자
+    code2: {"evidence": ["자연스러운 감정 표현", "원만한 대인 관계"], "score": 75, "description": "2코드(감정 및 관계) 에너지는 비교적 양호하여 감정 표현과 대인 관계에 큰 어려움이 
+    code4: {"label": "사랑과 공감", "description": "4코드(사랑 및 공감) 에너지는 충만하여 타인에 대한 이해심과 공감 능력이 뛰어납니다.", "score": 85, "evidence": ["높은 공감 
+    code6: {"score": 60, "evidence": ["시각 피로", "집중력 저하", "직관력 부족"], "description": "6코드(직관 및 통찰) 에너지가 다소 저하되어 시각 피로를 느끼고 집중력에 영향을 줄
+
+  [postureMetrics] (len=5)
+    {"description": "귀 중심이 어깨선보다 약간 앞으로 기울어져 있습니다. 이는 목과 어깨 주변 근육에 부담을 줄 수 있습니다.", "status": "Fair", "name": "거북목 (FHP) 및 경추
+    {"score": 92, "name": "어깨 / 골반 좌우 대칭", "status": "Good", "description": "양 어깨와 골반의 높이 차이가 거의 없어 대칭적인 자세를 유지하고 있습니다."}
+    {"score": 78, "name": "측면 척추 정렬 (흉추/요추)", "description": "측면에서 볼 때 척추의 S자 곡선이 자연스럽게 유지되고 있어 양호합니다.", "status": "Fair"}
+    {"score": 90, "name": "하체 기저면 (무릎/다리/발목)", "description": "X·O다리 없이 무릎과 발목의 정렬이 바르고, 발의 방향도 정상입니다.", "status": "Good"}
+    {"description": "귀, 어깨, 고관절이 수직선에서 미세하게 벗어나 전방 경사의 조짐이 보입니다.", "status": "Fair", "name": "귀-어깨-고관절-무릎 수직선 이탈", "score": 
+
+  [bodyAlignmentAnalysis] (len=2)
+    {"severity": "주의", "issue": "경추 전방 전위 (거북목)", "measuredValue": "사진상 경추가 미세하게 전방으로 기울어짐", "impact": "목과 어깨 근육 긴장을 유발하고 두통
+    {"recommendation": "등 근육 강화와 가슴 열기 스트레칭을 통해 자세를 개선하세요.", "normalRange": "어깨가 바르게 펴져 있고 가슴이 열린 상태", "measuredValue": "사진상
+
+  [strengthMetrics] (len=0)
+
+  [agingMetrics] (len=1)
+    {"description": "50대 기준 발 땅 닿음 1~2회에 해당하여 평균 수준입니다. 꾸준한 균형 운동으로 노화로 인한 낙상 위험을 예방하세요.", "testName": "눈 감고 한발 서기", "result
+
+  [kwangmyungChakra]
+    needLevel: 높음
+    reason: 현재 1코드 에너지가 방전되어 삶의 활력이 저하되고 있으며, 6코드 에너지 저하로 인해 시각 피로와 집중력 문제가 나타날 수 있습니다. 내면의 
+    expectedBenefit: 충전명상을 통해 몸의 기운을 회복하고 마음의 안정감을 되찾을 수 있습니다. 이는 활력 증진과 명료한 사고, 그리고 일상에서의 집중력 향상으로 이
+
+  [나이 관련 필드]
+    physicalAge: 58
+    brainAge: 40
+    mindAge: 58
+    faceAgeEstimate: 52
+    comprehensiveAge: 52
+    overallScore: 80
+    postureScore: 78
+
+============================================================
+SAMPLE #2: id=003541b3-addc-4992-a
+
+  [userInfo]
+    age: 73
+    phone: 010-2025-4763
+    name: 정윤선
+    gender: female
+    memberType: new
+    resultDelivery: kakao
+
+  [threeBodyAnalysis]
+    mind: {"description": "7코드(K차크라) 에너지 밸런스 분석 결과, 특히 6차크라 에너지가 방전되어 정신적 긴장, 혼란, 집중력 부족 등 마음의 활력이 저하된 상태입니다."
+    body: {"score": 70, "description": "전반적인 신체 기능 나이는 실제 나이보다 약간 높게 측정되었으나, 유연성은 양호합니다. 특히 상체 근력과 균형 능력 강화가 필
+    brain: {"score": 85, "description": "뇌 인지 반응 및 기억력 테스트 결과, 종합 뇌 나이가 실제 나이보다 훨씬 젊게 나타나 전반적인 뇌 활성도가 우수합니다."}
+
+  [sevenCodeAnalysis]
+    code3: {"evidence": ["활력 저하", "무기력", "의욕저하", "지속적 피로"], "score": 55, "label": "자아와 의지", "description": "자아 7코드 에너지가 방전되어 활력 저하,
+    code7: {"score": 60, "evidence": ["예민함", "수면 불편"], "label": "영성과 초월", "description": "영성 7코드 에너지는 보통 수준입니다. 예민함이나 수면 불편이 있을 수 있
+    code1: {"evidence": ["공포", "하복부 차가움", "하체 무거움"], "score": 60, "description": "뿌리 7코드 에너지가 부족하여 공포감이나 신체 하부의 불편감을 느끼기 쉽습니다. 안정감과
+    code6: {"label": "직관과 지혜", "description": "직관 7코드 에너지가 가장 방전된 상태로, 혼란, 긴장, 불안, 집중력 부족, 비현실감 등 정신적 어려움을 겪기 쉽습니다. 명상과 뇌 수련을 통해 에너
+    code2: {"description": "성(聖) 7코드 에너지가 다소 저하되어 억압된 감정이나 창의성 부족을 경험할 수 있습니다. 자유로운 표현과 창조적 활동을 통해 에너지를 회복하세요.", "label": "창조와 감정",
+    code5: {"label": "소통과 표현", "description": "표현 7코드 에너지는 비교적 양호하지만, 답답함이나 오해를 느낄 수 있습니다. 솔직한 소통과 자기 표현을 통해 더욱 에너지를 높이세요.", "score
+    code4: {"description": "사랑 7코드 에너지가 부족하여 외로움, 상처, 원망 등 감정적 피로를 느끼기 쉽습니다. 자기 치유와 사랑의 감정을 키우는 시간이 필요합니다.", "label": "사랑과 관계", "sc
+
+  [postureMetrics] (len=5)
+    {"status": "Fair", "description": "경미한 거북목 조짐이 보입니다. 목 주변 근육 강화가 필요합니다.", "score": 70, "name": "거북목 (FHP) 및 경추 정렬"}
+    {"score": 75, "name": "어깨 / 골반 좌우 대칭", "description": "어깨 또는 골반 한쪽에 경미한 기울어짐이 관찰됩니다. 균형 운동을 권장합니다.", "status": "Fair"}
+    {"status": "Fair", "description": "척추의 자연스러운 S자 곡선이 일부 부족합니다. 척추 주변 근육 관리가 중요합니다.", "score": 70, "name": "측면 척추 정렬 (흉추/요
+    {"status": "Good", "description": "무릎 정렬과 다리 형태가 양호합니다. 꾸준한 관절 건강 유지가 중요합니다.", "score": 90, "name": "하체 기저면 (무릎/다리/발목)"}
+    {"name": "귀-어깨-고관절-무릎 수직선 이탈", "score": 70, "description": "신체 주요 지점의 수직선 정렬에 경미한 이탈이 있습니다. 전신 코어 강화가 필요합니다.", "status":
+
+  [bodyAlignmentAnalysis] (len=0)
+
+  [strengthMetrics] (len=2)
+    {"reps": 7, "exercise": "스쿼트", "formScore": 60, "recommendation": "하체 근력은 실제 나이보다 젊은 수준입니다. 자세 점수를 유지하며 꾸준히 스쿼트를 수행하여 하체
+    {"exercise": "푸시업", "formScore": 40, "reps": 2, "performance": "총 2회 수행 (유효 1회)", "recommendation": "상체 근력이 현저히 부족합니다. [
+
+  [agingMetrics] (len=3)
+    {"score": 28, "description": "균형 감각 저하로 흔들림이 잦고 발을 자주 딛습니다. 코어 안정성과 하지 근력 강화 운동이 필요합니다.", "result": "Poor (발 닿음 5회, 흔들림 
+    {"score": 55, "description": "견관절 가동 범위가 제한적이며 팔꿈치가 굽어집니다. 어깨 유연성 운동과 등 근육 스트레칭을 꾸준히 해주세요.", "result": "보통 (135도, 팔꿈치 굽어
+    {"testName": "유연성 (전굴)", "result": "우수 (손끝 닿음, 무릎 굽어짐)", "description": "상체 유연성은 우수하나 무릎이 굽어 감점되었습니다. 무릎을 완전히 펴고 전굴하는 연습
+
+  [kwangmyungChakra]
+    reason: 현재 6차크라 에너지가 방전되어 혼란, 집중력 부족, 비현실감 등 정신적 피로를 느끼기 쉬운 상태입니다. 이러한 에너지 불균형은 전반적인 삶의 
+    needLevel: 높음
+    expectedBenefit: 광명차크라 수련을 통해 뇌파가 안정되고 의식이 맑아져 명확한 사고와 집중력 향상에 도움이 됩니다. 깊은 호흡과 함께 몸과 마음이 조화되어 활력과
+
+  [나이 관련 필드]
+    physicalAge: 73
+    brainAge: 59
+    mindAge: 85
+    faceAgeEstimate: 78
+    comprehensiveAge: 71
+    overallScore: 74
+    postureScore: 74
+    flexibilityScore: 75
+    armRaiseScore: 55
+
+============================================================
+SAMPLE #3: id=0037bc33-6350-4a80-b
+
+  [userInfo]
+    age: 56
+    phone: 010-5145-1427
+    resultDelivery: kakao
+    gender: female
+    memberType: new
+    name: 최귀은
+
+  [threeBodyAnalysis]
+    body: {"description": "자세 분석 결과 거북목과 굽은등 경향이 관찰되나, 균형감각은 양호합니다. 신체 정렬 개선을 위한 꾸준한 관리가 필요합니다.", "score": 73}
+    mind: {"description": "불안, 지속적 피로, 의욕 저하 등 여러 키워드와 5코드(K차크라) 에너지 방전으로 미루어 볼 때, 마음과 에너지의 충전이 시급해 보입니다.", "s
+    brain: {"score": 90, "description": "두뇌 인지 반응 속도와 기억력이 실제 연령 대비 매우 우수하여 뇌 기능이 활발하게 작동하고 있습니다."}
+
+  [sevenCodeAnalysis]
+    code3: {"evidence": ["의욕저하", "수줍음"], "score": 50, "label": "자신감 에너지", "description": "자신감과 의욕이 저하된 상태로, 새로운 시도나 자신을 드러내는 것에 어려움
+    code6: {"label": "직관/통찰 에너지", "description": "직관과 통찰의 에너지는 비교적 양호하지만, 상위 코드의 방전으로 인해 때때로 명확한 판단이나 직관에 어려움을 느낄 수 있습니다.", "eviden
+    code2: {"evidence": ["불안", "감정적 피로", "수줍음"], "score": 45, "label": "감정 에너지", "description": "감정 에너지의 균형이 깨져 불안감과 감정적 피로를 쉽게 느끼며
+    code5: {"evidence": ["머리 무거움", "정보 과부하"], "score": 35, "label": "표현/창조 에너지", "description": "표현과 창조의 에너지가 가장 방전된 상태입니다. 머리 무거움과
+    code4: {"score": 75, "evidence": [], "description": "사랑과 연결에 대한 에너지는 비교적 안정적입니다. 타인과의 관계에서 조화와 균형을 잘 유지하고 계신 것으로 보입니다.", "label
+    code7: {"description": "초월과 영감의 에너지가 일부 방전되어 지속적인 피로를 느끼고 있습니다. 이는 정신적 연결감이나 삶의 목적의식에 영향을 줄 수 있습니다.", "label": "초월/영감 에너지", "ev
+    code1: {"description": "생존을 위한 기본적인 에너지 흐름이 약해져 기력 약화와 돈 문제에 대한 불안감을 느끼고 있습니다. 이는 삶의 기반이 흔들리는 느낌을 줄 수 있습니다.", "label": "생존 에너지"
+
+  [postureMetrics] (len=5)
+    {"score": 55, "name": "거북목 (FHP) 및 경추 정렬", "status": "Poor", "description": "귀 중심이 어깨보다 앞으로 나와 거북목 경향을 보입니다. 목 주변 근육의 긴장
+    {"name": "어깨 / 골반 좌우 대칭", "score": 90, "description": "양 어깨와 골반의 높이 차이가 거의 없이 균형이 잘 유지되어 있습니다.", "status": "Good"}
+    {"status": "Fair", "description": "상부 척추(흉추)가 전반적으로 굽은 경향이 있습니다. 이는 자세와 호흡에 영향을 줄 수 있습니다.", "name": "측면 척추 정렬 (흉추/요추)", 
+    {"name": "하체 기저면 (무릎/다리/발목)", "score": 95, "status": "Good", "description": "무릎과 다리, 발목의 정렬이 바르고 안정적인 지지면을 형성하고 있습니다."}
+    {"score": 55, "name": "귀-어깨-고관절-무릎 수직선 이탈", "description": "귀, 어깨, 고관절, 무릎을 잇는 수직선에서 몸통이 앞으로 이탈되어 있습니다. 전반적인 자세 불균형을 시사합
+
+  [bodyAlignmentAnalysis] (len=3)
+    {"severity": "주의", "issue": "거북목", "impact": "목과 어깨 통증을 유발하고 척추 상부에 부담을 줍니다.", "measuredValue": "관찰 결과, 머리가 몸통보다 앞으로 나와 
+    {"measuredValue": "관찰 결과, 상부 척추가 전반적으로 둥글게 굽어 있음", "impact": "흉부 압박으로 호흡에 영향을 줄 수 있으며, 어깨 움직임을 제한합니다.", "recommendation"
+    {"issue": "전방 자세 (머리-몸통 수직선 이탈)", "severity": "주의", "recommendation": "코어 근육을 강화하고 전신 정렬을 위한 자세 교정 운동을 실천하세요.", "normalR
+
+  [strengthMetrics] (len=0)
+
+  [agingMetrics] (len=1)
+    {"score": 77, "description": "눈 감고 한발 서기 시 발 땅 닿음 횟수가 해당 연령대 기준에 부합합니다. 꾸준한 균형 운동으로 노화로 인한 불안정성을 예방하세요.", "result": "발 땅
+
+  [kwangmyungChakra]
+    needLevel: 높음
+    reason: 현재 5코드(K차크라) 에너지가 방전되어 머리가 무겁고 정보 과부하를 느끼시는 것으로 보입니다. 이는 소통과 표현, 내면의 소리를 듣는 데 어려
+    expectedBenefit: 충전명상을 통해 5코드를 활성화하면 불필요한 정보를 걸러내고, 자신의 생각과 감정을 명료하게 표현하며, 내면의 평화와 통찰력을 얻는 데 도움이 
+
+  [나이 관련 필드]
+    physicalAge: 50
+    brainAge: 40
+    mindAge: 66
+    faceAgeEstimate: 52
+    comprehensiveAge: 50
+    overallScore: 83
+    postureScore: 69
