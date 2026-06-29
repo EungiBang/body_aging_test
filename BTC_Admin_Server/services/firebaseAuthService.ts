@@ -122,6 +122,28 @@ export const deleteAdminUser = async (userId: string) => {
   await deleteDoc(doc(db, 'admin_users', userId));
 };
 
+// 비밀번호 변경 함수
+export const changeAdminPassword = async (userId: string, currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
+  const docRef = doc(db, 'admin_users', userId);
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) return { success: false, error: '존재하지 않는 계정입니다.' };
+
+  const data = snap.data();
+  const hashedCurrent = await hashPassword(currentPassword);
+
+  if (data.password !== hashedCurrent && data.password !== currentPassword) {
+    return { success: false, error: '현재 비밀번호가 일치하지 않습니다.' };
+  }
+
+  if (newPassword.length < 6) {
+    return { success: false, error: '새 비밀번호는 6자 이상이어야 합니다.' };
+  }
+
+  const hashedNew = await hashPassword(newPassword);
+  await updateDoc(docRef, { password: hashedNew });
+  return { success: true };
+};
+
 // 1. 시스템 기본 설정 (배포용 자동 승인 코드 등)
 export const getSystemSettings = async () => {
   const docRef = doc(db, 'system_settings', 'config');

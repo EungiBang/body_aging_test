@@ -1567,6 +1567,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                             <th className="p-3 text-center font-bold text-slate-600">측정일</th>
                             <th className="p-3 text-center font-bold text-slate-600">신체나이</th>
                             <th className="p-3 text-center font-bold text-slate-600">뇌나이</th>
+                            <th className="p-3 text-center font-bold text-slate-600">마음나이</th>
                             <th className="p-3 text-center font-bold text-slate-600">종합점수</th>
                             <th className="p-3 text-center font-bold text-slate-600">관리</th>
                           </tr>
@@ -1595,9 +1596,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                     <span className="text-slate-300">-</span>
                                   )}
                                 </td>
-                                <td className="p-3 text-center text-slate-500">{m.lastTestDate ? new Date(m.lastTestDate).toLocaleDateString() : '-'}</td>
+                                <td className="p-3 text-center text-slate-500">
+                                  {m.lastTestDate ? new Date(m.lastTestDate).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}
+                                </td>
                                 <td className="p-3 text-center font-black text-indigo-600">{r?.physicalAge || '-'}</td>
                                 <td className="p-3 text-center font-black text-amber-500">{r?.brainAge || '-'}</td>
+                                <td className="p-3 text-center font-black text-fuchsia-500">{(r as any)?.mindAge || '-'}</td>
                                 <td className="p-3 text-center">
                                   <span className={`px-2 py-1 rounded-lg text-xs font-black ${(r?.overallScore || 0) >= 70 ? 'bg-emerald-100 text-emerald-700' : (r?.overallScore || 0) >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>{r?.overallScore || '-'}점</span>
                                 </td>
@@ -1653,7 +1657,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                     <span className="text-slate-300">-</span>
                                   )}
                                 </td>
-                                <td className="p-3 text-center text-slate-500">{m.lastTestDate ? new Date(m.lastTestDate).toLocaleDateString() : '-'}</td>
+                                <td className="p-3 text-center text-slate-500">
+                                  {m.lastTestDate ? new Date(m.lastTestDate).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}
+                                </td>
                                 <td className="p-3 text-center">
                                   <span className="px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 animate-pulse">⏳ 대기중</span>
                                 </td>
@@ -1699,7 +1705,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                             <div className="bg-slate-50 rounded-xl p-3"><span className="text-xs text-slate-400">나이</span><div className="font-bold">{r?.userInfo?.age}세</div></div>
                             <div className="bg-slate-50 rounded-xl p-3"><span className="text-xs text-slate-400">성별</span><div className="font-bold">{r?.userInfo?.gender === 'male' ? '남성' : '여성'}</div></div>
                             <div className="bg-slate-50 rounded-xl p-3"><span className="text-xs text-slate-400">지점</span><div className="font-bold">{branchName}</div></div>
-                            <div className="bg-slate-50 rounded-xl p-3"><span className="text-xs text-slate-400">측정일</span><div className="font-bold">{selectedMember.lastTestDate ? new Date(selectedMember.lastTestDate).toLocaleDateString() : '-'}</div></div>
+                            <div className="bg-slate-50 rounded-xl p-3"><span className="text-xs text-slate-400">측정일</span><div className="font-bold">
+                              {selectedMember.lastTestDate ? new Date(selectedMember.lastTestDate).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}
+                            </div></div>
                             {selectedMember.eventCode && (
                               <div className="bg-indigo-50 rounded-xl p-3 col-span-2 border border-indigo-100 flex justify-between items-center">
                                 <div>
