@@ -1,10 +1,10 @@
 /// <reference types="vite/client" />
-import React, { useState, useEffect, useCallback } from 'react';
-import { AssessmentStep, CapturedImage, BodyReport, UserInfo, MemberRecord, BrainTestData, PendingAssessment } from '../types';
+import React, { useState, useEffect } from 'react';
+import { AssessmentStep, CapturedImage, BodyReport, UserInfo, MemberRecord, BrainTestData } from '../types';
 import pkg from '../package.json';
 import CameraModule from './CameraModule';
 import { analyzeHealth } from '../services/geminiService';
-import { speak, initAudio, stopSpeaking } from '../services/ttsService';
+import { speak, initAudio } from '../services/ttsService';
 import ReportDashboard from './ReportDashboard';
 import UserInfoForm from './UserInfoForm';
 import HistoryManager from './HistoryManager';
@@ -12,13 +12,24 @@ import Modal from './Modal';
 import Toast from './Toast';
 import { logUsage } from '../services/statsService';
 import { SystemCheckOverlay } from './SystemCheckOverlay';
-import { saveRecordLocally, deleteRecordLocally, savePendingAssessment, getLatestPendingAssessment, deletePendingAssessment } from '../services/localDb';
+import { saveRecordLocally, deleteRecordLocally } from '../services/localDb';
 import BrainTestModule from './BrainTestModule';
-import { TmtBrainTestModule } from './TmtBrainTestModule';
-import { SevenCodeChecklist } from './SevenCodeChecklist';
+import SevenCodeCheckModule from './SevenCodeCheckModule';
 import KFaceApp from './KFaceApp';
 import KTarotApp from './KTarotApp';
-import logger from '../utils/logger';
+import { addToWaitingList, updateWaitingStatus, subscribeWaitingList, deleteWaitingMember, updateWaitingStarred } from '../services/eventService';
+import { BRAND_NAME, SUB_NAME } from '@shared/constants/brand';
+import { WaitingMember } from '../types';
+
+const CHAKRA_MAP: Record<number, string> = {
+  1: '1코드',
+  2: '2코드',
+  3: '3코드',
+  4: '4코드',
+  5: '5코드',
+  6: '6코드',
+  7: '7코드'
+};
 
 const resizeImage = (dataUrl: string, maxWidth = 400): Promise<string> => {
   return new Promise((resolve) => {
@@ -66,6 +77,109 @@ const AssessmentFlow: React.FC = () => {
   const [manualFootDrops, setManualFootDrops] = useState<string>('0');
   const [manualSwayLevel, setManualSwayLevel] = useState<string>('3'); // 1~5 scale
 
+  // 야외 행사 및 대기열 연동을 위한 상태 신설
+  const [activeEventCode, setActiveEventCode] = useState<string>(localStorage.getItem('activeEventCode') || '');
+  const [currentBranchId, setCurrentBranchId] = useState<string>('');
+  const [currentBranchName, setCurrentBranchName] = useState<string>('');
+  const [isReceptionOnly, setIsReceptionOnly] = useState(false);
+  const [isWaitingMemberActive, setIsWaitingMemberActive] = useState(false);
+  const [activeWaitingId, setActiveWaitingId] = useState<string | null>(null);
+  const [waitingList, setWaitingList] = useState<WaitingMember[]>([]);
+  const [showWaitingModal, setShowWaitingModal] = useState(false);
+  const [selectedKeywordsToShow, setSelectedKeywordsToShow] = useState<{ name: string, keywords: string[], weakestCode: number } | null>(null);
+
+  // 건강 니즈 파악 단계 상태
+  const [showHealthNeeds, setShowHealthNeeds] = useState(false);
+  const [selectedHealthNeeds, setSelectedHealthNeeds] = useState<string[]>([]);
+  const [customHealthNeed, setCustomHealthNeed] = useState('');
+  const [pendingSevenCodeData, setPendingSevenCodeData] = useState<{ keywords: string[], weakestCode: number } | null>(null);
+
+  // 지점 정보 로드 및 이벤트 리스너 이펙트
+  useEffect(() => {
+    const currentDeviceJson = localStorage.getItem('currentDevice');
+    if (currentDeviceJson) {
+      try {
+        const device = JSON.parse(currentDeviceJson);
+        setCurrentBranchId(device.branchId || 'unknown');
+        
+        import('../services/firebaseAuthService').then(({ getBranches }) => {
+          getBranches().then(branches => {
+            const matched = branches.find(b => b.id === device.branchId);
+            if (matched) setCurrentBranchName(matched.name);
+          });
+        });
+      } catch (e) {
+        console.error('Failed to parse currentDevice info', e);
+      }
+    }
+
+    const handleEventCodeChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const code = customEvent.detail?.eventCode || '';
+      setActiveEventCode(code);
+    };
+
+    window.addEventListener('eventCode:change', handleEventCodeChange);
+    return () => {
+      window.removeEventListener('eventCode:change', handleEventCodeChange);
+    };
+  }, []);
+
+  // 실시간 대기열 구독 이펙트
+  useEffect(() => {
+    if (!currentBranchId) return;
+    
+    const unsubscribe = subscribeWaitingList(
+      currentBranchId,
+      activeEventCode || null,
+      (list) => {
+        setWaitingList(list);
+      }
+    );
+    
+    return () => unsubscribe();
+  }, [currentBranchId, activeEventCode]);
+
+  // 실시간 대기열에서 중복(이름, 연락처, 나이, 성별 일치) 제거한 리스트
+  const uniqueWaitingList = waitingList.filter((member, index, self) =>
+    self.findIndex(m => 
+      m.name === member.name && 
+      m.phone === member.phone && 
+      m.age === member.age && 
+      m.gender === member.gender
+    ) === index
+  );
+
+  // 대기자 삭제 처리 (동일 정보를 가진 중복 대기자 일괄 삭제)
+  const handleDeleteWaiting = async (e: React.MouseEvent, member: WaitingMember) => {
+    e.stopPropagation(); // 카드 클릭 시의 측정 개시 이벤트 전파 방지
+    
+    if (!window.confirm(`${member.name} 님의 대기 정보를 삭제하시겠습니까?`)) {
+      return;
+    }
+    
+    try {
+      const duplicates = waitingList.filter(m => 
+        m.name === member.name && 
+        m.phone === member.phone && 
+        m.age === member.age && 
+        m.gender === member.gender
+      );
+      
+      const deletePromises = duplicates.map(m => deleteWaitingMember(m.id));
+      const results = await Promise.all(deletePromises);
+      
+      if (results.every(res => res)) {
+        setToast({ isVisible: true, message: '대기 정보가 성공적으로 삭제되었습니다.', type: 'success' });
+      } else {
+        setToast({ isVisible: true, message: '일부 대기 정보 삭제에 실패했습니다.', type: 'error' });
+      }
+    } catch (err) {
+      console.error('대기 삭제 오류:', err);
+      setToast({ isVisible: true, message: '대기 정보 삭제 중 오류가 발생했습니다.', type: 'error' });
+    }
+  };
+
   // 팔 올리기 수동 확인 모달
   const [armRaiseInputModal, setArmRaiseInputModal] = useState<{ isOpen: boolean, dataUrl: string, postureData: any }>({ isOpen: false, dataUrl: '', postureData: null });
   const [manualArmRaiseGrade, setManualArmRaiseGrade] = useState<string>('');
@@ -76,7 +190,6 @@ const AssessmentFlow: React.FC = () => {
 
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [pendingRecordId, setPendingRecordId] = useState<string | null>(null);
-  const [resumePendingData, setResumePendingData] = useState<PendingAssessment | null>(null); // 이어하기 데이터
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [showDeviceSelect, setShowDeviceSelect] = useState(false);
@@ -85,39 +198,15 @@ const AssessmentFlow: React.FC = () => {
   const [previewData, setPreviewData] = useState<{ dataUrl: string; originalDataUrl: string; metadata?: any; validationResult?: { passed: boolean; message: string } | null } | null>(null);
   const [targetStepAfterUserInfo, setTargetStepAfterUserInfo] = useState<AssessmentStep | null>(null);
 
-  // logger Toast 이벤트 수신 — 에러/상태를 화면에 표시
-  useEffect(() => {
-    const handleLoggerToast = (e: Event) => {
-      const { message, type } = (e as CustomEvent).detail;
-      setToast({ isVisible: true, message, type });
-    };
-    window.addEventListener('logger:toast', handleLoggerToast);
-    return () => window.removeEventListener('logger:toast', handleLoggerToast);
-  }, []);
-
-  // 가상 카메라 필터 키워드 (CameraModule과 동일)
-  const VIRTUAL_CAM_KEYWORDS = [
-    'obs', 'virtual', 'manycam', 'xsplit', 'snap camera', 'droidcam',
-    'iriun', 'epoccam', 'newtek', 'ndi', 'camtwist', 'mmhmm',
-    'logi capture', 'streamlabs', 'prism', 'e2esoft', 'vcam',
-    'splitcam', 'sparkocam', 'youcam', 'cyberlink', 'fake',
-  ];
-
   useEffect(() => {
     const getDevices = async () => {
       try {
+        await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(() => {});
         const allDevices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
-        // 가상 카메라 제외
-        const physicalDevices = videoDevices.filter(d => {
-          const label = (d.label || '').toLowerCase();
-          if (!label) return true;
-          return !VIRTUAL_CAM_KEYWORDS.some(keyword => label.includes(keyword));
-        });
-        setDevices(physicalDevices);
-        logger.info('Flow', `카메라 감지: ${physicalDevices.length}대 (가상 ${videoDevices.length - physicalDevices.length}대 제외)`);
+        setDevices(videoDevices);
       } catch (err) {
-        logger.error('Flow', '카메라 열거 실패', err);
+        console.error("Error enumerating devices:", err);
       }
     };
     getDevices();
@@ -125,26 +214,10 @@ const AssessmentFlow: React.FC = () => {
     return () => navigator.mediaDevices.removeEventListener('devicechange', getDevices);
   }, []);
 
-  // ★ v4.2.6: 앱 시작 시 미완료 측정(pending) 데이터 확인 → 이어하기 제안
-  useEffect(() => {
-    const checkPending = async () => {
-      try {
-        const pending = await getLatestPendingAssessment();
-        if (pending && pending.capturedImages.length > 0) {
-          logger.info('Flow', `이어하기 가능: ${pending.userName} ${pending.completedStepCount}단계 완료, ${pending.currentStep}`);
-          setResumePendingData(pending);
-        }
-      } catch (e) {
-        logger.warn('Flow', 'pending 확인 실패', e);
-      }
-    };
-    checkPending();
-  }, []);
-
   const getStepGuidance = (currentStep: AssessmentStep | 'HISTORY' | 'INTRO') => {
     switch (currentStep) {
       case AssessmentStep.INTRO:
-        return "AI 신체 균형 및 건강 상태 측정 시스템입니다.";
+        return `${BRAND_NAME} ${SUB_NAME} 시스템입니다.`;
       case AssessmentStep.USER_INFO:
         return "측정 대상자의 정보를 입력해 주세요.";
       case AssessmentStep.POSTURE_FRONT:
@@ -153,22 +226,12 @@ const AssessmentFlow: React.FC = () => {
         return "옆으로 서서 몸의 중심을 맞춰주세요.";
       case AssessmentStep.BALANCE_TEST:
         return "눈을 감고 한 발로 서서 균형을 유지하세요.";
-      case AssessmentStep.ARM_RAISE_TEST:
-        return "팔을 최대한 높이 들어 올려 주세요.";
-      case AssessmentStep.FLEXIBILITY_TEST:
-        return "무릎을 펴고 상체를 숙여 주세요.";
-      case AssessmentStep.STRENGTH_SQUAT:
-        return "측면으로 서주세요. 15초 동안 스쿼트를 반복하세요.";
-      case AssessmentStep.STRENGTH_PUSHUP:
-        return "대각선으로 서주세요. 15초 동안 푸시업을 반복하세요.";
-      case AssessmentStep.BRAIN_REACTION:
-        return ""; // TmtBrainTestModule 내부에서 직접 재생하도록 비워둠
       case AssessmentStep.BRAIN_MEMORY:
         return "10초 동안 장볼 물건들을 기억하고, 손으로 골라 담아주세요.";
       case AssessmentStep.FACE_ANALYSIS:
-        return "안경과 마스크는 벗어주세요. 조명을 더 밝게 해도 좋습니다. 얼굴을 카메라에 가까이 대고 정면을 응시하세요.";
+        return "얼굴을 화면 중앙에 맞추고 밝은 표정을 지어주세요.";
       case AssessmentStep.SEVEN_CODE_CHECK:
-        return "해당하는 문항을 선택해 주세요.";
+        return "최근 자주 느끼는 증상과 감정을 선택해 주세요.";
       case AssessmentStep.ANALYZING:
         return "통합 AI 리포트를 생성 중입니다.";
       case AssessmentStep.REPORT:
@@ -181,21 +244,21 @@ const AssessmentFlow: React.FC = () => {
   useEffect(() => {
     const handleNavHome = () => {
       setTargetStepAfterUserInfo(null);
-      setCapturedImages([]);
-      setUserInfo(null);
-      setReport(null);
       setStep(AssessmentStep.INTRO);
     };
     const handleNavHistory = () => {
       setTargetStepAfterUserInfo(null);
-      setCapturedImages([]);
-      setUserInfo(null);
-      setReport(null);
       setStep('HISTORY');
     };
+    const handleNavFaceAnalysis = () => {
+      if (!userInfo) {
+        setTargetStepAfterUserInfo(AssessmentStep.FACE_ANALYSIS);
+        setStep(AssessmentStep.USER_INFO);
+        return;
+      }
+      setStep(AssessmentStep.FACE_ANALYSIS);
+    };
     const handleNavKFace = () => {
-      setCapturedImages([]);
-      setReport(null);
       if (!userInfo) {
         setTargetStepAfterUserInfo(AssessmentStep.KFACE);
         setStep(AssessmentStep.USER_INFO);
@@ -204,24 +267,24 @@ const AssessmentFlow: React.FC = () => {
       setStep(AssessmentStep.KFACE);
     };
     const handleNavKTarot = () => {
-      setCapturedImages([]);
-      setReport(null);
       if (!userInfo) {
-        setTargetStepAfterUserInfo(AssessmentStep.KTAROT);
+        setTargetStepAfterUserInfo(('KTAROT' as any));
         setStep(AssessmentStep.USER_INFO);
         return;
       }
-      setStep(AssessmentStep.KTAROT);
+      setStep(('KTAROT' as any));
     };
 
     window.addEventListener('nav:home', handleNavHome);
     window.addEventListener('nav:history', handleNavHistory);
+    window.addEventListener('nav:face_analysis', handleNavFaceAnalysis);
     window.addEventListener('nav:kface', handleNavKFace);
     window.addEventListener('nav:ktarot', handleNavKTarot);
 
     return () => {
       window.removeEventListener('nav:home', handleNavHome);
       window.removeEventListener('nav:history', handleNavHistory);
+      window.removeEventListener('nav:face_analysis', handleNavFaceAnalysis);
       window.removeEventListener('nav:kface', handleNavKFace);
       window.removeEventListener('nav:ktarot', handleNavKTarot);
     };
@@ -231,13 +294,11 @@ const AssessmentFlow: React.FC = () => {
     // Only handle other startup tasks here, the TTS for intro is handled by getStepGuidance in the other useEffect
   }, [hasStarted]);
 
-  // 테스트 진행 중에는 Layout 헤더/푸터를 숨김
   const testSteps = [
+    AssessmentStep.SEVEN_CODE_CHECK,
     AssessmentStep.POSTURE_FRONT, AssessmentStep.POSTURE_SIDE,
-    AssessmentStep.BALANCE_TEST, AssessmentStep.ARM_RAISE_TEST, AssessmentStep.FLEXIBILITY_TEST,
-    AssessmentStep.STRENGTH_SQUAT, AssessmentStep.STRENGTH_PUSHUP,
-    AssessmentStep.BRAIN_REACTION, AssessmentStep.BRAIN_MEMORY,
-    AssessmentStep.FACE_ANALYSIS, AssessmentStep.SEVEN_CODE_CHECK, AssessmentStep.ANALYZING
+    AssessmentStep.BALANCE_TEST, AssessmentStep.BRAIN_MEMORY,
+    AssessmentStep.FACE_ANALYSIS, AssessmentStep.ANALYZING
   ];
   useEffect(() => {
     const isTest = testSteps.includes(step as AssessmentStep);
@@ -260,10 +321,9 @@ const AssessmentFlow: React.FC = () => {
       interval = setInterval(() => {
         const elapsed = (Date.now() - startTime) / 1000;
         setAnalyzeProgress(prev => {
-          // 0~30초: 0→70%, 30~60초: 70→90%, 60~90초: 90→96%, 90~120초: 96→99%
-          if (elapsed < 30) return Math.min(prev + 2.0, 70);
-          if (elapsed < 60) return Math.min(prev + 0.6, 90);
-          if (elapsed < 90) return Math.min(prev + 0.2, 96);
+          // 0~30초: 0→80%, 30~60초: 80→95%, 60~90초: 95→99%
+          if (elapsed < 30) return Math.min(prev + 2.5, 80);
+          if (elapsed < 60) return Math.min(prev + 0.5, 95);
           return Math.min(prev + 0.1, 99);
         });
       }, 300);
@@ -285,10 +345,6 @@ const AssessmentFlow: React.FC = () => {
         if (img.formScore !== undefined)     resized.formScore = img.formScore;
         if (img.kneeAssisted !== undefined)  resized.kneeAssisted = img.kneeAssisted;
         if (img.balanceData !== undefined)   resized.balanceData = img.balanceData;
-        if (img.brainTestData !== undefined) resized.brainTestData = img.brainTestData;
-        if (img.postureData !== undefined)   resized.postureData = img.postureData;
-        if (img.sevenCodeKeywords !== undefined) resized.sevenCodeKeywords = img.sevenCodeKeywords;
-        if (img.weakestCode !== undefined)   resized.weakestCode = img.weakestCode;
         
         return resized;
       }));
@@ -328,34 +384,13 @@ const AssessmentFlow: React.FC = () => {
     }
   };
 
-  const handleUserSubmit = async (info: UserInfo) => {
+  const handleUserSubmit = (info: UserInfo) => {
     setUserInfo(info);
-
-    // ★ v4.2.6: 측정 시작 시 pending 레코드 생성 (단계별 DB 저장의 시작점)
-    const newPendingId = 'pending-' + Date.now().toString(36);
-    setPendingRecordId(newPendingId);
-    try {
-      await savePendingAssessment({
-        id: newPendingId,
-        userName: info.name,
-        userInfo: info,
-        currentStep: AssessmentStep.POSTURE_FRONT,
-        capturedImages: [],
-        completedStepCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      logger.info('Flow', `pending 생성: ${newPendingId} (${info.name})`);
-    } catch (e) {
-      logger.warn('Flow', 'pending 생성 실패 (측정은 계속 진행)', e);
-    }
-
-    if (targetStepAfterUserInfo) {
-      setStep(targetStepAfterUserInfo);
-      setTargetStepAfterUserInfo(null);
-    } else {
-      setStep(AssessmentStep.POSTURE_FRONT);
-    }
+    // 새 측정 시작 시 이전 데이터 초기화 (이력 열람 후 재측정 시 중복 방지)
+    setCapturedImages([]);
+    setReport(null);
+    // 사전접수든 원스톱이든 무조건 개인 정보 입력 직후에 7코드 설문 점검을 먼저 수행합니다.
+    setStep(AssessmentStep.SEVEN_CODE_CHECK);
   };
 
   const handleCapture = (dataUrl: string, autoReps?: number, metadata?: any) => {
@@ -367,8 +402,7 @@ const AssessmentFlow: React.FC = () => {
 
     // 사후 검증: 1, 2, 4, 5단계(정지 촬영)에서만 전신 체크
     const requiresValidation = [
-      AssessmentStep.POSTURE_FRONT, AssessmentStep.POSTURE_SIDE,
-      AssessmentStep.ARM_RAISE_TEST, AssessmentStep.FLEXIBILITY_TEST
+      AssessmentStep.POSTURE_FRONT, AssessmentStep.POSTURE_SIDE
     ].includes(step as AssessmentStep);
 
     if (requiresValidation) {
@@ -376,19 +410,31 @@ const AssessmentFlow: React.FC = () => {
       const img = new Image();
       img.onload = async () => {
         try {
-          // v4.2.6: iGPU 호환성 강화 — 다운스케일 + CPU fallback 적용
-          const { estimatePosesFromImage } = await import('../hooks/usePoseEstimation');
+          await import('@tensorflow/tfjs-core');
+          await import('@tensorflow/tfjs-backend-webgl');
+          const poseDetection = await import('@tensorflow-models/pose-detection');
           
-          // ★ v4.2.6: img를 직접 전달 — estimatePosesFromImage 내부에서 다운스케일+fallback 처리
-          // (기존: 원본 해상도 canvas를 만들어 전달 → iGPU 과부하로 score=0)
-          const poses = await estimatePosesFromImage(img);
-          
-          // 오버레이 합성용 원본 캔버스
+          // 모델 생성
+          let detector: any;
+          try {
+            detector = await poseDetection.createDetector(
+              poseDetection.SupportedModels.MoveNet,
+              { modelType: (poseDetection as any).movenet.modelType.SINGLEPOSE_THUNDER } // 정확도를 위해 Thunder 모델 사용
+            );
+          } catch {
+            // 모델 로드 실패 시 검증 생략하고 통과
+            setPreviewData(prev => prev ? { ...prev, validationResult: { passed: true, message: '' } } : null);
+            return;
+          }
+
           const canvas = document.createElement('canvas');
           canvas.width = img.width;
           canvas.height = img.height;
           const ctx = canvas.getContext('2d')!;
           ctx.drawImage(img, 0, 0);
+          
+          const poses = await detector.estimatePoses(canvas);
+          detector.dispose();
           
           if (poses.length > 0) {
             const kps = poses[0].keypoints;
@@ -418,7 +464,7 @@ const AssessmentFlow: React.FC = () => {
               let postureError = '';
               
               // === 직립 확인: 유연성(숙임) 제외 ===
-              if (currentStep !== AssessmentStep.FLEXIBILITY_TEST) {
+              if (currentStep !== ('FLEXIBILITY_TEST' as any)) {
                 const shoulderY = ((lSh?.y || 0) + (rSh?.y || 0)) / (lSh && rSh ? 2 : 1);
                 const hipY = ((lHp?.y || 0) + (rHp?.y || 0)) / (lHp && rHp ? 2 : 1);
                 
@@ -430,7 +476,7 @@ const AssessmentFlow: React.FC = () => {
                   // 어깨~엉덩이 거리가 너무 작으면 → 상체만 보이거나 너무 구부림 (팔 올리기는 상체만 보여도 허용)
                   const torsoHeight = Math.abs(hipY - shoulderY);
                   const imgH = canvas.height;
-                  if (torsoHeight < imgH * 0.08 && currentStep !== AssessmentStep.ARM_RAISE_TEST) {
+                  if (torsoHeight < imgH * 0.08 && currentStep !== ('ARM_RAISE_TEST' as any)) {
                     postureError = '상체가 너무 구부러져 있습니다. 바르게 서 주세요.';
                   }
                 }
@@ -473,22 +519,52 @@ const AssessmentFlow: React.FC = () => {
               const w = canvas.width;
               const h = canvas.height;
               const getKp = (name: string) => kps.find(kp => kp.name === name);
-              
-              // 반투명 어두운 오버레이
-              ctx.fillStyle = 'rgba(0, 10, 30, 0.25)';
-              ctx.fillRect(0, 0, w, h);
-              
-              // 스캔라인 효과 (수평 줄무늬)
-              ctx.strokeStyle = 'rgba(0, 255, 200, 0.04)';
-              ctx.lineWidth = 1;
-              for (let y = 0; y < h; y += 4) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(w, y);
-                ctx.stroke();
+              const isFrontView = currentStep === AssessmentStep.POSTURE_FRONT;
+
+              // ── ① 배경 블러 (인체만 선명하게) ──
+              const visKps = kps.filter(kp => (kp.score || 0) > 0.2);
+              if (visKps.length > 2) {
+                const xs = visKps.map(kp => kp.x);
+                const ys = visKps.map(kp => kp.y);
+                const padX = w * 0.1, padTop = h * 0.08, padBot = h * 0.05;
+                const bL = Math.max(0, Math.min(...xs) - padX);
+                const bT = Math.max(0, Math.min(...ys) - padTop);
+                const bR = Math.min(w, Math.max(...xs) + padX);
+                const bB = Math.min(h, Math.max(...ys) + padBot);
+                const bCx = (bL + bR) / 2, bCy = (bT + bB) / 2;
+                const bRx = (bR - bL) / 2 * 1.15, bRy = (bB - bT) / 2 * 1.1;
+
+                const blurC = document.createElement('canvas');
+                blurC.width = w; blurC.height = h;
+                const bCtx = blurC.getContext('2d')!;
+                bCtx.filter = 'blur(14px) brightness(0.4)';
+                bCtx.drawImage(canvas, 0, 0);
+                bCtx.filter = 'none';
+                // 인체 영역 잘라내기 (페더링)
+                bCtx.globalCompositeOperation = 'destination-out';
+                const fg = bCtx.createRadialGradient(bCx, bCy, Math.min(bRx, bRy) * 0.5, bCx, bCy, Math.max(bRx, bRy));
+                fg.addColorStop(0, 'rgba(0,0,0,1)');
+                fg.addColorStop(0.65, 'rgba(0,0,0,0.95)');
+                fg.addColorStop(1, 'rgba(0,0,0,0)');
+                bCtx.fillStyle = fg;
+                bCtx.beginPath();
+                bCtx.ellipse(bCx, bCy, bRx, bRy, 0, 0, Math.PI * 2);
+                bCtx.fill();
+                bCtx.globalCompositeOperation = 'source-over';
+                ctx.drawImage(blurC, 0, 0);
               }
-              
-              // 뼈대 연결선 정의 (MoveNet 17 keypoints)
+
+              // ── ② 그리드 패턴 ──
+              ctx.strokeStyle = 'rgba(100,200,255,0.06)';
+              ctx.lineWidth = 0.5;
+              for (let gx = 0; gx < w; gx += 30) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
+              for (let gy = 0; gy < h; gy += 30) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+              ctx.strokeStyle = 'rgba(100,200,255,0.12)';
+              ctx.lineWidth = 1;
+              for (let gx = 0; gx < w; gx += 120) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
+              for (let gy = 0; gy < h; gy += 120) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+
+              // ── ③ 스켈레톤 연결선 ──
               const connections = [
                 ['left_shoulder', 'right_shoulder'],
                 ['left_shoulder', 'left_elbow'], ['left_elbow', 'left_wrist'],
@@ -497,156 +573,158 @@ const AssessmentFlow: React.FC = () => {
                 ['left_hip', 'right_hip'],
                 ['left_hip', 'left_knee'], ['left_knee', 'left_ankle'],
                 ['right_hip', 'right_knee'], ['right_knee', 'right_ankle'],
-                ['nose', 'left_eye'], ['nose', 'right_eye'],
-                ['left_eye', 'left_ear'], ['right_eye', 'right_ear'],
               ];
-              
-              // 뼈대 연결선 그리기 (네온 그린 글로우)
               connections.forEach(([a, b]) => {
-                const kpA = getKp(a);
-                const kpB = getKp(b);
+                const kpA = getKp(a); const kpB = getKp(b);
                 if (kpA && kpB && (kpA.score || 0) > 0.15 && (kpB.score || 0) > 0.15) {
-                  // 글로우 효과
                   ctx.save();
-                  ctx.shadowColor = 'rgba(0, 255, 170, 0.8)';
-                  ctx.shadowBlur = 12;
-                  ctx.strokeStyle = 'rgba(0, 255, 170, 0.7)';
-                  ctx.lineWidth = 3;
-                  ctx.beginPath();
-                  ctx.moveTo(kpA.x, kpA.y);
-                  ctx.lineTo(kpB.x, kpB.y);
-                  ctx.stroke();
+                  ctx.shadowColor = 'rgba(0,255,170,0.8)'; ctx.shadowBlur = 14;
+                  ctx.strokeStyle = 'rgba(0,255,170,0.7)'; ctx.lineWidth = 3;
+                  ctx.beginPath(); ctx.moveTo(kpA.x, kpA.y); ctx.lineTo(kpB.x, kpB.y); ctx.stroke();
                   ctx.restore();
-                  
-                  // 안쪽 밝은 선
-                  ctx.strokeStyle = 'rgba(180, 255, 230, 0.9)';
-                  ctx.lineWidth = 1.5;
-                  ctx.beginPath();
-                  ctx.moveTo(kpA.x, kpA.y);
-                  ctx.lineTo(kpB.x, kpB.y);
-                  ctx.stroke();
+                  ctx.strokeStyle = 'rgba(180,255,230,0.9)'; ctx.lineWidth = 1.5;
+                  ctx.beginPath(); ctx.moveTo(kpA.x, kpA.y); ctx.lineTo(kpB.x, kpB.y); ctx.stroke();
                 }
               });
-              
-              // 관절 포인트 그리기
+
+              // ── ④ 관절 포인트 ──
               kps.forEach(kp => {
                 if ((kp.score || 0) > 0.15) {
-                  // 외곽 글로우
                   ctx.save();
-                  ctx.shadowColor = 'rgba(0, 200, 255, 0.9)';
-                  ctx.shadowBlur = 15;
-                  ctx.fillStyle = 'rgba(0, 200, 255, 0.8)';
-                  ctx.beginPath();
-                  ctx.arc(kp.x, kp.y, 6, 0, Math.PI * 2);
-                  ctx.fill();
+                  ctx.shadowColor = 'rgba(0,200,255,0.9)'; ctx.shadowBlur = 15;
+                  ctx.fillStyle = 'rgba(0,200,255,0.8)';
+                  ctx.beginPath(); ctx.arc(kp.x, kp.y, 7, 0, Math.PI * 2); ctx.fill();
                   ctx.restore();
-                  
-                  // 내부 밝은 점
-                  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-                  ctx.beginPath();
-                  ctx.arc(kp.x, kp.y, 3, 0, Math.PI * 2);
-                  ctx.fill();
+                  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                  ctx.beginPath(); ctx.arc(kp.x, kp.y, 3.5, 0, Math.PI * 2); ctx.fill();
                 }
               });
-              
-              // --- 어깨 수평선 ---
-              const lShoulder = getKp('left_shoulder');
-              const rShoulder = getKp('right_shoulder');
-              if (lShoulder && rShoulder && (lShoulder.score || 0) > 0.2 && (rShoulder.score || 0) > 0.2) {
+
+              // 라벨 배지 헬퍼
+              const drawLabel = (text: string, x: number, y: number, color: string, align: CanvasTextAlign = 'left') => {
                 ctx.save();
-                ctx.setLineDash([8, 6]);
-                ctx.strokeStyle = 'rgba(255, 200, 50, 0.7)';
-                ctx.lineWidth = 2;
+                ctx.font = 'bold 11px monospace'; ctx.textAlign = align;
+                const tw = ctx.measureText(text).width + 14;
+                const lx = align === 'right' ? x - tw : align === 'center' ? x - tw / 2 : x;
+                ctx.fillStyle = 'rgba(0,10,30,0.8)';
                 ctx.beginPath();
-                ctx.moveTo(lShoulder.x - 30, lShoulder.y);
-                ctx.lineTo(rShoulder.x + 30, rShoulder.y);
-                ctx.stroke();
+                const r = 4; const ly = y - 10; const lh = 20;
+                ctx.moveTo(lx + r, ly); ctx.lineTo(lx + tw - r, ly);
+                ctx.arcTo(lx + tw, ly, lx + tw, ly + r, r); ctx.arcTo(lx + tw, ly + lh, lx + tw - r, ly + lh, r);
+                ctx.arcTo(lx, ly + lh, lx, ly + lh - r, r); ctx.arcTo(lx, ly, lx + r, ly, r);
+                ctx.fill();
+                ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = color;
+                ctx.fillText(text, lx + 7, y + 4);
                 ctx.restore();
-                
-                // 어깨 기울기 각도 계산
-                const shoulderAngle = Math.abs(Math.atan2(rShoulder.y - lShoulder.y, rShoulder.x - lShoulder.x) * (180 / Math.PI));
-                const midX = (lShoulder.x + rShoulder.x) / 2;
-                const midY = Math.min(lShoulder.y, rShoulder.y) - 25;
-                ctx.font = 'bold 14px monospace';
-                ctx.fillStyle = 'rgba(255, 200, 50, 0.9)';
-                ctx.textAlign = 'center';
-                ctx.fillText(`${shoulderAngle.toFixed(1)}°`, midX, midY);
+              };
+
+              // ── ⑤ 정면(FRONT) 측정 어노테이션 ──
+              if (isFrontView) {
+                const ls = getKp('left_shoulder'), rs = getKp('right_shoulder');
+                const lh2 = getKp('left_hip'), rh2 = getKp('right_hip');
+                // 어깨 수평선 + 기울기
+                if (ls && rs && (ls.score || 0) > 0.2 && (rs.score || 0) > 0.2) {
+                  ctx.save(); ctx.setLineDash([8, 6]);
+                  ctx.strokeStyle = 'rgba(255,200,50,0.8)'; ctx.lineWidth = 2;
+                  ctx.beginPath(); ctx.moveTo(Math.max(0, ls.x - 40), ls.y); ctx.lineTo(Math.min(w, rs.x + 40), rs.y); ctx.stroke();
+                  ctx.restore();
+                  const sAngle = Math.abs(Math.atan2(rs.y - ls.y, rs.x - ls.x) * (180 / Math.PI));
+                  const sColor = sAngle < 2 ? 'rgba(52,211,153,0.95)' : sAngle < 5 ? 'rgba(251,191,36,0.95)' : 'rgba(239,68,68,0.95)';
+                  const sMx = (ls.x + rs.x) / 2, sMy = Math.min(ls.y, rs.y) - 20;
+                  drawLabel(`어깨 기울기 ${sAngle.toFixed(1)}°`, sMx, sMy, sColor, 'center');
+                  const hDiff = Math.abs(ls.y - rs.y);
+                  if (hDiff > 5) {
+                    const side = ls.y < rs.y ? '좌' : '우';
+                    drawLabel(`${side}측 어깨 높음`, sMx, sMy - 22, sColor, 'center');
+                  }
+                }
+                // 골반 수평선 + 기울기
+                if (lh2 && rh2 && (lh2.score || 0) > 0.2 && (rh2.score || 0) > 0.2) {
+                  ctx.save(); ctx.setLineDash([8, 6]);
+                  ctx.strokeStyle = 'rgba(255,100,100,0.8)'; ctx.lineWidth = 2;
+                  ctx.beginPath(); ctx.moveTo(Math.max(0, lh2.x - 40), lh2.y); ctx.lineTo(Math.min(w, rh2.x + 40), rh2.y); ctx.stroke();
+                  ctx.restore();
+                  const hAngle = Math.abs(Math.atan2(rh2.y - lh2.y, rh2.x - lh2.x) * (180 / Math.PI));
+                  const hColor = hAngle < 2 ? 'rgba(52,211,153,0.95)' : hAngle < 5 ? 'rgba(251,191,36,0.95)' : 'rgba(239,68,68,0.95)';
+                  drawLabel(`골반 기울기 ${hAngle.toFixed(1)}°`, (lh2.x + rh2.x) / 2, Math.max(lh2.y, rh2.y) + 25, hColor, 'center');
+                }
+                // 중심축
+                const nose = getKp('nose');
+                if (nose && (nose.score || 0) > 0.2) {
+                  ctx.save(); ctx.setLineDash([12, 8]);
+                  ctx.strokeStyle = 'rgba(100,150,255,0.4)'; ctx.lineWidth = 1.5;
+                  ctx.beginPath(); ctx.moveTo(nose.x, Math.max(0, nose.y - 40));
+                  ctx.lineTo(nose.x, Math.min(h, (lh2?.y || h * 0.7) + 80));
+                  ctx.stroke(); ctx.restore();
+                }
               }
-              
-              // --- 골반 수평선 ---
-              const lHip = getKp('left_hip');
-              const rHip = getKp('right_hip');
-              if (lHip && rHip && (lHip.score || 0) > 0.2 && (rHip.score || 0) > 0.2) {
-                ctx.save();
-                ctx.setLineDash([8, 6]);
-                ctx.strokeStyle = 'rgba(255, 100, 100, 0.7)';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(lHip.x - 30, lHip.y);
-                ctx.lineTo(rHip.x + 30, rHip.y);
-                ctx.stroke();
-                ctx.restore();
-                
-                const hipAngle = Math.abs(Math.atan2(rHip.y - lHip.y, rHip.x - lHip.x) * (180 / Math.PI));
-                const hipMidX = (lHip.x + rHip.x) / 2;
-                const hipMidY = Math.max(lHip.y, rHip.y) + 20;
-                ctx.font = 'bold 14px monospace';
-                ctx.fillStyle = 'rgba(255, 100, 100, 0.9)';
-                ctx.textAlign = 'center';
-                ctx.fillText(`${hipAngle.toFixed(1)}°`, hipMidX, hipMidY);
+
+              // ── ⑥ 측면(SIDE) 측정 어노테이션 ──
+              if (!isFrontView) {
+                // 가장 잘 보이는 귀와 어깨 찾기
+                const lEar = getKp('left_ear'), rEar = getKp('right_ear');
+                const ear = (lEar && rEar) ? ((lEar.score || 0) > (rEar.score || 0) ? lEar : rEar) : (lEar || rEar);
+                const lS = getKp('left_shoulder'), rS = getKp('right_shoulder');
+                const shoulder = (lS && rS) ? ((lS.score || 0) > (rS.score || 0) ? lS : rS) : (lS || rS);
+                const lH = getKp('left_hip'), rH = getKp('right_hip');
+                const hip = (lH && rH) ? ((lH.score || 0) > (rH.score || 0) ? lH : rH) : (lH || rH);
+                const lK = getKp('left_knee'), rK = getKp('right_knee');
+                const knee = (lK && rK) ? ((lK.score || 0) > (rK.score || 0) ? lK : rK) : (lK || rK);
+                const lA = getKp('left_ankle'), rA = getKp('right_ankle');
+                const ankle = (lA && rA) ? ((lA.score || 0) > (rA.score || 0) ? lA : rA) : (lA || rA);
+
+                // 이상적 중력선 (Plumb Line): 귀→발목 수직 기준선
+                if (ear && ankle && (ear.score || 0) > 0.2 && (ankle.score || 0) > 0.2) {
+                  ctx.save(); ctx.setLineDash([10, 6]);
+                  ctx.strokeStyle = 'rgba(100,200,255,0.5)'; ctx.lineWidth = 2;
+                  ctx.beginPath(); ctx.moveTo(ankle.x, Math.max(0, ear.y - 30)); ctx.lineTo(ankle.x, ankle.y + 20);
+                  ctx.stroke(); ctx.restore();
+                  drawLabel('Plumb Line', ankle.x + 10, ankle.y - 30, 'rgba(100,200,255,0.9)');
+                }
+                // 전방 두부 각도 (Forward Head Angle) — 거북목 지표
+                if (ear && shoulder && (ear.score || 0) > 0.2 && (shoulder.score || 0) > 0.2) {
+                  const fha = Math.abs(Math.atan2(ear.x - shoulder.x, shoulder.y - ear.y) * (180 / Math.PI));
+                  const fhaColor = fha < 5 ? 'rgba(52,211,153,0.95)' : fha < 15 ? 'rgba(251,191,36,0.95)' : 'rgba(239,68,68,0.95)';
+                  const fhaLabel = fha < 5 ? '정상' : fha < 15 ? '경미한 전방두부' : '거북목 주의';
+                  // 귀-어깨 연결선
+                  ctx.save();
+                  ctx.strokeStyle = fhaColor; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+                  ctx.beginPath(); ctx.moveTo(ear.x, ear.y); ctx.lineTo(shoulder.x, shoulder.y); ctx.stroke();
+                  ctx.restore();
+                  drawLabel(`FHA ${fha.toFixed(1)}° ${fhaLabel}`, Math.min(ear.x, shoulder.x) - 10, (ear.y + shoulder.y) / 2, fhaColor, 'right');
+                }
+                // 상체 전경 각도 (어깨-골반)
+                if (shoulder && hip && (shoulder.score || 0) > 0.2 && (hip.score || 0) > 0.2) {
+                  const trunkAngle = Math.abs(Math.atan2(shoulder.x - hip.x, hip.y - shoulder.y) * (180 / Math.PI));
+                  const tColor = trunkAngle < 3 ? 'rgba(52,211,153,0.95)' : trunkAngle < 8 ? 'rgba(251,191,36,0.95)' : 'rgba(239,68,68,0.95)';
+                  drawLabel(`흉추 ${trunkAngle.toFixed(1)}°`, Math.max(shoulder.x, hip.x) + 15, (shoulder.y + hip.y) / 2, tColor);
+                }
               }
-              
-              // --- 중심 대칭축 (세로선) ---
-              const nose = getKp('nose');
-              if (nose && (nose.score || 0) > 0.2) {
-                const centerX = nose.x;
-                const topY = Math.max(0, nose.y - 40);
-                const bottomY = Math.min(h, (lHip?.y || h * 0.7) + 100);
-                
-                ctx.save();
-                ctx.setLineDash([12, 8]);
-                ctx.strokeStyle = 'rgba(100, 150, 255, 0.5)';
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.moveTo(centerX, topY);
-                ctx.lineTo(centerX, bottomY);
-                ctx.stroke();
-                ctx.restore();
-              }
-              
-              // --- 하단 분석 정보 바 ---
-              const barH = 40;
-              ctx.fillStyle = 'rgba(0, 10, 30, 0.85)';
+
+              // ── ⑦ 하단 정보 바 ──
+              const barH = 36;
+              ctx.fillStyle = 'rgba(0,10,30,0.85)';
               ctx.fillRect(0, h - barH, w, barH);
-              
-              // 구분선
-              ctx.strokeStyle = 'rgba(0, 255, 170, 0.5)';
-              ctx.lineWidth = 1;
-              ctx.beginPath();
-              ctx.moveTo(0, h - barH);
-              ctx.lineTo(w, h - barH);
-              ctx.stroke();
-              
-              ctx.font = 'bold 13px monospace';
-              ctx.fillStyle = 'rgba(0, 255, 170, 0.9)';
-              ctx.textAlign = 'left';
-              ctx.fillText(`BODY SCAN · ${visibleCount}/17 joints`, 12, h - 14);
-              
-              ctx.textAlign = 'right';
-              ctx.fillStyle = 'rgba(100, 200, 255, 0.9)';
-              ctx.fillText('BTC 3-BODY AI ANALYZER', w - 12, h - 14);
+              ctx.strokeStyle = 'rgba(0,255,170,0.5)'; ctx.lineWidth = 1;
+              ctx.beginPath(); ctx.moveTo(0, h - barH); ctx.lineTo(w, h - barH); ctx.stroke();
+              ctx.font = 'bold 12px monospace';
+              ctx.fillStyle = 'rgba(0,255,170,0.9)'; ctx.textAlign = 'left';
+              ctx.fillText(`AI BODY SCAN · ${visibleCount}/17 joints`, 10, h - 12);
+              ctx.fillStyle = 'rgba(100,200,255,0.9)'; ctx.textAlign = 'right';
+              ctx.fillText('BTC 3-BODY AI ANALYZER', w - 10, h - 12);
 
               // 합성된 이미지로 교체
               const analyzedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
               setPreviewData(prev => prev ? { ...prev, dataUrl: analyzedDataUrl, validationResult: { passed: true, message: `AI가 ${visibleCount}개 관절을 인식했습니다. 분석에 적합합니다.` } } : null);
             } else {
-              setPreviewData(prev => prev ? { ...prev, validationResult: { passed: true, message: '내장 그래픽 환경으로 인해 뼈대 일부가 누락되었을 수 있습니다. 화면에 전신이 잘 나왔다면 수동으로 다음 단계를 진행하세요. (최종 분석 정상 진행)' } } : null);
-              // speak("뼈대 인식이 일부 누락되었습니다. 화면에 전신이 잘 나왔다면 수동으로 다음 단계를 진행해주세요.");
+              setPreviewData(prev => prev ? { ...prev, validationResult: { passed: false, message: '전신이 충분히 나오지 않았습니다. 뒤로 물러나서 재촬영해 주세요.' } } : null);
+              speak("전신이 충분히 나오지 않았습니다. 재촬영해 주세요.");
             }
           } else {
             // Thunder 모델도 감지하지 못할 경우, 강제로 수동 패스할 수 있도록 안내 (차단하지 않음)
-            setPreviewData(prev => prev ? { ...prev, validationResult: { passed: true, message: 'AI가 뼈대를 그리지 못했으나 (내장 그래픽 환경), 화면에 전신이 잘 나왔다면 다음 단계를 눌러주세요. 최종 정밀 분석은 100% 정상 작동합니다.' } } : null);
-            // speak("내장 그래픽 환경입니다. 화면에 전신이 잘 나왔다면 다음 단계를 눌러주세요.");
+            setPreviewData(prev => prev ? { ...prev, validationResult: { passed: false, message: 'AI가 사람을 명확히 인식하지 못했습니다. 사진이 정상이면 수동으로 다음 단계로 넘어가세요.' } } : null);
+            speak("사람이 명확히 감지되지 않았습니다. 사진을 확인하고 수동으로 넘어가거나 재촬영해 주세요.");
           }
         } catch (err) {
           console.error('Post-capture validation error:', err);
@@ -696,15 +774,8 @@ const AssessmentFlow: React.FC = () => {
       return;
     }
 
-    // 스쿼트/푸시업 단계에서는 수동 횟수 입력 모달 표시 (formScore, kneeAssisted, postureData 보존)
-    if (step === AssessmentStep.STRENGTH_SQUAT || step === AssessmentStep.STRENGTH_PUSHUP) {
-      setRepCount(String(reps || 0));
-      setRepInputModal({ isOpen: true, step: step as AssessmentStep, dataUrl: originalDataUrl, formScore, kneeAssisted, postureData });
-      return;
-    }
-
     // 팔 올리기 단계 (수동 확인 모달)
-    if (step === AssessmentStep.ARM_RAISE_TEST) {
+    if (step === ('ARM_RAISE_TEST' as any)) {
       const defaultGrade = postureData?.armRaiseGrade || '보통 (135도)';
       setManualArmRaiseGrade(defaultGrade);
       setArmRaiseInputModal({ isOpen: true, dataUrl: originalDataUrl, postureData });
@@ -712,14 +783,17 @@ const AssessmentFlow: React.FC = () => {
     }
 
     // 유연성 단계 (수동 확인 모달)
-    if (step === AssessmentStep.FLEXIBILITY_TEST) {
+    if (step === ('FLEXIBILITY_TEST' as any)) {
       const defaultGrade = postureData?.flexGrade || '보통 (정강이 중간)';
       setManualFlexGrade(defaultGrade);
       setFlexInputModal({ isOpen: true, dataUrl: originalDataUrl, postureData });
       return;
     }
+    // 자세 단계(FRONT/SIDE)는 합성 이미지를 리포트용으로, 원본을 Gemini용으로 분리
+    const isPostureStep = [AssessmentStep.POSTURE_FRONT, AssessmentStep.POSTURE_SIDE].includes(step as AssessmentStep);
+    const displayDataUrl = isPostureStep ? (previewData.dataUrl || originalDataUrl) : originalDataUrl;
     
-    proceedToNextStep(step as AssessmentStep, originalDataUrl, reps, footDrops, swayScore, formScore, eyesClosedVal, kneeAssisted, postureData);
+    proceedToNextStep(step as AssessmentStep, displayDataUrl, reps, footDrops, swayScore, formScore, eyesClosedVal, kneeAssisted, postureData, undefined, isPostureStep ? originalDataUrl : undefined);
   };
 
   // 미리보기에서 '재촬영' → 미리보기 닫고 현재 단계 유지
@@ -728,8 +802,11 @@ const AssessmentFlow: React.FC = () => {
     speak("다시 촬영합니다. 준비해 주세요.");
   };
 
-  const proceedToNextStep = (currentStep: AssessmentStep, dataUrl: string, reps?: number, footDrops?: number, swayScore?: number, formScore?: number, eyesClosedVal?: boolean, kneeAssisted?: boolean, postureData?: any, brainTestData?: BrainTestData) => {
+  const proceedToNextStep = (currentStep: AssessmentStep, dataUrl: string, reps?: number, footDrops?: number, swayScore?: number, formScore?: number, eyesClosedVal?: boolean, kneeAssisted?: boolean, postureData?: any, brainTestData?: BrainTestData, originalDataUrl?: string) => {
     const newImage: CapturedImage = { step: currentStep, dataUrl, reps, formScore, postureData };
+    if (originalDataUrl) {
+      newImage.originalDataUrl = originalDataUrl;
+    }
     if (brainTestData) {
       newImage.brainTestData = brainTestData;
     }
@@ -742,41 +819,11 @@ const AssessmentFlow: React.FC = () => {
     const newImages = [...capturedImages, newImage];
     setCapturedImages(newImages);
 
-    // ★ v4.2.6: 매 단계 완료 시 IndexedDB에 임시 저장 (크래시 복구용)
-    if (pendingRecordId && userInfo) {
-      const saveToDb = async () => {
-        try {
-          // 400px 중간 해상도로 리사이즈 (AI 분석 가능 + 용량 절약)
-          const resizedImages = await Promise.all(newImages.map(async (img) => ({
-            ...img,
-            dataUrl: img.dataUrl ? await resizeImage(img.dataUrl, 400) : ''
-          })));
-          await savePendingAssessment({
-            id: pendingRecordId,
-            userName: userInfo.name,
-            userInfo,
-            currentStep,
-            capturedImages: resizedImages,
-            completedStepCount: newImages.length,
-            createdAt: '', // 기존 값 유지 (put으로 업데이트)
-            updatedAt: new Date().toISOString(),
-          });
-          logger.debug('Flow', `단계별 DB 저장: ${currentStep} (${newImages.length}단계 완료)`);
-        } catch (e) {
-          logger.warn('Flow', '단계별 DB 저장 실패 (측정은 계속 진행)', e);
-        }
-      };
-      saveToDb(); // 비동기 실행, 다음 단계 진행을 블록하지 않음
-    }
-
     const steps = Object.values(AssessmentStep);
     const currentIndex = steps.indexOf(currentStep);
     const nextStep = steps[currentIndex + 1];
 
-    if (nextStep === AssessmentStep.SEVEN_CODE_CHECK) {
-      setStep(AssessmentStep.SEVEN_CODE_CHECK);
-      speak("마지막 측정 11단계, 7코드 건강 점검입니다. 화면에 나타나는 문항 중 본인에게 해당하는 것을 선택해 주세요.");
-    } else if (nextStep === AssessmentStep.READY_FOR_ANALYSIS) {
+    if (nextStep === AssessmentStep.READY_FOR_ANALYSIS) {
       setStep(nextStep as AssessmentStep);
       speak("모든 측정이 완료되었습니다. 화면의 분석 시작 버튼을 눌러주세요.");
     } else if (nextStep === AssessmentStep.ANALYZING) {
@@ -786,34 +833,7 @@ const AssessmentFlow: React.FC = () => {
     }
   };
 
-  const handleSevenCodeComplete = (data: { sevenCodeKeywords: string[]; weakestCode: number }) => {
-    // Save 7code results to the last captured image or just create a dummy one for step 11
-    const newImage: CapturedImage = {
-      step: AssessmentStep.SEVEN_CODE_CHECK,
-      dataUrl: '', // No actual image needed for this step
-      sevenCodeKeywords: data.sevenCodeKeywords,
-      weakestCode: data.weakestCode
-    };
-    const newImages = [...capturedImages, newImage];
-    setCapturedImages(newImages);
 
-    // ★ v4.2.6: 7코드 결과도 DB에 저장
-    if (pendingRecordId && userInfo) {
-      savePendingAssessment({
-        id: pendingRecordId,
-        userName: userInfo.name,
-        userInfo,
-        currentStep: AssessmentStep.SEVEN_CODE_CHECK,
-        capturedImages: newImages, // 7코드는 이미지 없으므로 리사이즈 불필요
-        completedStepCount: newImages.length,
-        createdAt: '',
-        updatedAt: new Date().toISOString(),
-      }).catch(e => logger.warn('Flow', '7코드 DB 저장 실패', e));
-    }
-    
-    setStep(AssessmentStep.READY_FOR_ANALYSIS);
-    speak("모든 측정이 완료되었습니다. 화면의 분석 시작 버튼을 눌러주세요.");
-  };
 
   const handleRepSubmit = () => {
     if (!repInputModal.step) return;
@@ -851,7 +871,7 @@ const AssessmentFlow: React.FC = () => {
     // 사용자가 모달에서 수정한 등급을 postureData에 덮어씀
     const updatedPostureData = { ...postureData, armRaiseGrade: manualArmRaiseGrade };
     setArmRaiseInputModal({ isOpen: false, dataUrl: '', postureData: null });
-    proceedToNextStep(AssessmentStep.ARM_RAISE_TEST, dataUrl, undefined, undefined, undefined, undefined, undefined, undefined, updatedPostureData);
+    proceedToNextStep(('ARM_RAISE_TEST' as any), dataUrl, undefined, undefined, undefined, undefined, undefined, undefined, updatedPostureData);
   };
 
   // 유연성 수동 검증 완료
@@ -860,82 +880,55 @@ const AssessmentFlow: React.FC = () => {
     // 사용자가 수정한 등급을 postureData에 덮어씀
     const updatedPostureData = { ...postureData, flexGrade: manualFlexGrade };
     setFlexInputModal({ isOpen: false, dataUrl: '', postureData: null });
-    proceedToNextStep(AssessmentStep.FLEXIBILITY_TEST, dataUrl, undefined, undefined, undefined, undefined, undefined, undefined, updatedPostureData);
+    proceedToNextStep(('FLEXIBILITY_TEST' as any), dataUrl, undefined, undefined, undefined, undefined, undefined, undefined, updatedPostureData);
   };
 
-  const runAnalysis = async (images: CapturedImage[], overrideUserInfo?: UserInfo) => {
-    const effectiveUserInfo = overrideUserInfo || userInfo;
-    if (!effectiveUserInfo) {
-      logger.warn('Flow', 'runAnalysis 중단: userInfo 없음');
-      setErrorModal({
-        isOpen: true,
-        message: '사용자 정보가 없어 분석을 시작할 수 없습니다. 새로운 측정을 시작해 주세요.',
-        showRetry: false
-      });
-      return;
-    }
-    logger.info('Flow', `runAnalysis 시작`, { name: effectiveUserInfo.name, imageCount: images.length, steps: images.map(i => i.step) });
-    logger.stateChange('Flow', 'step', step, 'ANALYZING');
+  const runAnalysis = async (images: CapturedImage[]) => {
+    if (!userInfo) return;
     setStep(AssessmentStep.ANALYZING);
-    stopSpeaking(); // ★ 이전 나레이션 강제 중지 후 분석 안내 시작
     speak("이 분석은 브레인트레이닝센터와 연구원, 대학교 등 전문가들이 연구, 개발하였고, 최신 AI 기술을 접목하여 개발한 프로그램입니다. 본 시스템은 건강 관리에 도움을 주고자 자세, 동작, 기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다. 데이터 분석에 약 1분 정도 소요됩니다.");
     setIsAnalyzing(true);
-    const analysisStartTime = Date.now();
     try {
-      // For AI analysis, we send slightly larger images than storage but still resized for speed
-      logger.debug('Flow', '이미지 리사이즈 시작 (800px)');
+      // For AI analysis, use original (un-overlaid) images for accuracy
       const aiOptimizedImages = await Promise.all(images.map(async (img) => ({
         ...img,
-        dataUrl: await resizeImage(img.dataUrl, 800)
+        dataUrl: await resizeImage(img.originalDataUrl || img.dataUrl, 800)
       })));
-      logger.debug('Flow', `이미지 리사이즈 완료, analyzeHealth 호출`);
 
-      const result = await analyzeHealth(effectiveUserInfo, aiOptimizedImages);
-      logger.info('Flow', `analyzeHealth 결과 수신`, { overallScore: result.overallScore, physicalAge: result.physicalAge });
-      
+      const result = await analyzeHealth(userInfo, aiOptimizedImages);
       setReport(result);
-      logger.stateChange('Flow', 'report', null, `score=${result.overallScore}`);
       speak("분석 결과 리포트가 생성되었습니다. 결과를 확인해 보세요.");
       
       // Attempt to save to history, but don't crash if it fails
       // pending 레코드 삭제 후 최종 report로 저장
       if (pendingRecordId) {
-        try { 
-          await deleteRecordLocally(pendingRecordId);
-          logger.debug('Flow', `pending 레코드 삭제 완료: ${pendingRecordId}`);
-        } catch (e) { 
-          logger.warn('Flow', `pending 삭제 실패: ${pendingRecordId}`, e);
-        }
-        // ★ v4.2.6: pending assessment DB도 삭제
-        try {
-          await deletePendingAssessment(pendingRecordId);
-          logger.debug('Flow', `pending assessment 삭제 완료: ${pendingRecordId}`);
-        } catch (e) {
-          logger.warn('Flow', 'pending assessment 삭제 실패', e);
-        }
+        try { await deleteRecordLocally(pendingRecordId); } catch (e) { console.warn('[DB] pending 삭제 실패:', e); }
         setPendingRecordId(null);
       }
-      
-      logger.debug('Flow', '레코드 저장 시작');
       await saveRecord(result, images);
-      logger.info('Flow', '레코드 저장 완료');
       
-      const totalElapsed = Date.now() - analysisStartTime;
-      logger.info('Flow', `전체 분석 완료 (${totalElapsed}ms = ${(totalElapsed/1000).toFixed(1)}초)`);
-      logger.stateChange('Flow', 'step', 'ANALYZING', 'REPORT');
+      // 대기열 측정 진행 완료 시 Firestore 상태를 completed로 갱신
+      if (activeWaitingId) {
+        try {
+          await updateWaitingStatus(activeWaitingId, 'completed');
+        } catch (e) {
+          console.warn('[EventService] 대기자 상태 완료 처리 실패', e);
+        }
+        // 대기자 관련 상태 리셋
+        setActiveWaitingId(null);
+        setIsWaitingMemberActive(false);
+      }
+      
       setStep(AssessmentStep.REPORT);
     } catch (error) {
-      const totalElapsed = Date.now() - analysisStartTime;
-      logger.error('Flow', `runAnalysis 실패 (${totalElapsed}ms)`, error, true);
-      
-      const isQuotaError = error instanceof Error && (error.message.includes('quota') || error.message.includes('429'));
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error("Analysis Error:", error);
+      const isQuotaError = error instanceof Error && (error.message.includes('quota') || error.message.includes('429') || error.message.includes('depleted') || error.message.includes('prepayment'));
       
       setErrorModal({ 
         isOpen: true, 
         message: isQuotaError 
           ? "현재 AI 분석 요청이 너무 많아 일시적으로 처리가 지연되고 있습니다. 잠시 후 '분석 재시작' 버튼을 누르시면 안전하게 저장된 사진들로 다시 분석을 진행합니다."
-          : `AI 분석 서버와 통신 중 오류가 발생했습니다.\n\n[에러 상세] ${errorMsg.substring(0, 200)}\n\n(촬영하신 8단계 사진과 데이터는 기기에 안전하게 저장되어 있습니다.) 아래 '분석 재시작' 버튼을 눌러주시면 처음부터 다시 촬영할 필요 없이 즉시 분석을 재개합니다.`,
+          : `AI 분석 서버와 통신 중 일시적인 오류가 발생했습니다.\n(상세 에러: ${error instanceof Error ? error.message : JSON.stringify(error)})\n\n촬영하신 5단계 사진과 데이터는 기기에 안전하게 저장되어 있습니다. 아래 '분석 재시작' 버튼을 눌러주시면 처음부터 다시 촬영할 필요 없이 즉시 분석을 재개합니다.`,
         showRetry: true
       });
       // Stay on ANALYZING step or show a state where they can retry
@@ -946,7 +939,6 @@ const AssessmentFlow: React.FC = () => {
 
   const retryAnalysis = () => {
     setErrorModal({ isOpen: false, message: '', showRetry: false });
-    stopSpeaking(); // ★ 이전 나레이션 강제 중지
     runAnalysis(capturedImages);
   };
 
@@ -971,6 +963,16 @@ const AssessmentFlow: React.FC = () => {
               <span className="text-slate-400 text-xs font-medium">{getStepGuidance(step)}</span>
             </div>
             <div className="flex items-center gap-3">
+              {userInfo && (
+                <div className="bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs px-3 py-1 rounded-full flex items-center gap-1.5">
+                  <span>👤</span>
+                  <span>{userInfo.name}</span>
+                  <span className="text-amber-400/60">|</span>
+                  <span>{userInfo.gender === 'male' ? '남' : '여'}</span>
+                  <span className="text-amber-400/60">|</span>
+                  <span>{userInfo.age}세</span>
+                </div>
+              )}
               {devices.length > 0 && (
                 <div className="relative">
                   <button 
@@ -1177,30 +1179,170 @@ const AssessmentFlow: React.FC = () => {
       return <HistoryManager 
                 onViewReport={(rec) => {
                   setReport(rec.report);
-                  setCapturedImages(Array.isArray(rec.images) ? rec.images : []);
+                  setCapturedImages(rec.images);
                   setStep(AssessmentStep.REPORT);
                 }}
                 onResumeAnalysis={(rec) => {
-                  const resumeUserInfo = rec.report?.userInfo;
-                  if (resumeUserInfo) {
-                    setUserInfo(resumeUserInfo);
+                  if (rec.report?.userInfo) {
+                    setUserInfo(rec.report.userInfo);
                   }
                   setCapturedImages(rec.images || []);
                   setPendingRecordId(rec.id);
                   setStep(AssessmentStep.ANALYZING);
-                  // userInfo를 직접 전달 (setState는 비동기라 아직 반영 안 됨)
-                  runAnalysis(rec.images || [], resumeUserInfo || undefined);
+                  runAnalysis(rec.images || []);
                 }}
                 onClose={() => setStep(AssessmentStep.INTRO)} 
              />;
     }
 
-    if (step === AssessmentStep.KFACE) {
-      return <KFaceApp userInfo={userInfo} onClose={() => setStep(AssessmentStep.INTRO)} />;
-    }
 
-    if (step === AssessmentStep.KTAROT) {
-      return <KTarotApp userInfo={userInfo} onClose={() => setStep(AssessmentStep.INTRO)} />;
+
+    // ───── 건강 니즈 파악 페이지 (7코드 완료 후 표시) ─────
+    const HEALTH_NEEDS_OPTIONS = [
+      '잠을 잘 자고 싶다', '스트레스를 해소하고 싶다', '감정을 관리하고 싶다',
+      '멘탈을 관리하고 싶다', '집중력을 높이고 싶다', '인간관계를 개선하고 싶다',
+      '체력을 키우고 싶다', '통증을 완화하고 싶다', '다이어트를 하고 싶다',
+      '화를 다스리고 싶다', '젊어지고 싶다', '행복해지고 싶다'
+    ];
+
+    if (showHealthNeeds) {
+      const handleHealthNeedsComplete = async () => {
+        const finalNeeds = [...selectedHealthNeeds];
+        if (customHealthNeed.trim()) {
+          finalNeeds.push(customHealthNeed.trim());
+        }
+        // userInfo에 healthNeeds 저장
+        if (userInfo) {
+          setUserInfo({ ...userInfo, healthNeeds: finalNeeds });
+        }
+        setShowHealthNeeds(false);
+
+        if (isReceptionOnly && pendingSevenCodeData) {
+          // 사전접수 모드: 대기열 등록
+          try {
+            if (userInfo) {
+              await addToWaitingList({
+                name: userInfo.name,
+                phone: userInfo.phone || '',
+                age: userInfo.age,
+                gender: userInfo.gender,
+                memberType: userInfo.memberType,
+                birthDate: userInfo.birthDate,
+                sevenCodeKeywords: pendingSevenCodeData.keywords,
+                weakestCode: pendingSevenCodeData.weakestCode,
+                branchId: currentBranchId,
+                eventCode: activeEventCode || undefined,
+                isStarred: false,
+                healthNeeds: finalNeeds
+              });
+              setToast({ isVisible: true, message: '대기 등록이 완료되었습니다. 순서대로 점검을 진행해 드립니다.', type: 'success' });
+            }
+          } catch (err) {
+            console.error('대기열 등록 중 오류가 발생했습니다.', err);
+            setToast({ isVisible: true, message: '대기 등록에 실패했습니다. 관리자에게 문의해 주세요.', type: 'error' });
+          }
+          setStep(AssessmentStep.INTRO);
+          setCapturedImages([]);
+          setReport(null);
+          setUserInfo(null);
+          setIsReceptionOnly(false);
+        } else if (pendingSevenCodeData) {
+          // 원스톱 모드: 다음 측정 단계로 진행
+          proceedToNextStep(AssessmentStep.SEVEN_CODE_CHECK, '', undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+          setCapturedImages(prev => {
+            const newArr = [...prev];
+            const idx = newArr.findIndex(i => i.step === AssessmentStep.SEVEN_CODE_CHECK);
+            if (idx >= 0) {
+              newArr[idx].sevenCodeKeywords = pendingSevenCodeData.keywords;
+              newArr[idx].weakestCode = pendingSevenCodeData.weakestCode;
+            }
+            return newArr;
+          });
+        }
+        setPendingSevenCodeData(null);
+      };
+
+      const toggleHealthNeed = (need: string) => {
+        setSelectedHealthNeeds(prev =>
+          prev.includes(need) ? prev.filter(n => n !== need) : [...prev, need]
+        );
+      };
+
+      return (
+        <div className="flex-1 flex flex-col items-center h-[calc(100vh-80px)] p-4 mx-auto max-w-5xl transition-all bg-slate-900">
+          <div className="text-center mb-4 shrink-0">
+            <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">현재 내가 바라는 건강에 대한 주요 관심</h2>
+            <p className="text-gray-300 text-base sm:text-lg font-bold">
+              몸과 마음, 뇌 건강에 대해 원하시는 것이 있다면 선택해 주세요.
+            </p>
+            <p className="text-gray-400 text-sm sm:text-base font-medium mt-1">
+              복수 선택 가능하며, 목록에 없는 경우 직접 입력할 수 있습니다.
+            </p>
+          </div>
+
+          {/* 진행 바 */}
+          <div className="w-full h-3 bg-gray-800 rounded-full mb-4 shrink-0">
+            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full w-full shadow-[0_0_15px_rgba(245,158,11,0.6)]" />
+          </div>
+
+          {/* 니즈 선택 그리드 */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full flex-1 min-h-0 content-center overflow-y-auto">
+            {HEALTH_NEEDS_OPTIONS.map(need => {
+              const isSelected = selectedHealthNeeds.includes(need);
+              return (
+                <button
+                  key={need}
+                  onClick={() => toggleHealthNeed(need)}
+                  className={`p-5 md:p-6 rounded-2xl text-lg md:text-xl font-black transition-all duration-200 transform hover:scale-[1.02] active:scale-95 leading-snug break-keep ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-[0_0_30px_rgba(245,158,11,0.4)] border-2 border-white/30'
+                      : 'bg-gray-800 text-gray-200 hover:bg-gray-700 border-2 border-gray-700 hover:border-gray-500 shadow-lg'
+                  }`}
+                >
+                  {need}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 직접 입력 */}
+          <div className="w-full max-w-2xl mt-4 shrink-0">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customHealthNeed}
+                onChange={(e) => setCustomHealthNeed(e.target.value)}
+                placeholder="기타 원하시는 건강 목표를 입력하세요"
+                className="flex-1 px-4 py-3 rounded-xl bg-gray-800 text-white border-2 border-gray-700 focus:border-amber-500 outline-none text-base font-bold placeholder:text-gray-500"
+              />
+            </div>
+          </div>
+
+          {/* 선택 현황 및 완료 버튼 */}
+          <div className="flex justify-between items-center w-full max-w-2xl mt-3 pb-2 shrink-0">
+            <span className="text-slate-500 text-sm font-medium">
+              선택: <span className="text-amber-400 font-black text-base">{selectedHealthNeeds.length + (customHealthNeed.trim() ? 1 : 0)}개</span>
+            </span>
+          </div>
+          <div className="flex justify-between w-full max-w-2xl gap-3 pb-2 shrink-0">
+            <button
+              onClick={() => {
+                setShowHealthNeeds(false);
+                setStep(AssessmentStep.SEVEN_CODE_CHECK);
+              }}
+              className="flex-1 px-6 py-4 rounded-2xl text-xl font-bold bg-gray-700 text-white hover:bg-gray-600 transition-colors shadow-lg"
+            >
+              <i className="fas fa-arrow-left mr-2" /> 이전
+            </button>
+            <button
+              onClick={handleHealthNeedsComplete}
+              className="flex-1 px-10 py-4 rounded-2xl text-xl font-black transition-all shadow-xl hover:shadow-amber-500/40 active:scale-95 bg-gradient-to-r from-amber-500 to-orange-500 text-white"
+            >
+              <i className="fas fa-check-circle mr-2" /> {isReceptionOnly ? '접수 완료' : '다음 단계로'}
+            </button>
+          </div>
+        </div>
+      );
     }
 
     switch (step) {
@@ -1210,119 +1352,101 @@ const AssessmentFlow: React.FC = () => {
             <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[120px] animate-pulse"></div>
             <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '3s' }}></div>
 
-            <div className="relative z-10 max-w-lg w-full p-12 rounded-[2.5rem] text-center border border-white/10"
+            <div className="relative z-10 max-w-lg w-full p-8 md:p-10 rounded-[2.5rem] text-center border border-white/10"
                 style={{
                   background: 'rgba(15, 23, 42, 0.65)',
                   backdropFilter: 'blur(40px)',
                   boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                 }}>
               
-              {/* 3-Body Scanner Motion Graphic (Smaller variation) */}
-              <div className="relative w-32 h-32 mx-auto mb-8 flex items-center justify-center">
-                <div className="absolute inset-0 border-t-2 border-l-2 border-indigo-500 rounded-full animate-spin" style={{ animationDuration: '6s' }}></div>
-                <div className="absolute inset-2 border-b-2 border-r-2 border-blue-400/60 rounded-full animate-spin" style={{ animationDuration: '4s', animationDirection: 'reverse' }}></div>
-                <div className="absolute inset-4 border-t-2 border-dashed border-purple-500/50 rounded-full animate-spin" style={{ animationDuration: '8s' }}></div>
-
-                <div className="absolute inset-6 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center z-10 shadow-[0_0_25px_rgba(99,102,241,0.4)] animate-pulse">
-                  <i className="fas fa-brain text-3xl text-white opacity-90 drop-shadow-md"></i>
-                </div>
-                
-                <div className="absolute inset-0 w-full h-full animate-spin z-20 pointer-events-none" style={{ animationDuration: '10s' }}>
-                   <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.8)] border border-slate-900">
-                     <div className="animate-spin" style={{ animationDuration: '10s', animationDirection: 'reverse' }}><i className="fas fa-running text-white text-[12px]"></i></div>
-                   </div>
-                   <div className="absolute bottom-2 right-0 w-7 h-7 bg-gradient-to-br from-rose-400 to-pink-500 rounded-full flex items-center justify-center shadow-[0_0_12px_rgba(244,63,94,0.8)] border border-slate-900">
-                     <div className="animate-spin" style={{ animationDuration: '10s', animationDirection: 'reverse' }}><i className="fas fa-heart text-white text-[11px]"></i></div>
-                   </div>
-                   <div className="absolute bottom-2 left-0 w-5 h-5 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.8)] border border-slate-900">
-                     <div className="animate-spin" style={{ animationDuration: '10s', animationDirection: 'reverse' }}><i className="fas fa-bolt text-white text-[8px]"></i></div>
-                   </div>
-                </div>
-              </div>
-
-              <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 via-white to-indigo-200 mb-2 tracking-tight drop-shadow-sm">
-                BTC 3바디 AI 측정 센터
-              </h2>
-              <p className="text-indigo-300/80 mb-6 text-sm font-medium italic">
-                AI 신체 균형 &amp; 건강 상태 측정 시스템
-              </p>
-
-              {/* 법적 고지 한 줄 안내 */}
-              <div className="mb-8 p-3 rounded-xl bg-indigo-900/40 border border-indigo-500/20 backdrop-blur-md shadow-inner">
-                <p className="text-slate-300 text-xs leading-relaxed font-semibold">
-                  <i className="fas fa-info-circle text-indigo-400 mr-1"></i> 본 테스트는 질병 진단 등의 의료행위가 아니며, 평소 건강 관리를 돕기 위한 <strong>건강 상태 점검(체크) 서비스</strong>입니다.
-                </p>
-              </div>
-
-              {/* ★ v4.2.6: 이어하기 배너 */}
-              {resumePendingData && (
-                <div className="mb-4 p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 animate-fade-in">
-                  <div className="flex items-center gap-2 mb-2">
-                    <i className="fas fa-exclamation-triangle text-amber-400"></i>
-                    <span className="text-amber-300 font-bold text-sm">이전 측정이 중단되었습니다</span>
+              {/* 연합 행사 진행 상태 배지 */}
+              {activeEventCode && (
+                <div className="mb-6 inline-flex flex-col sm:flex-row items-center gap-3 px-5 py-2.5 bg-slate-900/90 border-2 border-indigo-500/60 rounded-3xl text-sm font-black text-white shadow-xl shadow-indigo-950/50">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="text-indigo-300 font-bold">야외 연합 행사 진행 중</span>
                   </div>
-                  <p className="text-slate-400 text-xs mb-3">
-                    <span className="text-white font-bold">{resumePendingData.userName}</span>님의 측정이
-                    <span className="text-amber-400 font-bold"> {resumePendingData.completedStepCount}/11단계</span>까지 진행되어 있습니다.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        // 이어하기: pending 데이터로 상태 복원
-                        setUserInfo(resumePendingData.userInfo);
-                        setCapturedImages(resumePendingData.capturedImages);
-                        setPendingRecordId(resumePendingData.id);
-                        initAudio().catch(() => {});
-                        // 다음 단계로 이동
-                        const steps = Object.values(AssessmentStep);
-                        const currentIdx = steps.indexOf(resumePendingData.currentStep);
-                        const nextStep = steps[currentIdx + 1];
-                        if (nextStep) {
-                          setStep(nextStep as AssessmentStep);
-                        } else {
-                          setStep(AssessmentStep.READY_FOR_ANALYSIS);
-                        }
-                        setResumePendingData(null);
-                        logger.info('Flow', `이어하기 시작: ${resumePendingData.currentStep} 이후부터`);
-                      }}
-                      className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 rounded-xl transition-all text-sm"
-                    >
-                      <i className="fas fa-play mr-1"></i> 이어서 측정하기
-                    </button>
-                    <button
-                      onClick={async () => {
-                        // 이어하기 거부: pending 삭제
-                        try { await deletePendingAssessment(resumePendingData.id); } catch {}
-                        setResumePendingData(null);
-                      }}
-                      className="px-4 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-3 rounded-xl transition-all text-sm"
-                    >
-                      삭제
-                    </button>
+                  <div className="hidden sm:block text-slate-700">|</div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-mono text-base text-yellow-400 tracking-wider font-extrabold">{activeEventCode}</span>
+                    <span className="px-2.5 py-1 bg-indigo-950 border border-indigo-500/30 text-xs font-extrabold rounded-xl text-indigo-200">
+                      👥 참가 대기: <strong className="text-white text-sm font-black">{uniqueWaitingList.length}</strong>명
+                    </span>
                   </div>
                 </div>
               )}
 
-              <div className="flex flex-col gap-4 mb-2 filter drop-shadow-xl">
+              <div className="relative w-full aspect-video mx-auto mb-6 rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+                <img src="/banner.png" alt="Hero" className="w-full h-full object-cover" />
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-fuchsia-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg">
+                  야외 부스 멀티 2.0
+                </div>
+              </div>
+
+              <h2 className="text-2xl md:text-3xl font-black text-white mb-1 tracking-tight drop-shadow-sm">
+                {BRAND_NAME}
+              </h2>
+              <p className="text-slate-400 mb-6 text-xs font-medium">
+                {SUB_NAME}
+              </p>
+
+              {/* 4대 유연 동선 버튼 레이아웃 개편 */}
+              <div className="flex flex-col gap-3 filter drop-shadow-xl">
+                {/* 1. 즉석 통합 시작 (기존 All-in-One) */}
                 <button 
                   onClick={() => {
-                    setCapturedImages([]);
-                    setReport(null);
-                    setUserInfo(null);
-                    setResumePendingData(null); // 이어하기 데이터 무효화
                     initAudio().catch(() => {});
+                    setIsReceptionOnly(false);
+                    setIsWaitingMemberActive(false);
+                    setActiveWaitingId(null);
                     setStep(AssessmentStep.USER_INFO);
                   }}
-                  className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-500 transition-all flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-4 rounded-xl hover:from-indigo-500 hover:to-purple-500 transition-all flex items-center justify-center gap-2.5 text-[15px] shadow-lg shadow-indigo-650/30 active:scale-[0.99]"
                 >
-                  신규 측정 시작하기 <i className="fas fa-chevron-right text-xs"></i>
+                  <i className="fas fa-running text-sm"></i> 바로 측정 시작하기 (원스톱) <i className="fas fa-chevron-right text-xs"></i>
                 </button>
+
+                {/* 2. 사전 접수 등록 */}
+                <button 
+                  onClick={() => {
+                    initAudio().catch(() => {});
+                    setIsReceptionOnly(true);
+                    setIsWaitingMemberActive(false);
+                    setActiveWaitingId(null);
+                    setStep(AssessmentStep.USER_INFO);
+                  }}
+                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold py-3.5 rounded-xl hover:from-emerald-500 hover:to-teal-500 transition-all flex items-center justify-center gap-2.5 text-sm shadow-lg shadow-emerald-650/20 active:scale-[0.99]"
+                >
+                  <i className="fas fa-user-plus text-sm"></i> 사전 접수 등록 (7코드 선점검)
+                </button>
+
+                {/* 3. 대기 리스트 불러오기 */}
+                <button 
+                  onClick={() => {
+                    initAudio().catch(() => {});
+                    setShowWaitingModal(true);
+                  }}
+                  className="w-full bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 font-bold py-3.5 rounded-xl hover:bg-indigo-900/60 transition-all flex items-center justify-center gap-2.5 text-sm active:scale-[0.99] relative"
+                >
+                  <i className="fas fa-list-ol"></i> 대기 리스트 불러오기
+                  {uniqueWaitingList.length > 0 ? (
+                    <span className="absolute right-4 bg-indigo-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
+                      {uniqueWaitingList.length}
+                    </span>
+                  ) : (
+                    <span className="absolute right-4 text-[10px] text-slate-500 font-bold">비어있음</span>
+                  )}
+                </button>
+
+                {/* 4. 완료 결과 상담 */}
                 <button 
                   onClick={() => setStep('HISTORY')}
-                  className="w-full bg-slate-800/80 border border-slate-700 text-slate-300 font-bold py-4 rounded-2xl hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                  className="w-full bg-slate-800/80 border border-slate-700 text-slate-300 font-bold py-3.5 rounded-xl hover:bg-slate-700 transition-all flex items-center justify-center gap-2.5 text-sm active:scale-[0.99]"
                 >
-                  <i className="fas fa-users"></i> 회원 데이터 관리
+                  <i className="fas fa-comments"></i> 완료 결과 조회 (전문 상담)
                 </button>
+                
+                {/* K-관상 / K-타로 버튼 제거됨 */}
               </div>
 
               <div className="mt-8 flex items-center justify-center gap-2 text-slate-500 text-[9px] font-semibold tracking-widest uppercase">
@@ -1377,115 +1501,99 @@ const AssessmentFlow: React.FC = () => {
           </div>
         );
 
-      case AssessmentStep.ARM_RAISE_TEST:
-        return renderCameraStep("노화 테스트 02", "팔 들어 올리기", 4, <CameraModule key="arm" onCapture={handleCapture} guidelineType="arm_raise" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
 
-      case AssessmentStep.FLEXIBILITY_TEST:
-        return renderCameraStep("노화 테스트 03", "유연성 테스트", 5, <CameraModule key="flexibility" onCapture={handleCapture} guidelineType="flexibility" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
-
-      case AssessmentStep.STRENGTH_SQUAT:
-        return renderCameraStep("근력 테스트 01", "15초 스쿼트", 6, <CameraModule key="squat" onCapture={handleCapture} guidelineType="squat" timerDuration={15} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
-
-      case AssessmentStep.STRENGTH_PUSHUP:
-        return renderCameraStep("근력 테스트 02", "15초 푸시업", 7, <CameraModule key="pushup" onCapture={handleCapture} guidelineType="pushup" timerDuration={15} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
-
-      case AssessmentStep.BRAIN_REACTION:
-        return <TmtBrainTestModule key={AssessmentStep.BRAIN_REACTION} onComplete={(dataUrl, testData) => proceedToNextStep(AssessmentStep.BRAIN_REACTION, dataUrl, testData.reactionTimeMs, testData.reactionErrors, undefined, undefined, undefined, undefined, undefined, testData)} />;
 
       case AssessmentStep.BRAIN_MEMORY:
-        return <BrainTestModule key={AssessmentStep.BRAIN_MEMORY} testType={AssessmentStep.BRAIN_MEMORY} onComplete={(dataUrl, testData) => proceedToNextStep(AssessmentStep.BRAIN_MEMORY, dataUrl, testData.memorySpan, undefined, undefined, undefined, undefined, undefined, undefined, testData)} preferredCameraId={selectedDeviceId} />;
+        return <BrainTestModule key={AssessmentStep.BRAIN_MEMORY} testType={AssessmentStep.BRAIN_MEMORY} onComplete={(dataUrl, testData) => proceedToNextStep(AssessmentStep.BRAIN_MEMORY, dataUrl, testData.memorySpan, undefined, undefined, undefined, undefined, undefined, undefined, testData)} preferredCameraId={selectedDeviceId} userInfo={userInfo} />;
 
       case AssessmentStep.FACE_ANALYSIS:
-        return renderCameraStep("측정 10단계", "안면 피부 노화 측정", 10, <CameraModule key="face" onCapture={handleCapture} guidelineType="face" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
+        return renderCameraStep("측정 5단계", "안면 노화 분석", 5, <CameraModule key="face" onCapture={handleCapture} guidelineType="face" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
+
+      case AssessmentStep.KFACE:
+        return <KFaceApp userInfo={userInfo} onClose={() => setStep(AssessmentStep.INTRO)} onBack={() => setStep(AssessmentStep.INTRO)} />;
+
+      case AssessmentStep.KTAROT:
+        return <KTarotApp userInfo={userInfo} onClose={() => setStep(AssessmentStep.INTRO)} onBack={() => setStep(AssessmentStep.INTRO)} />;
 
       case AssessmentStep.SEVEN_CODE_CHECK:
-        return <SevenCodeChecklist onNext={handleSevenCodeComplete} onPrev={() => setStep(AssessmentStep.FACE_ANALYSIS)} />;
+        return <SevenCodeCheckModule onComplete={async (keywords, weakestCode) => {
+          // 7코드 완료 후 건강 니즈 파악 페이지로 이동 (양쪽 플로우 공통)
+          setPendingSevenCodeData({ keywords, weakestCode });
+          setSelectedHealthNeeds([]);
+          setCustomHealthNeed('');
+          setShowHealthNeeds(true);
+        }} />;
 
       case AssessmentStep.READY_FOR_ANALYSIS:
         const stepChecklist = [
           { step: AssessmentStep.POSTURE_FRONT, icon: '📸', label: '1. 정면 자세', hasImage: true },
           { step: AssessmentStep.POSTURE_SIDE, icon: '📸', label: '2. 측면 자세', hasImage: true },
           { step: AssessmentStep.BALANCE_TEST, icon: '⚖️', label: '3. 균형 테스트', hasImage: true },
-          { step: AssessmentStep.ARM_RAISE_TEST, icon: '🙌', label: '4. 팔 올리기', hasImage: true },
-          { step: AssessmentStep.FLEXIBILITY_TEST, icon: '🤸', label: '5. 유연성', hasImage: true },
-          { step: AssessmentStep.STRENGTH_SQUAT, icon: '🦵', label: '6. 스쿼트', hasImage: true },
-          { step: AssessmentStep.STRENGTH_PUSHUP, icon: '💪', label: '7. 팔굽혀펴기', hasImage: true },
-          { step: AssessmentStep.BRAIN_REACTION, icon: '⚡', label: '8. 뇌 반응속도', hasImage: false },
-          { step: AssessmentStep.BRAIN_MEMORY, icon: '🛒', label: '9. 마트 장보기', hasImage: false },
-          { step: AssessmentStep.FACE_ANALYSIS, icon: '😊', label: '10. 얼굴 분석', hasImage: true },
-          { step: AssessmentStep.SEVEN_CODE_CHECK, icon: '🔢', label: '11. 7코드 점검', hasImage: false },
+          { step: AssessmentStep.BRAIN_MEMORY, icon: '🛒', label: '4. 뇌 건강 (마트 장보기)', hasImage: false },
+          { step: AssessmentStep.FACE_ANALYSIS, icon: '😊', label: '5. 얼굴 나이 분석', hasImage: true },
+          { step: AssessmentStep.SEVEN_CODE_CHECK, icon: '🧩', label: '6. 7코드 건강 점검', hasImage: false },
         ];
-        const allStepsCompleted = stepChecklist.every(item => !!capturedImages.find(i => i.step === item.step));
-
+        const isAllCompleted = stepChecklist.every(item => capturedImages.some(i => i.step === item.step));
+        
         return (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-900 animate-fade-in overflow-y-auto w-full">
-            <div className="w-full max-w-3xl">
-              <div className="text-center mb-8">
-                <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${allStepsCompleted ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                  <i className={`fas ${allStepsCompleted ? 'fa-check' : 'fa-times'} text-5xl`}></i>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-slate-900 animate-fade-in overflow-y-auto">
+            <div className="w-full max-w-lg">
+              <div className="text-center mb-5">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${isAllCompleted ? 'bg-green-500/20' : 'bg-amber-500/20'}`}>
+                  <i className={`fas ${isAllCompleted ? 'fa-check text-green-400' : 'fa-exclamation text-amber-400'} text-3xl`}></i>
                 </div>
-                <h3 className="text-3xl font-black text-white mb-2">{allStepsCompleted ? '모든 측정 완료!' : '측정 미완료 안내'}</h3>
-                <p className="text-slate-400 text-sm">
-                  {allStepsCompleted ? '아래 측정 내역 확인 후 AI 분석을 시작하세요.' : '아직 진행하지 않은 측정 항목(❌)이 있습니다. 모든 항목을 완료해야 분석이 가능합니다.'}
+                <h3 className="text-2xl font-black text-white mb-1">
+                  {isAllCompleted ? '모든 측정 완료!' : '아직 측정되지 않은 항목이 있습니다'}
+                </h3>
+                <p className="text-slate-400 text-xs">
+                  {isAllCompleted ? '아래 측정 내역 확인 후 AI 분석을 시작하세요.' : '누락된 측정을 완료해야 AI 종합 분석이 가능합니다.'}
                 </p>
               </div>
 
-              <div className="bg-slate-800/50 rounded-3xl p-6 mb-6 border border-slate-700/50 shadow-xl">
-                <h4 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
-                  <i className="fas fa-clipboard-list text-emerald-400"></i> 측정 현황 내역
+              <div className="bg-slate-800/50 rounded-2xl p-3 mb-4 border border-slate-700/50">
+                <h4 className="text-white font-bold text-xs mb-2 flex items-center gap-2">
+                  <i className="fas fa-clipboard-check text-emerald-400"></i> 측정 현황 내역
                 </h4>
-                <div className="space-y-3">
+                <div className="space-y-1.5">
                   {stepChecklist.map(item => {
                     const img = capturedImages.find(i => i.step === item.step);
                     const done = !!img;
                     return (
-                      <div 
-                        key={item.step} 
-                        onClick={() => !done && setStep(item.step)}
-                        className={`flex items-center gap-4 px-5 py-4 rounded-2xl text-base transition-all ${
-                          done 
-                            ? 'bg-emerald-500/10 border border-emerald-500/20' 
-                            : 'bg-rose-500/10 border border-rose-500/20 cursor-pointer hover:bg-rose-500/20 hover:border-rose-400 active:scale-[0.98] group shadow-sm hover:shadow-rose-500/10'
-                        }`}
-                      >
-                        <span className="text-2xl">{item.icon}</span>
-                        <span className={`font-bold flex-1 ${done ? 'text-white' : 'text-rose-200 group-hover:text-white transition-colors'}`}>{item.label}</span>
+                      <div key={item.step} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs cursor-pointer transition-all ${
+                        done ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20 hover:bg-red-500/20'
+                      }`} onClick={() => { if (!done) setStep(item.step); }}>
+                        <span>{item.icon}</span>
+                        <span className="text-white font-bold flex-1">{item.label}</span>
                         {item.hasImage && img?.dataUrl && (
-                          <img src={img.dataUrl} alt="" className="w-12 h-12 rounded-lg object-cover border-2 border-white/20 shadow-md" />
+                          <img src={img.dataUrl} alt="" className="w-8 h-8 rounded object-cover border border-white/20" />
                         )}
                         {!item.hasImage && img?.brainTestData?.reactionTimeMs && (
-                          <span className="text-emerald-300 text-sm font-black bg-emerald-900/40 px-3 py-1.5 rounded-xl border border-emerald-500/30">{img.brainTestData.reactionTimeMs}ms</span>
+                          <span className="text-emerald-300 text-[10px] font-bold">{img.brainTestData.reactionTimeMs}ms</span>
                         )}
                         {!item.hasImage && img?.brainTestData?.memoryCorrect !== undefined && (
-                          <span className="text-emerald-300 text-sm font-black bg-emerald-900/40 px-3 py-1.5 rounded-xl border border-emerald-500/30">{img.brainTestData.memoryCorrect}개 정답</span>
+                          <span className="text-emerald-300 text-[10px] font-bold">{img.brainTestData.memoryCorrect}개정답</span>
                         )}
-                        {item.step === AssessmentStep.SEVEN_CODE_CHECK && img?.sevenCodeKeywords && (
-                          <span className="text-emerald-300 text-sm font-black bg-emerald-900/40 px-3 py-1.5 rounded-xl border border-emerald-500/30">{img.sevenCodeKeywords.length}개 항목</span>
+                        {item.step === ('SEVEN_CODE_CHECK' as any) && img?.sevenCodeKeywords && (
+                          <span className="text-emerald-300 text-[10px] font-bold">{img.sevenCodeKeywords.length}항목</span>
                         )}
-                        
-                        <div className={`flex items-center gap-2 ${done ? '' : 'text-rose-300'}`}>
-                          {!done && <span className="text-xs font-bold bg-rose-500/20 px-2.5 py-1.5 rounded-lg group-hover:bg-rose-500 group-hover:text-white transition-colors"><i className="fas fa-play mr-1 text-[10px]"></i>측정 시작</span>}
-                          <div className={`w-8 h-8 flex items-center justify-center rounded-full ml-1 transition-colors ${done ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400 group-hover:bg-rose-500 group-hover:text-white'}`}>
-                            <i className={`fas font-black text-lg ${done ? 'fa-check' : 'fa-times'}`}></i>
-                          </div>
-                        </div>
+                        <span className="font-black">{done ? '✅' : '❌ 측정하기'}</span>
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="bg-indigo-900/30 border border-indigo-500/20 rounded-2xl p-5 mb-8 text-center shadow-lg">
-                <p className="text-indigo-200 text-sm font-bold leading-relaxed">
-                  <i className="fas fa-save mr-1"></i> 분석 시작 시 측정 데이터가 자동 저장됩니다.<br/>
+              <div className="bg-indigo-900/30 border border-indigo-500/20 rounded-xl p-3 mb-5 text-center">
+                <p className="text-indigo-200 text-[11px] font-bold leading-relaxed">
+                  💾 분석 시작 시 측정 데이터가 자동 저장됩니다.<br/>
                   분석 오류 시에도 <strong className="text-amber-300">재측정 없이</strong> 저장된 데이터로 재분석이 가능합니다.
                 </p>
               </div>
 
               <button 
-                disabled={!allStepsCompleted}
+                disabled={!isAllCompleted}
                 onClick={async () => {
-                  if (!allStepsCompleted) return;
+                  if (!isAllCompleted) return;
                   try {
                     const resizedForDb = await Promise.all(capturedImages.map(async (img) => ({
                       ...img,
@@ -1508,14 +1616,13 @@ const AssessmentFlow: React.FC = () => {
                   }
                   runAnalysis(capturedImages);
                 }}
-                className={`w-full py-6 rounded-2xl transition-all text-2xl font-black flex items-center gap-3 justify-center shadow-xl ${
-                  allStepsCompleted 
-                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white active:scale-95 shadow-[0_10px_30px_-5px_rgba(99,102,241,0.6)] cursor-pointer' 
-                    : 'bg-slate-800 border-2 border-slate-700 text-slate-500 opacity-60 cursor-not-allowed'
+                className={`font-bold py-5 px-12 rounded-2xl transition-all active:scale-95 text-xl flex items-center gap-3 w-full justify-center ${
+                  isAllCompleted
+                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_10px_30px_-5px_rgba(99,102,241,0.6)] cursor-pointer'
+                    : 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-70'
                 }`}
               >
-                <i className={allStepsCompleted ? 'fas fa-microchip' : 'fas fa-lock'}></i> 
-                {allStepsCompleted ? 'AI 종합 분석 시작하기' : '모든 단계를 측정해야 분석 가능합니다'}
+                <i className="fas fa-microchip"></i> AI 종합 분석 시작하기
               </button>
             </div>
           </div>
@@ -1535,26 +1642,15 @@ const AssessmentFlow: React.FC = () => {
               </div>
             </div>
             <h3 className="text-3xl font-black text-white mb-4 tracking-tight">AI 데이터 분석 중</h3>
-            <div className="text-slate-300 max-w-2xl mx-auto text-base leading-relaxed mt-8 bg-indigo-900/40 p-6 rounded-2xl border border-indigo-500/20 backdrop-blur-sm text-left shadow-2xl">
-              <h4 className="text-indigo-200 font-black text-lg mb-3 flex items-center gap-2">
-                <i className="fas fa-book-medical"></i> 서비스 산출 근거 및 이용 안내
-              </h4>
-              <div className="space-y-4 text-sm">
-                <div>
-                  <strong className="text-indigo-300 block mb-1">📌 학술적 측정 기반</strong>
-                  <p className="text-slate-400">Kendall의 자세 평가(Posture Analysis), J.R. Stroop의 인지 간섭 현상, A. Baddeley의 작업기억 모델, 그리고 최신 안면 랜드마크 기술 등 검증된 인지과학 및 생체역학 방법론을 기초로 AI 알고리즘화 되었습니다.</p>
-                </div>
-                <div>
-                  <strong className="text-indigo-300 block mb-1">📌 연령 지표 산출 원리</strong>
-                  <p className="text-slate-400">제공되는 건강나이(신체/뇌/얼굴/마음)는 측정 데이터를 종합하여 통계적 알고리즘으로 산출한 맞춤형 참고 지표입니다.</p>
-                </div>
-                <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
-                  <strong className="text-amber-400/90 block mb-1 text-xs">⚠️ 비의료 건강관리서비스 안내</strong>
-                  <p className="text-slate-500 text-xs">본 테스트는 보건복지부의 가이드라인을 준수합니다. 본 결과는 질병 진단이나 의료행위를 대체할 수 없으며, 질환이 의심될 경우 전문 의료기관을 방문하시기 바랍니다.</p>
-                </div>
-              </div>
-            </div>
-            <p className="text-indigo-400 mt-6 font-bold animate-pulse">약 10~15초 정도 소요됩니다</p>
+            <p className="text-slate-400 max-w-md mx-auto text-base leading-relaxed font-medium mt-4">
+              <span className="block text-indigo-200 mb-2 font-bold bg-indigo-900/40 p-3 rounded-lg border border-indigo-500/20">
+                이 분석은 브레인트레이닝센터와 연구원, 대학교 등 전문가들이 연구, 개발하였고,<br/>
+                최신 AI의 기술을 접목하여 개발한 프로그램입니다.<br/>
+                <span className="text-[11px] text-indigo-300 mt-1 block">※ 본 시스템은 건강 관리에 도움을 주고자 자세, 동작, 기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다.</span>
+              </span>
+              3바디 측정 모델이 수집된 체형과 동작 데이터를 다각도로 종합 분석하고 있습니다.<br/>
+              <span className="text-indigo-400 mt-2 inline-block text-sm">약 1분 정도 소요됩니다</span>
+            </p>
           </div>
         );
 
@@ -1617,7 +1713,7 @@ const AssessmentFlow: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full min-h-0 relative">
+    <div className="flex-1 flex flex-col">
       <Modal 
         isOpen={errorModal.isOpen}
         title="분석 오류"
@@ -1888,6 +1984,237 @@ const AssessmentFlow: React.FC = () => {
           }
         }} />
       )}
+      {/* 실시간 대기 리스트 모달 */}
+      {showWaitingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-3xl w-full p-8 relative max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setShowWaitingModal(false)}
+              className="absolute right-6 top-6 w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white transition-all cursor-pointer border border-slate-700"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl flex items-center justify-center">
+                <i className="fas fa-users text-lg"></i>
+              </div>
+              <div className="text-left">
+                <h3 className="text-2xl font-black text-white">야외 실시간 대기 리스트</h3>
+                <p className="text-slate-500 text-sm mt-0.5 font-bold">
+                  {activeEventCode ? `연합 행사 모드 활성화 중 (${activeEventCode})` : '지점 내부 대기열'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar min-h-[300px]">
+              {uniqueWaitingList.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-500 py-12 gap-3">
+                  <i className="fas fa-user-clock text-4xl opacity-40"></i>
+                  <span className="text-sm font-medium">현재 대기 중인 접수자가 없습니다.</span>
+                  <span className="text-[10px] text-slate-600 font-bold">사전 접수 기기에서 [사전 접수 등록]을 먼저 완료해 주세요.</span>
+                </div>
+              ) : (
+                [...uniqueWaitingList]
+                  .sort((a, b) => {
+                    if (a.isStarred && !b.isStarred) return -1;
+                    if (!a.isStarred && b.isStarred) return 1;
+                    return a.createdAt - b.createdAt;
+                  })
+                  .map((member, index) => (
+                    <div 
+                      key={member.id}
+                      className={`group border rounded-2xl p-5 flex items-center justify-between transition-all shadow-sm ${
+                        member.isStarred
+                          ? 'bg-rose-950/20 hover:bg-rose-950/30 border-rose-500/40 hover:border-rose-500/60 shadow-rose-950/20'
+                          : 'bg-slate-800/40 hover:bg-indigo-950/10 border-slate-800 hover:border-indigo-500/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-lg transition-all border ${
+                          member.isStarred
+                            ? 'bg-rose-600/10 text-rose-400 border-rose-500/30'
+                            : 'bg-slate-800 group-hover:bg-indigo-900/30 text-slate-400 group-hover:text-indigo-300 border-slate-700/50'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <div className="text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-black text-xl flex items-center">
+                              {member.name}
+                              {member.weakestCode !== undefined && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedKeywordsToShow({
+                                      name: member.name,
+                                      keywords: member.sevenCodeKeywords || [],
+                                      weakestCode: member.weakestCode || 1
+                                    });
+                                  }}
+                                  className="text-sm bg-amber-500/10 text-amber-400 border border-amber-500/30 font-black px-3 py-1.5 rounded-xl ml-2 hover:bg-amber-500 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                                  title="선택한 7코드 질문 항목 보기"
+                                >
+                                  <span>🚨 {CHAKRA_MAP[member.weakestCode] || `${member.weakestCode}번 코드`} 취약</span>
+                                  <i className="fas fa-search text-[9px]"></i>
+                                </button>
+                              )}
+                            </span>
+                            <span className={`text-sm px-3 py-1 rounded-full font-bold ${
+                              member.gender === 'male' ? 'bg-blue-500/10 text-blue-400' : 'bg-pink-500/10 text-pink-400'
+                            }`}>
+                              {member.age}세 · {member.gender === 'male' ? '남' : '여'}
+                            </span>
+                          </div>
+                          {/* 건강 니즈 표시 */}
+                          {member.healthNeeds && member.healthNeeds.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {member.healthNeeds.map((need: string, ni: number) => (
+                                <span key={ni} className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold px-2.5 py-1 rounded-lg">
+                                  💚 {need}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="text-xs text-slate-500 mt-2 flex items-center gap-2">
+                            <span><i className="fas fa-phone-alt"></i> {member.phone ? member.phone.slice(-4) : '없음'}</span>
+                            <span>•</span>
+                            <span><i className="fas fa-clock"></i> {new Date(member.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        {/* 집중 상담 별표 토글 버튼 */}
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await updateWaitingStarred(member.id, !member.isStarred);
+                            } catch (err) {
+                              console.error('별표 상태 업데이트 실패', err);
+                            }
+                          }}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border shadow-md cursor-pointer ${
+                            member.isStarred
+                              ? 'bg-rose-600/30 text-rose-400 border-rose-500/50 hover:bg-rose-600 hover:text-white'
+                              : 'bg-slate-800 text-slate-500 border-slate-700 hover:text-slate-300'
+                          }`}
+                          title={member.isStarred ? '집중 상담 해제' : '집중 상담 대상자 설정'}
+                        >
+                          <i className={`fas fa-star text-[11px] ${member.isStarred ? 'text-rose-400 animate-pulse' : ''}`}></i>
+                        </button>
+
+
+                      
+                      {/* 삭제 버튼 추가 */}
+                      <button
+                        onClick={(e) => handleDeleteWaiting(e, member)}
+                        className="w-10 h-10 rounded-full bg-rose-500/10 text-rose-400 hover:bg-rose-600 hover:text-white flex items-center justify-center transition-all shadow-md border border-rose-500/20 cursor-pointer"
+                        title="대기 삭제"
+                      >
+                        <i className="fas fa-trash-alt text-xs"></i>
+                      </button>
+
+                      {/* 직관적인 측정 시작 버튼 */}
+                      <button 
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setUserInfo({
+                            name: member.name,
+                            gender: member.gender,
+                            age: member.age,
+                            phone: member.phone,
+                            memberType: member.memberType,
+                            birthDate: member.birthDate,
+                            healthNeeds: member.healthNeeds || []
+                          });
+                          
+                          const mockSevenCodeImage: CapturedImage = {
+                            step: AssessmentStep.SEVEN_CODE_CHECK,
+                            dataUrl: '',
+                            sevenCodeKeywords: member.sevenCodeKeywords || [],
+                            weakestCode: member.weakestCode || 1
+                          };
+                          setCapturedImages([mockSevenCodeImage]);
+                          setIsWaitingMemberActive(true);
+                          setActiveWaitingId(member.id);
+                          
+                          await updateWaitingStatus(member.id, 'measuring');
+                          setShowWaitingModal(false);
+                          setStep(AssessmentStep.POSTURE_FRONT);
+                          speak(`${member.name} 님의 측정을 개시합니다. 카메라 앞에 바르게 서주세요.`);
+                        }}
+                        className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-base font-black transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer border border-indigo-500/20"
+                      >
+                        <i className="fas fa-play text-[9px]"></i>
+                        <span>측정 시작</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-800/80 text-center flex justify-between items-center text-sm text-slate-500 font-bold">
+              <span>총 대기 인원: <strong className="text-indigo-400 text-lg">{uniqueWaitingList.length}</strong>명</span>
+              <span>* 클릭 시 즉시 점검 화면으로 진입합니다.</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7코드 선택 항목 상세 모달 */}
+      {selectedKeywordsToShow && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSelectedKeywordsToShow(null)}>
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-6 relative" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedKeywordsToShow(null)}
+              className="absolute right-5 top-5 w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white transition-all cursor-pointer border border-slate-700"
+            >
+              <i className="fas fa-times text-sm"></i>
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl flex items-center justify-center">
+                <i className="fas fa-clipboard-list text-base"></i>
+              </div>
+              <div className="text-left">
+                <h3 className="text-base font-bold text-white">{selectedKeywordsToShow.name} 님의 7코드 체크 항목</h3>
+                <p className="text-slate-500 text-[10px] mt-0.5 font-bold">
+                  선택한 {selectedKeywordsToShow.keywords.length}개의 불편 증상 목록
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/40 border border-slate-800/80 rounded-2xl p-4 text-left mb-5">
+              <div className="text-xs text-indigo-300 font-bold mb-3 flex items-center gap-1.5">
+                <i className="fas fa-exclamation-circle"></i>
+                가장 약한 영역: {selectedKeywordsToShow.weakestCode}번 코드
+              </div>
+              {selectedKeywordsToShow.keywords.length === 0 ? (
+                <p className="text-slate-400 text-xs text-center py-6">선택한 증상이나 감정 항목이 없습니다.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto pr-1">
+                  {selectedKeywordsToShow.keywords.map((kw, idx) => (
+                    <span key={idx} className="bg-indigo-950/80 text-indigo-300 border border-indigo-900/50 px-2.5 py-1.5 rounded-xl text-xs font-semibold">
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setSelectedKeywordsToShow(null)}
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl transition-all cursor-pointer"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
+
       <Toast 
         isVisible={toast.isVisible}
         message={toast.message}

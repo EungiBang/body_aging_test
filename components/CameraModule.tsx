@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { speak, stopSpeaking } from '../services/ttsService';
+import { speak } from '../services/ttsService';
 import { usePoseEstimation } from '../hooks/usePoseEstimation';
 import { useBackgroundBlur } from '../hooks/useBackgroundBlur';
 
@@ -41,7 +41,6 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
   const [zoomCapabilities, setZoomCapabilities] = useState<{ min: number, max: number, step: number } | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isMirrored, setIsMirrored] = useState<boolean>(true);
-  const [activeDeviceId, setActiveDeviceId] = useState<string>('');
 
   // perfInfo가 전달되지 않았을 때 기본값 생성 (포즈 감지 루프가 항상 동작하도록)
   const defaultPerfInfo = { poseInterval: 500, poseInputSize: 256, drawSkeleton: true, videoWidth: 640, videoHeight: 480 };
@@ -97,29 +96,13 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
     }
   };
 
-  // 가상 카메라 필터 (OBS, ManyCam, XSplit, Snap Camera 등 제외)
-  const VIRTUAL_CAM_KEYWORDS = [
-    'obs', 'virtual', 'manycam', 'xsplit', 'snap camera', 'droidcam',
-    'iriun', 'epoccam', 'newtek', 'ndi', 'camtwist', 'mmhmm',
-    'logi capture', 'streamlabs', 'prism', 'e2esoft', 'vcam',
-    'splitcam', 'sparkocam', 'youcam', 'cyberlink', 'fake',
-  ];
-
-  const isVirtualCamera = (device: MediaDeviceInfo): boolean => {
-    const label = (device.label || '').toLowerCase();
-    if (!label) return false; // 라벨 없으면 판단 불가 → 실제 카메라로 취급
-    return VIRTUAL_CAM_KEYWORDS.some(keyword => label.includes(keyword));
-  };
-
-  // Get available video devices (가상 카메라 제외)
+  // Get available video devices
   const refreshDeviceList = async () => {
     try {
       const allDevices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
-      const physicalDevices = videoDevices.filter(d => !isVirtualCamera(d));
-      const filteredCount = videoDevices.length - physicalDevices.length;
-      setDevices(physicalDevices);
-      console.log(`[Camera] Found ${videoDevices.length} video devices (가상 ${filteredCount}대 제외):`, physicalDevices.map(d => d.label || d.deviceId));
+      setDevices(videoDevices);
+      console.log(`[Camera] Found ${videoDevices.length} video devices:`, videoDevices.map(d => d.label || d.deviceId));
     } catch (err) {
       console.error("Error enumerating devices:", err);
     }
@@ -152,22 +135,55 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
           streamRef.current = null;
+          // 태블릿(웹뷰/안드로이드) 하드웨어 카메라 릴리스를 위한 대기 시간 추가
+          await new Promise(r => setTimeout(r, 300));
         }
 
-        const constraints: MediaStreamConstraints = {
-          video: {
-            deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-            facingMode: selectedDeviceId ? undefined : facingMode,
-            width: { ideal: perfInfo?.videoWidth || 854 },
-            height: { ideal: perfInfo?.videoHeight || 480 }
-          }
-        };
+        let stream: MediaStream | null = null;
+        let retryCount = 0;
+        const maxRetries = 2;
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        while (!stream && retryCount <= maxRetries) {
+          try {
+            const constraints: MediaStreamConstraints = {
+              video: {
+                deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+                facingMode: selectedDeviceId ? undefined : facingMode,
+                width: { ideal: perfInfo?.videoWidth || 854 },
+                height: { ideal: perfInfo?.videoHeight || 480 }
+              }
+            };
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+          } catch (e) {
+            console.warn(`[Camera] Attempt ${retryCount + 1} failed:`, e);
+            if (retryCount >= maxRetries) {
+              console.warn("Primary camera constraints failed, trying fallback 1 (no resolution)...", e);
+              try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                  video: {
+                    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+                    facingMode: selectedDeviceId ? undefined : facingMode,
+                  }
+                });
+              } catch (e2) {
+                console.warn("Fallback 1 failed, trying fallback 2 (basic video)...", e2);
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+              }
+            } else {
+              retryCount++;
+              // 재시도 전 대기
+              await new Promise(r => setTimeout(r, 500));
+            }
+          }
+        }
         
         if (!isMounted) {
-          stream.getTracks().forEach(track => track.stop());
+          if (stream) stream.getTracks().forEach(track => track.stop());
           return;
+        }
+
+        if (!stream) {
+          throw new Error("Failed to acquire camera stream");
         }
 
         streamRef.current = stream;
@@ -182,11 +198,9 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
           // Auto-detect and persist the actual camera device being used
           const activeTrack = stream.getVideoTracks()[0];
           const activeSettings = activeTrack.getSettings();
-          if (activeSettings.deviceId) {
-            setActiveDeviceId(activeSettings.deviceId);
-            if (!selectedDeviceId) {
-              onDeviceChange?.(activeSettings.deviceId);
-            }
+          if (activeSettings.deviceId && !selectedDeviceId) {
+            setSelectedDeviceId(activeSettings.deviceId);
+            onDeviceChange?.(activeSettings.deviceId);
           }
 
           // Re-enumerate devices after permission granted (labels become available)
@@ -206,40 +220,12 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
             setZoomCapabilities(null);
           }
         }
-      } catch (err) {
-        console.error("Error accessing camera with constraints:", err);
-        // Fallback: Try with simple { video: true } if exact device or facingMode failed
-        try {
-          console.log("[Camera] Retrying with basic constraints { video: true }...");
-          const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
-          
-          if (!isMounted) {
-            fallbackStream.getTracks().forEach(track => track.stop());
-            return;
-          }
-
-          streamRef.current = fallbackStream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = fallbackStream;
-            videoRef.current.play().catch(e => console.error("Video play error:", e));
-            setIsCameraReady(true);
-            setIsLoading(false);
-            setCameraError(null);
-
-            const activeTrack = fallbackStream.getVideoTracks()[0];
-            const activeSettings = activeTrack.getSettings();
-            if (activeSettings.deviceId) {
-              setActiveDeviceId(activeSettings.deviceId);
-            }
-            refreshDeviceList();
-          }
-        } catch (fallbackErr) {
-          console.error("Fallback camera access also failed:", fallbackErr);
-          if (isMounted) {
-            setIsCameraReady(false);
-            setIsLoading(false);
-            setCameraError("카메라에 접근할 수 없습니다. 권한 설정을 확인해 주세요.");
-          }
+      } catch (err: any) {
+        console.error("Error accessing camera:", err);
+        if (isMounted) {
+          setIsCameraReady(false);
+          setIsLoading(false);
+          setCameraError(`카메라에 접근할 수 없습니다 (${err.name || err.message}). 권한 설정을 확인해 주세요.`);
         }
       }
     }
@@ -253,7 +239,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
         streamRef.current = null;
       }
     };
-  }, [facingMode, selectedDeviceId]);
+  }, [facingMode, selectedDeviceId, perfInfo]);
 
   // Apply zoom level to the track
   useEffect(() => {
@@ -377,7 +363,6 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
   // Auto-capture countdown (for posture front/side etc.)
   useEffect(() => {
     if (autoCapture && isCameraReady && isStarted) {
-      stopSpeaking();
       if (guidelineType === 'face') {
         speak("조명을 밝게 셋팅해 주세요. 5초 뒤에 촬영합니다. 준비해 주세요.");
       } else {
@@ -491,7 +476,6 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
 
   const startTestTimer = () => {
     if (!timerDuration) return;
-    stopSpeaking();
 
     // Appropriate narration per test type
     const narration = guidelineType === 'balance'
@@ -652,12 +636,25 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
           <div className="bg-white p-6 rounded-3xl shadow-2xl">
             <i className="fas fa-exclamation-triangle text-rose-500 text-4xl mb-4"></i>
             <p className="text-slate-800 font-bold mb-4">{cameraError}</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold"
-            >
-              새로고침
-            </button>
+            <div className="flex gap-3 justify-center">
+              <button 
+                onClick={() => {
+                  setCameraError(null);
+                  setIsLoading(true);
+                  // Trigger re-mount of camera by toggling a dummy state or relying on parent
+                  // Since we can't easily re-run the effect without a dependency change, 
+                  // we can use a dummy state to force the effect to run
+                  const dummyEvent = new Event('resize');
+                  window.dispatchEvent(dummyEvent); // just in case
+                  // better way: reload the page or add a retry dependency. 
+                  // Since we can't easily add a dependency without changing much, we'll keep reload or change facing mode briefly
+                  window.location.reload();
+                }}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold"
+              >
+                페이지 새로고침
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -845,6 +842,17 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
           </button>
         )}
       </div>
+
+      {/* Camera Switch Toggle Button */}
+      {isCameraReady && testTimer === null && countdown === null && (
+        <button
+          onClick={toggleCamera}
+          className="absolute top-4 right-4 w-12 h-12 bg-black/40 backdrop-blur-md rounded-full text-white flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.3)] border border-cyan-400/30 z-[60] hover:bg-black/60 hover:scale-105 active:scale-95 transition-all pointer-events-auto"
+          title="카메라 방향 전환"
+        >
+          <i className="fas fa-sync-alt text-xl"></i>
+        </button>
+      )}
 
       <canvas ref={skeletonCanvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-10" />
       <canvas ref={canvasRef} className="hidden" />

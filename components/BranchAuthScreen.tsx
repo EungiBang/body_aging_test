@@ -69,15 +69,13 @@ const BranchAuthScreen: React.FC<BranchAuthProps> = ({ onVerified }) => {
     setError('');
 
     try {
-      // 1. 기기 하드웨어 고유 번호(UUID) 가져오기
-      let hardwareId = 'unknown';
-      let appVersion = 'unknown';
-      if (window.electronAPI && window.electronAPI.getHardwareId) {
-        hardwareId = await window.electronAPI.getHardwareId();
+      // 1. 웹 전용 기기 식별자(임의 UUID) 생성 및 저장
+      let hardwareId = localStorage.getItem('webDeviceId');
+      if (!hardwareId) {
+        hardwareId = 'web-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('webDeviceId', hardwareId);
       }
-      if (window.electronAPI && window.electronAPI.getAppVersion) {
-        appVersion = await window.electronAPI.getAppVersion();
-      }
+      let appVersion = pkg.version;
 
       const result = await requestDeviceRegistration(
         hardwareId, 
@@ -123,7 +121,7 @@ const BranchAuthScreen: React.FC<BranchAuthProps> = ({ onVerified }) => {
             <i className="fas fa-shield-alt text-2xl"></i>
           </div>
           <h2 className="text-2xl font-black text-white tracking-tight">BTC 3바디 7코드 AI건강센터</h2>
-          <p className="text-indigo-300 mt-2 text-sm font-medium">v{pkg.version} 기기 인증 및 지점 등록</p>
+          <p className="text-indigo-300 mt-2 text-sm font-medium">v{pkg.version} 기기 인증 및 지점 등록 <span className="text-amber-400 font-bold ml-1">(야외 인터넷용)</span></p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

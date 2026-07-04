@@ -318,38 +318,3 @@ body {
 }
 
 @keyframes scanPlane3D { 0% { top: -10%; transform: perspective(800px) rotateX(75deg) scale(0.8); opacity: 0; } 20% { opacity: 0.8; } 80% { opacity: 0.8; } 100% { top: 110%; transform: perspective(800px) rotateX(75deg) scale(1.2); opacity: 0; } } @keyframes pulseRing { 0% { transform: scale(0.8); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 0; } 100% { transform: scale(0.8); opacity: 0; } } @keyframes dataStream { 0% { background-position: 0% 0%; } 100% { background-position: 0% 100%; } }
-
-/* ── TMT Brain Test 전용 애니메이션 ────────────────────────── */
-@keyframes ball-float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-5px) scale(1.02); }
-}
-
-@keyframes ball-pop {
-  0% { transform: scale(1); opacity: 1; }
-  40% { transform: scale(1.3); opacity: 0.8; }
-  100% { transform: scale(0); opacity: 0; }
-}
-
-@keyframes particle-burst {
-  0% { transform: translate(0, 0) scale(1); opacity: 1; }
-  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
-}
-
-@keyframes countdown-pulse {
-  0% { transform: scale(2); opacity: 0; }
-  20% { transform: scale(1); opacity: 1; }
-  80% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(0.5); opacity: 0; }
-}
-
-@keyframes score-reveal {
-  0% { transform: translateY(20px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
-}
-
-.animate-ball-float { animation: ball-float 3s ease-in-out infinite; }
-.animate-ball-pop { animation: ball-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-.animate-countdown-pulse { animation: countdown-pulse 1s ease-in-out forwards; }
-.animate-score-reveal { animation: score-reveal 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-

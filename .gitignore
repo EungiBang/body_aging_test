@@ -13,6 +13,10 @@ dist-ssr
 dist-electron
 *.local
 
+# Environment variables (보안)
+.env
+.env.vercel.*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -28,3 +32,6 @@ release-builds-lite
 release-v1.1
 BTC3BODY*
 .vercel
+
+.vercel
+.env*

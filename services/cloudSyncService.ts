@@ -1,7 +1,17 @@
-import { doc, setDoc, getDocs, deleteDoc, query, collection, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, deleteDoc, query, collection, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { MemberRecord } from '../types';
-import logger from '../utils/logger';
+import { ErrorLogger } from './ErrorLogger';
+
+const logger = {
+  debug: (tag: string, msg: string, data?: any) => console.log(`[${tag}] ${msg}`, data || ''),
+  apiStart: (tag: string, msg: string) => console.log(`[${tag}] 🟢 API START: ${msg}`),
+  apiEnd: (tag: string, msg: string, success: boolean, data?: any) => console.log(`[${tag}] ${success ? '🔵 API END' : '🔴 API FAIL'}: ${msg}`, data || ''),
+  error: (tag: string, msg: string, e: any, _logToServer?: boolean) => {
+    console.error(`[${tag}] 🔴 ERROR: ${msg}`, e);
+    ErrorLogger.logApiError(`CloudSync.${tag}`, msg, e);
+  }
+};
 
 const TAG = 'CloudSync';
 
@@ -13,7 +23,8 @@ export const syncMemberToCloud = async (
   record: MemberRecord,
   branchId: string,
   hardwareId: string,
-  regionId?: string
+  regionId?: string,
+  eventCode?: string
 ) => {
   logger.debug(TAG, `syncMemberToCloud 시작`, { id: record.id, name: record.name, branchId, hardwareId });
   try {
@@ -47,6 +58,9 @@ export const syncMemberToCloud = async (
     };
     if (finalRegionId) {
       docData.regionId = finalRegionId;
+    }
+    if (eventCode) {
+      docData.eventCode = eventCode;
     }
 
     // 객체 내의 undefined 필드 제거
@@ -89,20 +103,30 @@ export const syncFeedbackToCloud = async (record: any) => {
       }
     }
 
-    // undefined 값이 들어가면 Firebase에서 에러가 발생하므로, JSON 변환을 통해 필드 제거
-    const pureRecord = JSON.parse(JSON.stringify(record));
-
     const docData = {
-      ...pureRecord,
+      ...record,
       branchId,
       hardwareId,
       regionId,
       syncedAt: serverTimestamp()
     };
 
+    // undefined 필드를 재귀적으로 제거 (Firestore는 undefined를 허용하지 않음)
+    const removeUndefined = (obj: any): any => {
+      if (obj === null || obj === undefined) return null;
+      if (typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(removeUndefined);
+      const cleaned: any = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (v !== undefined) cleaned[k] = removeUndefined(v);
+      }
+      return cleaned;
+    };
+    const cleanedData = removeUndefined(docData);
+
     const feedbackRef = doc(db, 'ai_feedbacks_v1', record.id);
     logger.apiStart(TAG, `Firestore setDoc: ai_feedbacks_v1/${record.id}`);
-    await setDoc(feedbackRef, docData, { merge: true });
+    await setDoc(feedbackRef, cleanedData, { merge: true });
     logger.apiEnd(TAG, `Firestore setDoc: ai_feedbacks_v1/${record.id}`, true);
     
     return true;
@@ -114,60 +138,33 @@ export const syncFeedbackToCloud = async (record: any) => {
 
 /**
  * AI 학습(Few-Shot)을 위해 클라우드(Firestore)에서 최신 피드백을 가져옵니다.
+ * @param feedbackType 가져올 피드백 종류 (body, face, tarot)
+ * @param maxLimit 가져올 최대 개수 (기본 100개)
  */
 export const fetchFeedbacksFromCloud = async (feedbackType: 'body' | 'face' | 'tarot', maxLimit = 100): Promise<any[]> => {
   logger.debug(TAG, `fetchFeedbacksFromCloud 시작: type=${feedbackType}`);
   const startTime = Date.now();
   try {
     logger.apiStart(TAG, `Firestore query: ai_feedbacks_v1 where feedbackType==${feedbackType}`);
-    // 복합 인덱스 없이 동작하도록 where만 사용하고 클라이언트에서 정렬
+    // 복합 인덱스 없이 동작하도록 orderBy 제거 → 클라이언트 정렬
     const q = query(
       collection(db, 'ai_feedbacks_v1'),
-      where('feedbackType', '==', feedbackType)
+      where('feedbackType', '==', feedbackType),
+      limit(maxLimit)
     );
     const snap = await getDocs(q);
     const feedbacks: any[] = [];
     snap.forEach(doc => {
       feedbacks.push({ id: doc.id, ...doc.data() });
     });
-    // 클라이언트 사이드 정렬 (최신순) + limit
-    feedbacks.sort((a, b) => {
-      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-      return dateB.getTime() - dateA.getTime();
-    });
-    const limited = feedbacks.slice(0, maxLimit);
+    // 클라이언트측 최신순 정렬
+    feedbacks.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     const elapsed = Date.now() - startTime;
-    logger.apiEnd(TAG, 'fetchFeedbacksFromCloud', true, { count: limited.length, elapsed: `${elapsed}ms` });
-    return limited;
-  } catch (e) {
-    const elapsed = Date.now() - startTime;
-    logger.error(TAG, `fetchFeedbacksFromCloud 실패 (${elapsed}ms)`, e, true);
-    return [];
-  }
-};
-
-/**
- * 관리자 대시보드용: 클라우드의 전체 피드백 데이터를 가져옵니다.
- */
-export const fetchAllFeedbacksFromCloud = async (): Promise<any[]> => {
-  logger.debug(TAG, `fetchAllFeedbacksFromCloud 시작`);
-  const startTime = Date.now();
-  try {
-    logger.apiStart(TAG, `Firestore query: ai_feedbacks_v1 (ALL)`);
-    // 전체 통계용이므로 최신순으로 정렬해서 가져옴
-    const q = query(collection(db, 'ai_feedbacks_v1'), orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
-    const feedbacks: any[] = [];
-    snap.forEach(doc => {
-      feedbacks.push({ id: doc.id, ...doc.data() });
-    });
-    const elapsed = Date.now() - startTime;
-    logger.apiEnd(TAG, 'fetchAllFeedbacksFromCloud', true, { count: feedbacks.length, elapsed: `${elapsed}ms` });
+    logger.apiEnd(TAG, 'fetchFeedbacksFromCloud', true, { count: feedbacks.length, elapsed: `${elapsed}ms` });
     return feedbacks;
   } catch (e) {
     const elapsed = Date.now() - startTime;
-    logger.error(TAG, `fetchAllFeedbacksFromCloud 실패 (${elapsed}ms)`, e, true);
+    logger.error(TAG, `fetchFeedbacksFromCloud 실패 (${elapsed}ms)`, e, true);
     return [];
   }
 };
@@ -192,6 +189,38 @@ export const fetchMembersFromCloud = async (branchId: string): Promise<MemberRec
   } catch (e) {
     const elapsed = Date.now() - startTime;
     logger.error(TAG, `fetchMembersFromCloud 실패 (${elapsed}ms)`, e, true);
+    return [];
+  }
+};
+
+/**
+ * 연합 행사(eventCode)에 참여한 모든 지점의 회원 기록을 가져옵니다.
+ * 1) waiting_list에서 해당 eventCode의 고유 branchId 목록 추출
+ * 2) 각 branchId의 members_v4 데이터를 조회하여 병합
+ */
+export const fetchMembersByEventCode = async (eventCode: string, myBranchId?: string): Promise<MemberRecord[]> => {
+  logger.debug(TAG, `fetchMembersByEventCode 시작: eventCode=${eventCode}, myBranchId=${myBranchId}`);
+  const startTime = Date.now();
+  try {
+    logger.apiStart(TAG, `Firestore query: members_v4 where eventCode==${eventCode}`);
+    const membersQuery = query(collection(db, 'members_v4'), where('eventCode', '==', eventCode));
+    const snap = await getDocs(membersQuery);
+    
+    const members: MemberRecord[] = [];
+    snap.forEach(d => {
+      const data = d.data();
+      // 자기 지점 데이터는 fetchMembersFromCloud에서 이미 가져오므로 제외
+      if (!myBranchId || data.branchId !== myBranchId) {
+        members.push({ id: d.id, ...data } as MemberRecord);
+      }
+    });
+
+    const elapsed = Date.now() - startTime;
+    logger.apiEnd(TAG, 'fetchMembersByEventCode', true, { eventCode, memberCount: members.length, elapsed: `${elapsed}ms` });
+    return members;
+  } catch (e) {
+    const elapsed = Date.now() - startTime;
+    logger.error(TAG, `fetchMembersByEventCode 실패: ${eventCode} (${elapsed}ms)`, e, true);
     return [];
   }
 };

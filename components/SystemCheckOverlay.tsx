@@ -10,9 +10,28 @@ export const SystemCheckOverlay: React.FC<SystemCheckOverlayProps> = ({ onComple
   const [pcStatus, setPcStatus] = useState<'최상' | '보통' | '구동 어려움'>('보통');
   const [cpuCores, setCpuCores] = useState<number>(0);
   const [ramSize, setRamSize] = useState<number>(0);
-  const [gpuRenderer, setGpuRenderer] = useState<string>('확인 중...');
-  const [isIntegratedGPU, setIsIntegratedGPU] = useState(false);
   const [isCheckingPc, setIsCheckingPc] = useState(true);
+  
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>(localStorage.getItem('selectedCameraId') || '');
+  const [showDeviceSelect, setShowDeviceSelect] = useState(false);
+
+  useEffect(() => {
+    if (phase === 'camera') {
+      const getDevices = async () => {
+        try {
+          const allDevices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
+          setDevices(videoDevices);
+        } catch (err) {
+          console.error("Error enumerating devices:", err);
+        }
+      };
+      getDevices();
+      navigator.mediaDevices.addEventListener('devicechange', getDevices);
+      return () => navigator.mediaDevices.removeEventListener('devicechange', getDevices);
+    }
+  }, [phase]);
 
   useEffect(() => {
     if (phase === 'pc') {
@@ -22,27 +41,6 @@ export const SystemCheckOverlay: React.FC<SystemCheckOverlayProps> = ({ onComple
       
       setCpuCores(cores);
       setRamSize(ram);
-
-      // GPU 렌더러 감지
-      try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        if (gl) {
-          const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-          if (debugInfo) {
-            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || 'Unknown';
-            setGpuRenderer(renderer);
-            const gpuLower = renderer.toLowerCase();
-            const isIGPU = gpuLower.includes('intel hd') || gpuLower.includes('intel(r) hd') ||
-                           gpuLower.includes('intel uhd') || gpuLower.includes('intel(r) uhd') ||
-                           gpuLower.includes('iris xe') || gpuLower.includes('iris(r) xe') ||
-                           gpuLower.includes('iris plus') || gpuLower.includes('iris(r) plus') ||
-                           gpuLower.includes('swiftshader') || gpuLower.includes('llvmpipe') ||
-                           (gpuLower.includes('radeon graphics') && !gpuLower.includes('radeon rx'));
-            setIsIntegratedGPU(isIGPU);
-          }
-        }
-      } catch {}
 
       setTimeout(() => {
         if (cores >= 8 && ram >= 8) {
@@ -72,7 +70,7 @@ export const SystemCheckOverlay: React.FC<SystemCheckOverlayProps> = ({ onComple
           <div className="w-24 h-24 mx-auto bg-indigo-900/30 rounded-full flex items-center justify-center mb-8 border border-indigo-500/30">
             <i className={`fas fa-microchip text-4xl ${isCheckingPc ? 'text-indigo-400 animate-pulse' : 'text-emerald-400'}`}></i>
           </div>
-          <h3 className="text-2xl font-black text-white mb-8 tracking-tight">PC 사양 점검</h3>
+          <h3 className="text-2xl font-black text-white mb-8 tracking-tight">기기 사양 점검</h3>
           
           <div className="space-y-4 text-left mb-10">
             <div className="flex justify-between items-center bg-slate-900/50 p-5 rounded-2xl border border-slate-700/50">
@@ -83,18 +81,6 @@ export const SystemCheckOverlay: React.FC<SystemCheckOverlayProps> = ({ onComple
               <span className="text-slate-400 font-medium">메모리 (RAM)</span>
               <span className="text-white font-bold">{isCheckingPc ? <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div> : `${ramSize} GB 이상`}</span>
             </div>
-            <div className="flex justify-between items-center bg-slate-900/50 p-5 rounded-2xl border border-slate-700/50">
-              <span className="text-slate-400 font-medium">그래픽 (GPU)</span>
-              <span className={`font-bold text-xs max-w-[180px] text-right truncate ${isIntegratedGPU ? 'text-amber-400' : 'text-white'}`}>
-                {isCheckingPc ? <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div> : gpuRenderer}
-              </span>
-            </div>
-            
-            {!isCheckingPc && isIntegratedGPU && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs text-center">
-                ⚠️ 통합 그래픽이 감지되었습니다. AI 인식이 느릴 수 있으나 자동 보정됩니다.
-              </div>
-            )}
             
             {!isCheckingPc && (
               <div className={`p-5 rounded-2xl border-2 font-black text-center text-lg mt-6 shadow-inner ${
@@ -127,13 +113,53 @@ export const SystemCheckOverlay: React.FC<SystemCheckOverlayProps> = ({ onComple
               혼자 계실 경우 중앙의 <span className="font-bold text-white bg-slate-700 px-2 py-1 rounded">5초 후 자동 촬영 버튼</span>을 눌러<br/>
               시간 내에 전신이 나오는 위치로 이동하여 테스트를 마쳐주세요.
             </p>
+            
+            {devices.length > 0 && (
+              <div className="mt-4 flex justify-center items-center relative z-20">
+                <button 
+                  onClick={() => setShowDeviceSelect(!showDeviceSelect)}
+                  className="bg-slate-700 border border-slate-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-slate-600 transition-all"
+                >
+                  <i className="fas fa-video text-indigo-400"></i>
+                  <span>카메라 선택 ({devices.length})</span>
+                  <i className="fas fa-chevron-down text-xs text-slate-400"></i>
+                </button>
+                
+                {showDeviceSelect && (
+                  <div className="absolute top-12 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-2 z-50 w-64 animate-fade-in">
+                    <div className="flex flex-col gap-1">
+                      {devices.map((device, idx) => (
+                        <button
+                          key={device.deviceId}
+                          onClick={() => {
+                            setSelectedDeviceId(device.deviceId);
+                            localStorage.setItem('selectedCameraId', device.deviceId);
+                            window.dispatchEvent(new CustomEvent('camera:change', { detail: { deviceId: device.deviceId } }));
+                            setShowDeviceSelect(false);
+                          }}
+                          className={`text-left px-3 py-2 text-sm rounded-lg transition-all ${
+                            selectedDeviceId === device.deviceId 
+                              ? 'bg-indigo-600 font-bold text-white shadow-md' 
+                              : 'text-slate-300 hover:bg-slate-700'
+                          }`}
+                        >
+                          <i className={`fas fa-check mr-2 ${selectedDeviceId === device.deviceId ? 'opacity-100' : 'opacity-0'}`}></i>
+                          {device.label || `Camera ${idx + 1}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           <div className="w-full flex justify-center z-10" style={{ transform: 'scale(0.85)', transformOrigin: 'top center', marginBottom: '-10%' }}>
              <CameraModule 
                onCapture={handleCameraCapture} 
                guidelineType="front" 
-               autoCapture={true} 
+               autoCapture={true}
+               preferredDeviceId={selectedDeviceId}
              />
           </div>
         </div>

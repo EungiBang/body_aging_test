@@ -99,5 +99,84 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin()) && isValidMemberRecord(request.resource.data);
       allow delete: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
     }
+
+    // 지점 라이센스 관리 - 인증된 사용자만 읽기, 관리자만 쓰기
+    match /branches/{branchId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 지역 구조 - 인증된 사용자만 읽기, 관리자만 쓰기
+    match /regions/{regionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 시스템 설정 - 관리자만 읽기/쓰기 (승인 코드 보호)
+    match /system_settings/{configId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 회원 v4 데이터 - 본인 또는 관리자만 제어
+    match /members_v4/{memberId} {
+      allow read: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin()) && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+    }
+
+    // 관리자 계정 - 관리자만 읽기/쓰기
+    match /admin_users/{userId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 기기 라이센스 등록 - 등록 신청(create)은 pending만 허용, 활성화(update)는 관리자만 또는 제한된 필드만 허용
+    match /devices/{deviceId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.status == 'pending';
+      allow update: if isAdmin() || (isAuthenticated() && request.resource.data.status == resource.data.status && request.resource.data.branchId == resource.data.branchId);
+      allow delete: if isAdmin();
+    }
+
+    // LITE 기기 라이센스 등록 - PC 기기와 동일 수준 보안 적용
+    match /lite_devices/{deviceId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.status == 'pending';
+      allow update: if isAdmin() || (isAuthenticated() && request.resource.data.status == resource.data.status && request.resource.data.branchId == resource.data.branchId);
+      allow delete: if isAdmin();
+    }
+
+    // 합동 행사 관리 - 관리자만 읽기/쓰기
+    match /active_events/{eventId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // AI 피드백 데이터 (v1) - 인증된 사용자만 쓰기, 관리자만 전체 읽기
+    match /ai_feedbacks_v1/{feedbackId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+    }
+
+    // AI 피드백 데이터 (레거시) - 하위 호환용 유지
+    match /ai_feedbacks/{feedbackId} {
+      allow read: if isAdmin();
+      allow write: if isAuthenticated();
+    }
+
+    // 통계 데이터 - 인증된 사용자만 읽기, 관리자만 쓰기
+    match /stats/{statId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 에러 로그 - 인증된 사용자만 쓰기, 관리자만 읽기
+    match /error_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+    }
   }
 }

@@ -3,6 +3,7 @@ import { getActiveApiKey, setCustomApiKey, isUsingCustomKey } from '../services/
 import { getBranches } from '../services/firebaseAuthService';
 import { getUsageStatus, updateDailyLimit, UsageStatus } from '../services/usageLimitService';
 import { performFullBackup, getLastBackupTime, getLastBackupCount } from '../services/backupService';
+import { createEvent, checkEventExists } from '../services/eventService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -16,14 +17,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [showKey, setShowKey] = useState(false);
   const [branchInfo, setBranchInfo] = useState<any>(null);
   
-  // 카메라 상태
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
-
   // 사용 한도 상태
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null);
   const [hardwareId, setHardwareId] = useState<string>('알 수 없음');
   const [appVersion, setAppVersion] = useState<string>('알 수 없음');
+  
+  // 카메라 상태
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   
   // 백업 상태
   const [lastBackup, setLastBackup] = useState<string | null>(null);
@@ -31,11 +32,64 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [backupResult, setBackupResult] = useState<string | null>(null);
 
-  // Auto Updater 상태
-  const [updaterStatus, setUpdaterStatus] = useState<'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'>('idle');
-  const [updaterVersion, setUpdaterVersion] = useState<string>('');
-  const [updaterPercent, setUpdaterPercent] = useState<number>(0);
-  const [updaterError, setUpdaterError] = useState<string>('');
+  // 연합 행사 모드 상태 추가
+  const [activeEventCode, setActiveEventCode] = useState<string>('');
+  const [eventInput, setEventInput] = useState<string>('');
+  const [isCreatingEvent, setIsCreatingEvent] = useState(false);
+  const [isJoiningEvent, setIsJoiningEvent] = useState(false);
+  const [eventError, setEventError] = useState<string | null>(null);
+
+  // 연합 행사 핸들러 구현
+  const handleCreateEvent = async () => {
+    if (!branchInfo) return;
+    setIsCreatingEvent(true);
+    setEventError(null);
+    try {
+      const branchId = branchInfo.branchId || branchInfo.id || 'unknown';
+      const branchName = branchInfo.branchName || '알 수 없는 지점';
+      const code = await createEvent(branchId, branchName);
+      setActiveEventCode(code);
+      setEventInput(code);
+      localStorage.setItem('activeEventCode', code);
+      window.dispatchEvent(new CustomEvent('eventCode:change', { detail: { eventCode: code } }));
+    } catch (e) {
+      setEventError('행사 코드 생성에 실패했습니다.');
+    } finally {
+      setIsCreatingEvent(false);
+    }
+  };
+
+  const handleJoinEvent = async () => {
+    if (!eventInput || !eventInput.trim()) {
+      setEventError('행사 코드를 입력해 주세요.');
+      return;
+    }
+    setIsJoiningEvent(true);
+    setEventError(null);
+    try {
+      const code = eventInput.trim();
+      const exists = await checkEventExists(code);
+      if (exists) {
+        setActiveEventCode(code);
+        localStorage.setItem('activeEventCode', code);
+        window.dispatchEvent(new CustomEvent('eventCode:change', { detail: { eventCode: code } }));
+      } else {
+        setEventError('존재하지 않거나 만료된 행사 코드입니다.');
+      }
+    } catch (e) {
+      setEventError('행사 참여 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsJoiningEvent(false);
+    }
+  };
+
+  const handleLeaveEvent = () => {
+    setActiveEventCode('');
+    setEventInput('');
+    localStorage.removeItem('activeEventCode');
+    window.dispatchEvent(new CustomEvent('eventCode:change', { detail: { eventCode: '' } }));
+    setEventError(null);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -47,6 +101,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         setApiKey('');
       }
       setSaved(false);
+
+      // 연합 행사 코드 불러오기
+      const savedEventCode = localStorage.getItem('activeEventCode') || '';
+      setActiveEventCode(savedEventCode);
+      setEventInput(savedEventCode);
+      setEventError(null);
       
       // Load branch info (v4 currentDevice 활용)
       const loadBranchAndUsage = async () => {
@@ -60,9 +120,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             setHardwareId(branch.id || '알 수 없음');
             
             if (window.electronAPI && window.electronAPI.getAppVersion) {
-              window.electronAPI.getAppVersion().then((ver: string) => {
-                setAppVersion(ver);
-              });
+              window.electronAPI.getAppVersion().then(setAppVersion);
             }
             if (window.electronAPI && window.electronAPI.getHardwareId) {
               window.electronAPI.getHardwareId().then((id: string) => {
@@ -113,53 +171,38 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       
       loadBranchAndUsage();
       
-      // 카메라 목록 로드
-      const fetchCameras = async () => {
-        try {
-          const allDevices = await navigator.mediaDevices.enumerateDevices();
-          const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
-          setDevices(videoDevices);
-          const savedId = localStorage.getItem('selectedCameraId');
-          if (savedId && videoDevices.some(d => d.deviceId === savedId)) {
-            setSelectedCameraId(savedId);
-          } else if (videoDevices.length > 0) {
-            setSelectedCameraId(videoDevices[0].deviceId);
-          }
-        } catch (err) {
-          console.error("Failed to enumerate cameras in settings", err);
-        }
-      };
-      fetchCameras();
-
       // 백업 정보 로드
       setLastBackup(getLastBackupTime());
       setLastBackupCount(getLastBackupCount());
       setBackupResult(null);
+
+      // 카메라 목록 가져오기
+      const getDevices = async () => {
+        try {
+          // 권한 요청 시도 (이미 있으면 바로 넘어감)
+          await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(() => {});
+          const allDevices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
+          setDevices(videoDevices);
+          const savedId = localStorage.getItem('selectedCameraId');
+          if (savedId && videoDevices.find(d => d.deviceId === savedId)) {
+            setSelectedDeviceId(savedId);
+          } else if (videoDevices.length > 0) {
+            setSelectedDeviceId(videoDevices[0].deviceId);
+          }
+        } catch (err) {
+          console.error("Error enumerating devices:", err);
+        }
+      };
+      getDevices();
       
-      if (window.electronAPI) {
-        window.electronAPI.checkForUpdates();
-      }
+      const handleDeviceChange = () => getDevices();
+      navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+      
+      return () => {
+        navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+      };
     }
-
-    let cleanupMessage: (() => void) | undefined;
-    let cleanupProgress: (() => void) | undefined;
-
-    if (window.electronAPI && window.electronAPI.onUpdaterMessage) {
-      cleanupMessage = window.electronAPI.onUpdaterMessage((msg: any) => {
-        setUpdaterStatus(msg.status);
-        if (msg.version) setUpdaterVersion(msg.version);
-        if (msg.error) setUpdaterError(msg.error);
-      });
-      cleanupProgress = window.electronAPI.onUpdaterProgress((progress: any) => {
-        setUpdaterStatus('downloading');
-        setUpdaterPercent(Math.floor(progress.percent));
-      });
-    }
-
-    return () => {
-      if (cleanupMessage) cleanupMessage();
-      if (cleanupProgress) cleanupProgress();
-    };
   }, [isOpen]);
 
 
@@ -176,13 +219,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     setUsingCustom(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  };
-
-  const handleCameraChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const deviceId = e.target.value;
-    setSelectedCameraId(deviceId);
-    localStorage.setItem('selectedCameraId', deviceId);
-    window.dispatchEvent(new CustomEvent('camera:change', { detail: { deviceId } }));
   };
 
   const handleManualBackup = async () => {
@@ -290,26 +326,119 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
         {/* Camera Selection Section */}
         <div className="mt-6 pt-6 border-t border-slate-100">
-          <label className="block text-sm font-bold text-slate-600 mb-2">
-            <i className="fas fa-camera text-indigo-500 mr-2"></i>
-            카메라 선택
-          </label>
-          <p className="text-xs text-slate-400 mb-3">
-            사용할 웹캠을 선택하세요. (기기를 변경한 경우 다시 선택해야 합니다.)
-          </p>
-          <select
-            value={selectedCameraId}
-            onChange={handleCameraChange}
-            className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-400 focus:outline-none transition-all text-sm bg-slate-50 font-medium text-slate-700"
-          >
-            {devices.length === 0 && <option value="">카메라를 찾는 중이거나 없습니다</option>}
-            {devices.map(device => (
-              <option key={device.deviceId} value={device.deviceId}>
-                {device.label || `Camera (${device.deviceId.substring(0, 5)}...)`}
-              </option>
-            ))}
-          </select>
+          <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <i className="fas fa-camera text-indigo-500"></i>
+            카메라 설정
+          </h3>
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+            <label className="block text-xs font-bold text-slate-500 mb-2">기본 카메라 선택</label>
+            <select
+              value={selectedDeviceId}
+              onChange={(e) => {
+                const newId = e.target.value;
+                setSelectedDeviceId(newId);
+                localStorage.setItem('selectedCameraId', newId);
+                window.dispatchEvent(new CustomEvent('camera:change', { detail: { deviceId: newId } }));
+              }}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-indigo-400"
+            >
+              <option value="">자동 선택</option>
+              {devices.map((device, idx) => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.label || `카메라 ${idx + 1}`}
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-slate-400 mt-2">
+              <i className="fas fa-info-circle mr-1"></i>
+              선택한 카메라는 전체 앱에서 공통으로 사용됩니다.
+            </p>
+          </div>
         </div>
+
+
+        {/* Union Event Section */}
+        {branchInfo && (
+          <div className="mt-6 pt-6 border-t border-slate-100">
+            <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <i className="fas fa-users text-indigo-500"></i>
+              야외 연합 행사 모드
+            </h3>
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-4">
+              {activeEventCode ? (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-slate-500">활성화된 행사 코드</span>
+                    <span className="text-xs bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full animate-pulse">참여 중</span>
+                  </div>
+                  <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-center font-mono font-black text-sm text-indigo-700 tracking-wider">
+                    {activeEventCode}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-2 text-center">
+                    * 대기 리스트와 점검 데이터가 이 행사 코드로 실시간 공유됩니다.
+                  </p>
+                  <button
+                    onClick={handleLeaveEvent}
+                    className="w-full mt-3 py-2.5 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+                  >
+                    <i className="fas fa-sign-out-alt"></i> 행사 종료 및 퇴장
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    본사 지원 또는 타 지점과 합동 행사를 진행할 때 코드를 생성하거나 입력하여 실시간 대기 데이터를 상호 공유합니다.
+                  </p>
+                  
+                  {/* 주관 기기: 코드 생성 */}
+                  <button
+                    onClick={handleCreateEvent}
+                    disabled={isCreatingEvent}
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    {isCreatingEvent ? (
+                      <><i className="fas fa-spinner fa-spin"></i> 행사 개설 중...</>
+                    ) : (
+                      <><i className="fas fa-plus-circle"></i> 새 연합 행사 개설 (주관 지점)</>
+                    )}
+                  </button>
+                  
+                  <div className="flex items-center gap-2 my-2 text-xs text-slate-400">
+                    <div className="flex-1 h-px bg-slate-200"></div>
+                    <span>또는</span>
+                    <div className="flex-1 h-px bg-slate-200"></div>
+                  </div>
+
+                  {/* 지원 기기: 코드 입력 참가 */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1.5">행사 참여 코드 입력</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={eventInput}
+                        onChange={(e) => setEventInput(e.target.value.toUpperCase())}
+                        placeholder="EVT_XXXX..."
+                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:border-indigo-400 uppercase font-mono"
+                      />
+                      <button
+                        onClick={handleJoinEvent}
+                        disabled={isJoiningEvent || !eventInput.trim()}
+                        className="px-4 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-200 text-white font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-1"
+                      >
+                        {isJoiningEvent ? '참가 중...' : '합동 참가'}
+                      </button>
+                    </div>
+                    {eventError && (
+                      <p className="text-[10px] text-rose-500 mt-1.5 font-bold">
+                        <i className="fas fa-exclamation-circle mr-1"></i> {eventError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Branch Info Section */}
         {branchInfo && (
@@ -452,96 +581,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {/* App Info & Update */}
-        <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center gap-4">
-          <div className="text-center text-xs text-slate-400 mb-2">
+        {/* App Info */}
+        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+          <div className="text-center text-xs text-slate-400">
             <strong className="text-slate-500">BTC 3바디 AI분석기</strong> v{appVersion}
             <p className="mt-1 opacity-60">Powered by Gemini AI Vision</p>
           </div>
-
-          {updaterStatus !== 'idle' && (
-            <div className="w-full bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex flex-col items-center text-center">
-              {updaterStatus === 'checking' && (
-                <p className="text-xs text-indigo-600"><i className="fas fa-spinner fa-spin mr-2"></i>업데이트 확인 중...</p>
-              )}
-              
-              {updaterStatus === 'available' && (
-                <>
-                  <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-2 animate-bounce">
-                    <i className="fas fa-arrow-alt-circle-down text-lg"></i>
-                  </div>
-                  <h4 className="text-sm font-bold text-indigo-800 mb-1">최신 업데이트 발견 (v{updaterVersion})</h4>
-                  <button 
-                    onClick={() => window.electronAPI.downloadUpdate()}
-                    className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-6 rounded-full shadow-md transition-all"
-                  >
-                    업데이트 다운로드 시작
-                  </button>
-                </>
-              )}
-
-              {updaterStatus === 'downloading' && (
-                <div className="w-full mt-2">
-                  <div className="flex justify-between text-xs text-indigo-800 mb-1 font-bold">
-                    <span>업데이트 다운로드 중...</span>
-                    <span>{updaterPercent}%</span>
-                  </div>
-                  <div className="w-full bg-indigo-200 rounded-full h-2.5">
-                    <div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${updaterPercent}%` }}></div>
-                  </div>
-                </div>
-              )}
-
-              {updaterStatus === 'downloaded' && (
-                <>
-                  <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-2">
-                    <i className="fas fa-check-circle text-lg"></i>
-                  </div>
-                  <h4 className="text-sm font-bold text-emerald-800 mb-1">다운로드 완료!</h4>
-                  <p className="text-xs text-emerald-600 mb-3">설치를 위해 프로그램을 재시작합니다.</p>
-                  <button 
-                    onClick={() => window.electronAPI.installUpdate()}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-6 rounded-full shadow-md transition-all animate-pulse"
-                  >
-                    재시작하여 업데이트 설치
-                  </button>
-                </>
-              )}
-
-              {updaterStatus === 'not-available' && (
-                <>
-                  <div className="w-8 h-8 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mb-2">
-                    <i className="fas fa-check text-sm"></i>
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-700 mb-1">최신 버전입니다</h4>
-                  <p className="text-xs text-slate-500">현재 가장 최신 버전을 사용 중입니다.</p>
-                </>
-              )}
-
-              {updaterStatus === 'error' && (
-                <>
-                  {updaterError.includes('No published versions on GitHub') ? (
-                    <>
-                      <div className="w-8 h-8 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mb-2">
-                        <i className="fas fa-info-circle text-sm"></i>
-                      </div>
-                      <h4 className="text-sm font-bold text-slate-700 mb-1">최신 버전입니다</h4>
-                      <p className="text-[10px] text-slate-500">아직 서버에 배포된 신규 업데이트가 없습니다.</p>
-                    </>
-                  ) : (
-                    <>
-                      <h4 className="text-sm font-bold text-rose-600 mb-1">업데이트 확인 오류</h4>
-                      <p className="text-[10px] text-rose-500 max-w-[200px] break-all">
-                        {updaterError.includes('net::ERR_INTERNET_DISCONNECTED') 
-                          ? '인터넷 연결을 확인해 주세요.' 
-                          : updaterError}
-                      </p>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

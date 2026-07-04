@@ -34,9 +34,8 @@ const FaceFeedbackPanel: React.FC<FaceFeedbackPanelProps> = ({ userInfo, report 
         }
       );
       setStep('done');
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      setError(`저장 실패: ${errorMsg}`);
+    } catch {
+      setError('저장 실패. 다시 시도해 주세요.');
       setStep('idle');
     }
   };

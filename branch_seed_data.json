@@ -5,10 +5,6 @@
       {
         "name": "신입경영홍보실",
         "allowedLicenses": 2
-      },
-      {
-        "name": "천화원",
-        "allowedLicenses": 2
       }
     ]
   },
@@ -528,10 +524,6 @@
       },
       {
         "name": "북구",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "울산",
         "allowedLicenses": 2
       },
       {

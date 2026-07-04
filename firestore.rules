@@ -99,49 +99,5 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin()) && isValidMemberRecord(request.resource.data);
       allow delete: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
     }
-
-    // 지점 라이센스 관리 - 인증된 사용자만 읽기, 관리자만 쓰기
-    match /branches/{branchId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-
-    // 지역 구조 - 인증된 사용자만 읽기, 관리자만 쓰기
-    match /regions/{regionId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-
-    // 시스템 설정 - 인증된 사용자만 읽기, 관리자만 쓰기
-    match /system_settings/{configId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-
-    // 관리자 계정 - 관리자만 읽기/쓰기
-    match /admin_users/{userId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
-    }
-
-    // 기기 라이센스 등록 - 인증된 사용자만 읽기/생성, 관리자만 삭제
-    match /devices/{deviceId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isAdmin();
-    }
-
-    // AI 피드백 데이터 - 인증된 사용자만 읽기/쓰기
-    match /ai_feedbacks/{feedbackId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
-    }
-
-    // 에러 로그 - 인증된 사용자만 쓰기, 관리자만 읽기
-    match /error_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated();
-    }
   }
 }

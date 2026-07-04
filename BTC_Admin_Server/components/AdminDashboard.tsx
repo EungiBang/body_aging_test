@@ -1423,6 +1423,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               const liteCount = currentList.filter(m => (m as any).sourceType === 'LITE').length;
 
               const handleDeleteMember = async (mid: string) => {
+                if (currentAdmin?.role !== 'master') {
+                  alert('마스터 관리자만 회원 데이터를 삭제할 수 있습니다.');
+                  return;
+                }
                 if (!confirm('정말 이 회원을 삭제하시겠습니까? 클라우드에서 영구 삭제됩니다.')) return;
                 const ok = await deleteMemberFromCloud(mid);
                 if (ok) setCloudMembers(prev => prev.filter(m => m.id !== mid));
@@ -1606,7 +1610,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                   <span className={`px-2 py-1 rounded-lg text-xs font-black ${(r?.overallScore || 0) >= 70 ? 'bg-emerald-100 text-emerald-700' : (r?.overallScore || 0) >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>{r?.overallScore || '-'}점</span>
                                 </td>
                                 <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
-                                  <button onClick={() => handleDeleteMember(m.id)} className="text-rose-400 hover:text-rose-600 text-xs font-bold">삭제</button>
+                                  {currentAdmin?.role === 'master' && <button onClick={() => handleDeleteMember(m.id)} className="text-rose-400 hover:text-rose-600 text-xs font-bold">삭제</button>}
                                 </td>
                               </tr>
                             );
@@ -1664,7 +1668,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                   <span className="px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 animate-pulse">⏳ 대기중</span>
                                 </td>
                                 <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
-                                  <button onClick={() => handleDeleteMember(m.id)} className="text-rose-400 hover:text-rose-600 text-xs font-bold">삭제</button>
+                                  {currentAdmin?.role === 'master' && <button onClick={() => handleDeleteMember(m.id)} className="text-rose-400 hover:text-rose-600 text-xs font-bold">삭제</button>}
                                 </td>
                               </tr>
                             );
@@ -2024,7 +2028,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     
                     <div className="flex gap-2">
                       <input 
-                        type="text" 
+                        type="password" 
                         className="flex-1 p-3 border rounded-xl"
                         placeholder="예: BTCOPEN2026"
                         value={settings.autoApproveCode || ''}
@@ -2043,7 +2047,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     
                     <div className="flex gap-2">
                       <input 
-                        type="text" 
+                        type="password" 
                         className="flex-1 p-3 border border-fuchsia-200 rounded-xl bg-white"
                         placeholder="예: BTCLITE2026 (비워두면 PC 코드 공용)"
                         value={settings.liteAutoApproveCode || ''}
@@ -2068,7 +2072,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         <input type="text" placeholder="이름 (직급)" className="flex-1 p-3 border rounded-xl" value={newAdmin.name} onChange={e => setNewAdmin({...newAdmin, name: e.target.value})} />
                       </div>
                       <div className="flex gap-3">
-                        <input type="text" placeholder="비밀번호" className="flex-1 p-3 border rounded-xl" value={newAdmin.password} onChange={e => setNewAdmin({...newAdmin, password: e.target.value})} />
+                        <input type="password" placeholder="비밀번호" className="flex-1 p-3 border rounded-xl" value={newAdmin.password} onChange={e => setNewAdmin({...newAdmin, password: e.target.value})} />
                         <select className="p-3 border rounded-xl bg-white" value={newAdmin.role} onChange={e => setNewAdmin({...newAdmin, role: e.target.value as 'manager'|'master'})}>
                           <option value="manager">일반 관리자</option>
                           <option value="master">마스터 관리자</option>

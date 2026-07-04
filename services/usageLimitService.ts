@@ -19,15 +19,15 @@ const getTodayString = () => {
 
 export const getUsageStatus = async (branchId: string): Promise<UsageStatus> => {
   if (!branchId) {
-    return { kfaceLimit: 0, kfaceUsed: 0, ktarotLimit: 0, ktarotUsed: 0 };
+    return { kfaceLimit: 30, kfaceUsed: 0, ktarotLimit: 30, ktarotUsed: 0 };
   }
 
   try {
     // 1. Get branch limits
     const branchRef = doc(db, 'branches', branchId);
     const branchSnap = await getDoc(branchRef);
-    let kfaceLimit = 0;
-    let ktarotLimit = 0;
+    let kfaceLimit = 30;
+    let ktarotLimit = 30;
     
     if (branchSnap.exists()) {
       const data = branchSnap.data();
@@ -52,7 +52,7 @@ export const getUsageStatus = async (branchId: string): Promise<UsageStatus> => 
     return { kfaceLimit, kfaceUsed, ktarotLimit, ktarotUsed };
   } catch (error) {
     console.warn('사용량 정보를 가져오는데 실패했습니다 (오프라인 등). 기본값을 사용합니다.', error);
-    return { kfaceLimit: 0, kfaceUsed: 0, ktarotLimit: 0, ktarotUsed: 0 };
+    return { kfaceLimit: 30, kfaceUsed: 0, ktarotLimit: 30, ktarotUsed: 0 };
   }
 };
 

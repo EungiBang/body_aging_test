@@ -369,7 +369,7 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
               연락처 CONTACT <span className="text-slate-500 font-normal ml-1">(선택)</span>
             </label>
             <p className="text-[10px] text-indigo-400/90 mb-3 bg-indigo-500/10 py-1.5 px-2 rounded-lg border border-indigo-500/20 inline-block font-medium">
-              <i className="fas fa-gift mr-1.5 mt-0.5 text-amber-400"></i> 연락처 기입 시 AI 진단 리포트를 모바일로 즉시 전송해 드립니다!
+              <i className="fas fa-gift mr-1.5 mt-0.5 text-amber-400"></i> 연락처 기입 시 AI 분석 리포트를 모바일로 즉시 전송해 드립니다!
             </p>
             <input 
               type="tel" 
@@ -496,7 +496,7 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
               <i className="fas fa-fingerprint opacity-70"></i>
               {mode === 'retest' 
                 ? (selectedRecord ? '재측정 시작 준비 완료' : '위에서 기존 회원을 선택해 주세요')
-                : '진단 대상자 스캔 준비 완료'
+                : '측정 대상자 등록 및 준비 완료'
               }
             </span>
           </button>

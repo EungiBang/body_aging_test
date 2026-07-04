@@ -8,7 +8,7 @@
  */
 
 import { FeedbackRecord, DiagnosticFeedback, BodyReport, UserInfo } from '../types';
-import { syncFeedbackToCloud, fetchFeedbacksFromCloud, fetchAllFeedbacksFromCloud } from './cloudSyncService';
+import { syncFeedbackToCloud, fetchFeedbacksFromCloud } from './cloudSyncService';
 
 // ─── 내부 유틸 ────────────────────────────────────────────────────────────────
 
@@ -68,8 +68,8 @@ export const saveFeedback = async (
     id: generateId(),
     createdAt: new Date().toISOString(),
     userInfo: {
-      age: report?.userInfo?.age || 0,
-      gender: report?.userInfo?.gender || 'female',
+      age: report.userInfo.age,
+      gender: report.userInfo.gender,
     },
     reportSnapshot: {
       overallScore: report.overallScore,
@@ -95,7 +95,7 @@ export const saveFeedback = async (
  * 전체 피드백 목록 반환 (관리자 대시보드용 - 클라우드 통합 데이터)
  */
 export const getFeedbacks = async (): Promise<FeedbackRecord[]> => {
-  return await fetchAllFeedbacksFromCloud();
+  return await fetchFeedbacksFromCloud('body', 500);
 };
 
 /**
@@ -300,7 +300,7 @@ export const getFeedbackStats = async (): Promise<{
   satisfied: number;
   dissatisfied: number;
 }> => {
-  const all = await fetchAllFeedbacksFromCloud();
+  const all = await fetchFeedbacksFromCloud('body', 500);
   return {
     total: all.length,
     satisfied: all.filter((r) => r.feedback.physicalRating === 'very_satisfied' || r.feedback.physicalRating === 'satisfied').length,

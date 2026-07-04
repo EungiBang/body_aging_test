@@ -3,34 +3,52 @@ import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import AssessmentFlow from './components/AssessmentFlow';
 import BranchAuthScreen from './components/BranchAuthScreen';
+import AdminDashboard from './components/AdminDashboard';
 import { checkDeviceStatus } from './services/firebaseAuthService';
+import { ErrorLogger } from './services/ErrorLogger';
 
 type DeviceState = 'loading' | 'active' | 'pending' | 'revoked' | 'unregistered';
 
-// Firebase 호출 무한 대기 방지용 타임아웃 헬퍼
-const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`[Timeout] ${label}: ${ms}ms 초과`)), ms)
-    )
-  ]);
-};
-
 const App: React.FC = () => {
   const [deviceState, setDeviceState] = useState<DeviceState>('loading');
+  
+  // URL에 ?portal=btc_admin_secure 가 있으면 웹 관리자 모드로 인식
+  const isAdminRoute = window.location.search.includes('portal=btc_admin_secure');
+
   useEffect(() => {
+    // 전역 에러 감지기 설정
+    const handleGlobalError = (event: ErrorEvent) => {
+      ErrorLogger.logCrash('window.onerror', event.message || 'Unknown Global Error', event.error);
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      ErrorLogger.logCrash('unhandledrejection', 'Unhandled Promise Rejection', event.reason);
+    };
+
+    window.addEventListener('error', handleGlobalError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleGlobalError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
+  useEffect(() => {
+    // 관리자 모드인 경우 하드웨어 인증 로직 생략
+    if (isAdminRoute) {
+      setDeviceState('active'); // 실제 기능은 안쓰지만 로딩 스크린 해제용
+      return;
+    }
 
     const checkAuth = async () => {
       try {
-        let hardwareId = 'unknown';
-        let appVersion = 'unknown';
-        if (window.electronAPI && window.electronAPI.getHardwareId) {
-          hardwareId = await window.electronAPI.getHardwareId();
+        let hardwareId = localStorage.getItem('webDeviceId');
+        if (!hardwareId) {
+          hardwareId = 'web-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem('webDeviceId', hardwareId);
         }
-        if (window.electronAPI && window.electronAPI.getAppVersion) {
-          appVersion = await window.electronAPI.getAppVersion();
-        }
+        let appVersion = '1.0.0'; // Default version for web
 
         // 업그레이드 시 로컬 스토리지에 버전만 갱신 (재인증 요구 안함)
         const lastAppVersion = localStorage.getItem('lastAppVersion');
@@ -43,8 +61,7 @@ const App: React.FC = () => {
           console.warn('Hardware ID could not be determined. Using fallback.');
         }
 
-        console.log(`[Auth] checkDeviceStatus 호출 시작: hardwareId=${hardwareId.substring(0, 8)}...`);
-        const device = await withTimeout(checkDeviceStatus(hardwareId, appVersion), 10000, 'checkDeviceStatus');
+        const device = await checkDeviceStatus(hardwareId, appVersion);
         
         if (!device) {
           setDeviceState('unregistered');
@@ -53,14 +70,8 @@ const App: React.FC = () => {
           setDeviceState(device.status);
           localStorage.setItem('currentDevice', JSON.stringify(device));
         }
-      } catch (e: any) {
-        console.error("[Auth] 인증 확인 실패:", e?.message || e);
-        // 타임아웃인 경우 캐시 사용하지 않고 바로 인증 화면 표시
-        if (e?.message?.includes('[Timeout]')) {
-          console.warn('[Auth] Firebase 응답 시간 초과. 인증 화면으로 전환합니다.');
-          setDeviceState('unregistered');
-          return;
-        }
+      } catch (e) {
+        console.error("Auth check failed:", e);
         // 네트워크 오류 시, 이전에 인증 성공한 기록이 있으면 오프라인 허용
         const cached = localStorage.getItem('currentDevice');
         if (cached) {
@@ -78,7 +89,7 @@ const App: React.FC = () => {
     };
     
     checkAuth();
-  }, []);
+  }, [isAdminRoute]);
 
   if (deviceState === 'loading') {
     return (
@@ -86,6 +97,11 @@ const App: React.FC = () => {
         <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
       </div>
     );
+  }
+
+  // 관리자 웹 모드 렌더링
+  if (isAdminRoute) {
+    return <AdminDashboard onClose={() => window.location.href = '/'} />;
   }
 
   return (

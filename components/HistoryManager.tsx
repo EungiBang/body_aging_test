@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { MemberRecord } from '../types';
 import Modal from './Modal';
 import Toast from './Toast';
-import FeedbackDashboard from './FeedbackDashboard';
-import CaseReportBuilder from './CaseReportBuilder';
 import { getRecordsLocally, deleteRecordLocally, saveRecordLocally } from '../services/localDb';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
@@ -14,15 +12,15 @@ interface HistoryManagerProps {
 }
 
 const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeAnalysis, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'records' | 'pending' | 'feedback'>('records');
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'my_pc' | 'other_pc' | 'lite'>('all');
+  const [activeTab, setActiveTab] = useState<'records' | 'pending'>('records');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'my_pc' | 'other_pc' | 'lite' | 'joint'>('all');
   const [records, setRecords] = useState<MemberRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentDeviceId, setCurrentDeviceId] = useState<string>('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false);
-  const [reportRecord, setReportRecord] = useState<MemberRecord | null>(null);
+  const [currentDeviceId, setCurrentDeviceId] = useState<string>('');
+  const [currentBranchId, setCurrentBranchId] = useState<string>('');
 
   const fetchRecords = async () => {
     try {
@@ -42,31 +40,29 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
       if (deviceStr) {
         const device = JSON.parse(deviceStr);
         setCurrentDeviceId(device.id || '');
+        setCurrentBranchId(device.branchId || '');
       }
     } catch (e) {}
   }, []);
 
-  const filteredRecords = records.filter(r =>
+  const filteredRecords = records.filter(r => 
     r.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const completedRecordsAll = filteredRecords.filter(r => r.report?.overallScore !== undefined);
   const pendingRecordsAll = filteredRecords.filter(r => r.report?.overallScore === undefined);
 
-  // sourceType 기반 카운트 (기존 _isRemote도 하위 호환으로 고려)
-  const isLiteRecord = (r: MemberRecord) => r.sourceType === 'LITE';
-  const isMyPcRecord = (r: MemberRecord) => !isLiteRecord(r) && (r.hardwareId === currentDeviceId || (!(r as any)._isRemote && !r.hardwareId));
-  const isOtherPcRecord = (r: MemberRecord) => !isLiteRecord(r) && !isMyPcRecord(r);
-
-  const myPcCount = completedRecordsAll.filter(isMyPcRecord).length;
-  const otherPcCount = completedRecordsAll.filter(isOtherPcRecord).length;
-  const liteCount = completedRecordsAll.filter(isLiteRecord).length;
+  const myPcCount = completedRecordsAll.filter(r => r.hardwareId === currentDeviceId && r.sourceType !== 'LITE').length;
+  const otherPcCount = completedRecordsAll.filter(r => r.hardwareId !== currentDeviceId && r.sourceType !== 'LITE' && !(r.eventCode && r.branchId !== currentBranchId)).length;
+  const liteCount = completedRecordsAll.filter(r => r.sourceType === 'LITE' && !(r.eventCode && r.branchId !== currentBranchId)).length;
+  const jointCount = completedRecordsAll.filter(r => !!r.eventCode).length;
 
   const filterBySource = (r: MemberRecord) => {
     if (sourceFilter === 'all') return true;
-    if (sourceFilter === 'lite') return isLiteRecord(r);
-    if (sourceFilter === 'my_pc') return isMyPcRecord(r);
-    if (sourceFilter === 'other_pc') return isOtherPcRecord(r);
+    if (sourceFilter === 'joint') return !!r.eventCode;
+    if (sourceFilter === 'lite') return r.sourceType === 'LITE' && !(r.eventCode && r.branchId !== currentBranchId);
+    if (sourceFilter === 'my_pc') return r.hardwareId === currentDeviceId && r.sourceType !== 'LITE';
+    if (sourceFilter === 'other_pc') return r.hardwareId !== currentDeviceId && r.sourceType !== 'LITE' && !(r.eventCode && r.branchId !== currentBranchId);
     return true;
   };
 
@@ -83,33 +79,14 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
   })) : [];
 
   const exportData = () => {
-    const headers = ['이름','연락처','성별','나이','측정일','종합점수','신체나이','얼굴나이','뇌나이','체형분석','자세요약','근력요약','추천프로그램'];
-    const escCsv = (v: any) => {
-      const s = String(v ?? '').replace(/"/g, '""');
-      return (s.includes(',') || s.includes('"') || s.includes('\n')) ? '"' + s + '"' : s;
-    };
-    const rows = completedRecords.map(r => {
-      const rp = r.report;
-      const ui = rp?.userInfo;
-      return [
-        ui?.name || r.name, ui?.phone || '', ui?.gender === 'male' ? '남' : ui?.gender === 'female' ? '여' : '',
-        ui?.age || '', new Date(r.lastTestDate).toLocaleDateString(),
-        rp?.overallScore || '', rp?.physicalAge || '', rp?.faceAgeEstimate || '', rp?.brainAge || '',
-        rp?.bodyTypeAnalysis || '', (rp?.summary || '').substring(0, 100),
-        rp?.strengthMetrics?.map(s => s.exercise + ':' + s.reps + '회').join(' / ') || '',
-        rp?.programRecommendation?.recommended || ''
-      ].map(escCsv).join(',');
-    });
-    const bom = '\uFEFF';
-    const csv = bom + headers.join(',') + '\n' + rows.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bt_records_' + new Date().toISOString().split('T')[0] + '.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-    setToast({ isVisible: true, message: 'CSV 파일로 ' + completedRecords.length + '명의 데이터를 내보냈습니다.', type: 'success' });
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `bt_records_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    setToast({ isVisible: true, message: "데이터가 성공적으로 내보내졌습니다.", type: 'success' });
   };
 
   const importData = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,52 +95,19 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const text = event.target?.result as string;
-        if (file.name.endsWith('.json')) {
-          const imported = JSON.parse(text);
-          if (Array.isArray(imported)) {
-            let count = 0;
-            for (const record of imported) {
-              const success = await saveRecordLocally({ ...record, ownerUid: 'local-branch' });
-              if (success) count++;
-            }
-            await fetchRecords();
-            setToast({ isVisible: true, message: count + '개의 데이터를 불러왔습니다.', type: 'success' });
+        const imported = JSON.parse(event.target?.result as string);
+        if (Array.isArray(imported)) {
+          let count = 0;
+          for (const record of imported) {
+            const success = await saveRecordLocally({ ...record, ownerUid: 'local-branch' });
+            if (success) count++;
           }
-          return;
+          await fetchRecords();
+          setToast({ isVisible: true, message: `${count}개의 데이터를 성공적으로 불러왔습니다.`, type: 'success' });
         }
-        const lines = text.replace(/^\uFEFF/, '').split('\n').filter(l => l.trim());
-        if (lines.length < 2) { setToast({ isVisible: true, message: 'CSV에 데이터가 없습니다.', type: 'error' }); return; }
-        let count = 0;
-        for (let i = 1; i < lines.length; i++) {
-          const vals = lines[i].split(',').map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"'));
-          const name = vals[0] || ('회원' + i);
-          const record: MemberRecord = {
-            id: 'csv-' + Date.now().toString(36) + '-' + i, name,
-            lastTestDate: new Date().toISOString(),
-            report: { id: 'csv-import-' + i, date: new Date().toISOString(),
-              userInfo: { name, gender: vals[2] === '남' ? 'male' : vals[2] === '여' ? 'female' : 'other', age: parseInt(vals[3]) || 0, phone: vals[1] || '', memberType: 'new' as const },
-              overallScore: parseInt(vals[5]) || 0, physicalAge: parseInt(vals[6]) || 0,
-              faceAgeEstimate: parseInt(vals[7]) || 0, brainAge: parseInt(vals[8]) || 0,
-              comprehensiveAge: parseInt(vals[6]) || 0, bodyTypeAnalysis: vals[9] || '',
-              summary: vals[10] || 'CSV에서 불러온 데이터',
-              postureMetrics: [], strengthMetrics: [], agingMetrics: [],
-              faceAnalysis: { skinTone: '', wrinkles: '', elasticity: '', summary: '', recommendation: '' },
-              brainHealthImplication: '', recommendations: { meditation: '', gymnastics: '', brainTraining: '' },
-              threeBodyAnalysis: { body: { score: 0, description: '' }, mind: { score: 0, description: '' }, brain: { score: 0, description: '' } },
-              sevenCodeAnalysis: { code1: { score: 0, label: '', description: '', evidence: [] }, code2: { score: 0, label: '', description: '', evidence: [] }, code3: { score: 0, label: '', description: '', evidence: [] }, code4: { score: 0, label: '', description: '', evidence: [] }, code5: { score: 0, label: '', description: '', evidence: [] }, code6: { score: 0, label: '', description: '', evidence: [] }, code7: { score: 0, label: '', description: '', evidence: [] } },
-              kwangmyungChakra: { needLevel: '', reason: '', expectedBenefit: '' },
-              programRecommendation: { recommended: vals[12] || '', reason: '', duration: '' },
-            } as any, images: [], ownerUid: 'local-branch'
-          };
-          const success = await saveRecordLocally(record);
-          if (success) count++;
-        }
-        await fetchRecords();
-        setToast({ isVisible: true, message: 'CSV에서 ' + count + '명의 데이터를 불러왔습니다.', type: 'success' });
       } catch (err) {
-        console.error('Import failed:', err);
-        setToast({ isVisible: true, message: '데이터 불러오기에 실패했습니다.', type: 'error' });
+        console.error("Import failed:", err);
+        setToast({ isVisible: true, message: "데이터 불러오기에 실패했습니다.", type: 'error' });
       }
     };
     reader.readAsText(file);
@@ -241,22 +185,6 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
     }
   };
 
-  if (reportRecord) {
-    return (
-      <CaseReportBuilder
-        record={reportRecord}
-        allRecords={completedRecords}
-        onClose={() => setReportRecord(null)}
-        onSave={async (updatedRecord) => {
-          await saveRecordLocally(updatedRecord);
-          await fetchRecords();
-          setToast({ isVisible: true, message: '사례보고서가 저장되었습니다.', type: 'success' });
-          setReportRecord(null);
-        }}
-      />
-    );
-  }
-
   return (
     <div className="p-6 max-w-5xl mx-auto w-full">
       <Modal 
@@ -318,7 +246,7 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
               </button>
               <label className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center hover:bg-emerald-100 transition-all cursor-pointer" title="데이터 불러오기">
                 <i className="fas fa-upload"></i>
-                <input type="file" className="hidden" accept=".csv,.json" onChange={importData} />
+                <input type="file" className="hidden" accept=".json" onChange={importData} />
               </label>
               <button
                 onClick={() => setClearConfirm(true)}
@@ -336,7 +264,7 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
       </div>
 
       {/* 탭 전환 */}
-      <div className="flex gap-1 mb-8 bg-slate-100 p-1 rounded-2xl w-fit">
+      <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-2xl w-fit">
         <button
           onClick={() => setActiveTab('records')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
@@ -349,7 +277,7 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
           회원 기록
           <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${
             activeTab === 'records' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'
-          }`}>{completedRecords.length}</span>
+          }`}>{completedRecordsAll.length}</span>
         </button>
         <button
           onClick={() => setActiveTab('pending')}
@@ -363,32 +291,12 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
           임시 보관함
           <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${
             activeTab === 'pending' ? 'bg-amber-100 text-amber-600' : 'bg-slate-200 text-slate-500'
-          }`}>{pendingRecords.length}</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('feedback')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
-            activeTab === 'feedback'
-              ? 'bg-white text-slate-800 shadow-sm'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <i className="fas fa-chart-pie text-xs"></i>
-          AI 피드백 현황
-          <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-600`}>
-            NEW
-          </span>
+          }`}>{pendingRecordsAll.length}</span>
         </button>
       </div>
 
-      {/* 탭 콘텐츠 — 피드백 현황 */}
-      {activeTab === 'feedback' && <FeedbackDashboard />}
-
-      {/* 탭 콘텐츠 — 회원 기록 */}
-      {activeTab === 'records' && (
-        <>
       {/* 서브 필터 (소스 구분) */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-8">
         <button
           onClick={() => setSourceFilter('all')}
           className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center ${
@@ -421,7 +329,21 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
         >
           <i className="fas fa-mobile-alt mr-2"></i> 온라인 LITE ({liteCount})
         </button>
+        {jointCount > 0 && (
+          <button
+            onClick={() => setSourceFilter('joint')}
+            className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center ${
+              sourceFilter === 'joint' ? 'bg-purple-500 text-white shadow-md' : 'bg-white border border-purple-200 text-purple-600 hover:bg-purple-50'
+            }`}
+          >
+            <i className="fas fa-link mr-2"></i> 합동 행사 ({jointCount})
+          </button>
+        )}
       </div>
+
+      {/* 탭 콘텐츠 — 회원 기록 */}
+      {activeTab === 'records' && (
+        <>
       <div className="mb-8 relative">
         <i className="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"></i>
         <input
@@ -506,13 +428,12 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
       {completedRecords.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {completedRecords.map(record => (
-            <div key={record.id} className={`bg-white p-6 rounded-[32px] border ${selectedIds.includes(record.id) ? 'border-indigo-500 ring-2 ring-indigo-100' : isLiteRecord(record) ? 'border-emerald-300' : isOtherPcRecord(record) ? 'border-cyan-300' : 'border-slate-200'} shadow-sm hover:shadow-lg transition-all group overflow-hidden relative`}>
+            <div key={record.id} className={`bg-white p-6 rounded-[32px] border ${selectedIds.includes(record.id) ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-200'} shadow-sm hover:shadow-lg transition-all group overflow-hidden relative`}>
               <div className="absolute top-6 left-6 z-10">
                 <input 
                   type="checkbox" 
-                  className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
                   checked={selectedIds.includes(record.id)}
-                  disabled={isOtherPcRecord(record) || isLiteRecord(record)}
                   onChange={(e) => {
                     if (e.target.checked) setSelectedIds([...selectedIds, record.id]);
                     else setSelectedIds(selectedIds.filter(id => id !== record.id));
@@ -521,52 +442,58 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
               </div>
               <div className="flex justify-between items-start mb-4 pl-8">
                 <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 ${isLiteRecord(record) ? 'bg-emerald-50' : isOtherPcRecord(record) ? 'bg-cyan-50' : 'bg-indigo-50'} rounded-2xl flex items-center justify-center ${isLiteRecord(record) ? 'text-emerald-600' : isOtherPcRecord(record) ? 'text-cyan-600' : 'text-indigo-600'} font-bold text-xl shrink-0`}>
+                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 font-bold text-xl shrink-0">
                       {record.name[0]}
                     </div>
                     <div>
                         <h4 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                           {record.name}
-                          {isLiteRecord(record) ? (
-                            <span className="bg-emerald-100 text-emerald-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-mobile-alt mr-1"></i>온라인 LITE</span>
-                          ) : isOtherPcRecord(record) ? (
+                          {record.sourceType === 'LITE' ? (
+                            record.eventCode && record.branchId !== currentBranchId ? (
+                              <span className="bg-purple-100 text-purple-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-link mr-1"></i>합동 행사</span>
+                            ) : (
+                              <span className="bg-emerald-100 text-emerald-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-mobile-alt mr-1"></i>온라인 LITE</span>
+                            )
+                          ) : record.eventCode && record.branchId !== currentBranchId ? (
+                            <span className="bg-purple-100 text-purple-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-link mr-1"></i>합동 행사</span>
+                          ) : record.hardwareId !== currentDeviceId ? (
                             <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-cloud mr-1"></i>다른 PC</span>
                           ) : (
                             <span className="bg-blue-100 text-blue-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-desktop mr-1"></i>나의 PC</span>
                           )}
-                          {record.report?.userInfo?.phone && <span className="ml-1 text-sm text-slate-500 font-normal">{record.report.userInfo.phone}</span>}
                         </h4>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(record.lastTestDate).toLocaleDateString()}</span>
+                        <div className="flex flex-col gap-0.5 mt-0.5">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(record.lastTestDate).toLocaleDateString()}</span>
+                          {record.report?.userInfo?.phone && (
+                            <span className="text-[10px] text-indigo-600 font-bold flex items-center gap-1">
+                              <i className="fas fa-phone-alt text-[8px]"></i>{record.report.userInfo.phone}
+                            </span>
+                          )}
+                        </div>
                     </div>
                 </div>
-                {isMyPcRecord(record) && (
                 <button 
                   onClick={() => setDeleteId(record.id)}
                   className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-rose-500 transition-colors"
                 >
                   <i className="fas fa-trash-alt text-sm"></i>
                 </button>
-              )}
               </div>
 
               {/* Preview Image */}
-              <div className="mb-4 h-32 rounded-2xl bg-slate-100 overflow-hidden border border-slate-100">
-                {record.images && record.images[0] && record.images[0].dataUrl ? (
+              <div className="mb-4 h-32 rounded-2xl overflow-hidden border border-slate-100 flex flex-col items-center justify-center relative">
+                {record.images && record.images[0] ? (
                   <img src={record.images[0].dataUrl} className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" alt="Preview" />
-                ) : isLiteRecord(record) ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-emerald-400 bg-emerald-50/50">
-                    <i className="fas fa-mobile-alt text-2xl mb-1"></i>
-                    <span className="text-[10px] font-bold text-emerald-500">온라인 LITE에서 동기화된 데이터</span>
-                    <span className="text-[10px] text-emerald-400">텍스트 리포트 열람 가능</span>
-                  </div>
-                ) : isOtherPcRecord(record) ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-cyan-400 bg-cyan-50/50">
-                    <i className="fas fa-cloud text-2xl mb-1"></i>
-                    <span className="text-[10px] font-bold text-cyan-500">다른 PC에서 동기화된 데이터</span>
-                    <span className="text-[10px] text-cyan-400">텍스트 리포트 열람 가능</span>
+                ) : record.eventCode && record.branchId !== currentBranchId ? (
+                  <div className="w-full h-full bg-gradient-to-br from-slate-50 to-indigo-50/50 flex flex-col items-center justify-center p-3 text-center">
+                    <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 mb-1.5 shadow-sm">
+                      <i className="fas fa-handshake text-lg"></i>
+                    </div>
+                    <span className="text-xs font-semibold text-indigo-950 mb-0.5">합동 행사 측정 데이터</span>
+                    <span className="text-[10px] text-slate-400 font-mono truncate max-w-full">지점 ID: {record.branchId?.substring(0, 8) || '알 수 없음'}</span>
                   </div>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-300">
+                  <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300">
                     <i className="fas fa-image text-3xl"></i>
                   </div>
                 )}
@@ -589,23 +516,11 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
                 className={`w-full text-white text-sm font-bold py-4 rounded-xl transition-all shadow-md ${
                   !record.report?.overallScore
                     ? 'bg-slate-300 cursor-not-allowed shadow-none'
-                    : isLiteRecord(record)
-                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
-                    : isOtherPcRecord(record)
-                    ? 'bg-cyan-600 hover:bg-cyan-700 shadow-cyan-200'
                     : 'bg-slate-900 hover:bg-black shadow-slate-200'
                 }`}
               >
-                {!record.report?.overallScore ? '분석 미완료 (대기중)' : isLiteRecord(record) ? '📱 LITE 리포트 보기' : isOtherPcRecord(record) ? '📄 텍스트 리포트 보기' : '상세 리포트 보기'}
+                {!record.report?.overallScore ? '분석 미완료 (대기중)' : '상세 리포트 보기'}
               </button>
-              {!isLiteRecord(record) && record.report?.overallScore && (
-                <button
-                  onClick={() => setReportRecord(record)}
-                  className="w-full flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 text-sm font-bold mt-2 py-3 rounded-xl hover:bg-indigo-100 transition-colors border border-indigo-100"
-                >
-                  <i className="fas fa-file-word"></i> IBEL 사례보고서 작성
-                </button>
-              )}
             </div>
           ))}
         </div>
@@ -662,8 +577,24 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
                           {record.name.replace('(분석 대기) ', '')[0]}
                         </div>
                         <div>
-                            <h4 className="text-lg font-bold text-slate-800">{record.name}</h4>
-                            <span className="text-[10px] text-amber-500 font-bold uppercase tracking-widest">{new Date(record.lastTestDate).toLocaleDateString()}</span>
+                            <h4 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                              {record.name}
+                              {record.sourceType === 'LITE' ? (
+                                <span className="bg-emerald-100 text-emerald-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-mobile-alt mr-1"></i>온라인 LITE</span>
+                              ) : record.hardwareId !== currentDeviceId ? (
+                                <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-cloud mr-1"></i>다른 PC</span>
+                              ) : (
+                                <span className="bg-blue-100 text-blue-600 text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"><i className="fas fa-desktop mr-1"></i>나의 PC</span>
+                              )}
+                            </h4>
+                            <div className="flex flex-col gap-0.5 mt-0.5">
+                              <span className="text-[10px] text-amber-500 font-bold uppercase tracking-widest">{new Date(record.lastTestDate).toLocaleDateString()}</span>
+                              {record.report?.userInfo?.phone && (
+                                <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1">
+                                  <i className="fas fa-phone-alt text-[8px]"></i>{record.report.userInfo.phone}
+                                </span>
+                              )}
+                            </div>
                         </div>
                     </div>
                     <button 
@@ -713,4 +644,3 @@ const HistoryManager: React.FC<HistoryManagerProps> = ({ onViewReport, onResumeA
 };
 
 export default HistoryManager;
-

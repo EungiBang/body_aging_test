@@ -1,182 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl';
-import '@tensorflow/tfjs-backend-wasm';
-import { setWasmPaths } from '@tensorflow/tfjs-backend-wasm';
 import * as poseDetection from '@tensorflow-models/pose-detection';
-
-try {
-  // vite-plugin-static-copy를 통해 복사된 wasm 파일 경로 지정
-  setWasmPaths('./wasm/');
-} catch (e) {
-  console.warn('WASM path setup failed', e);
-}
 
 // Global instance to prevent rapid create/dispose crashes
 let globalDetector: poseDetection.PoseDetector | null = null;
 let isGlobalDetectorLoading = false;
 let globalDetectorPromise: Promise<poseDetection.PoseDetector> | null = null;
-
-/**
- * 전역 MoveNet detector 인스턴스를 반환합니다.
- * 아직 로드 중이면 로드 완료까지 대기합니다.
- * 로드 실패 시 null을 반환합니다.
- */
-export const getGlobalDetector = async (): Promise<poseDetection.PoseDetector | null> => {
-  if (globalDetector) return globalDetector;
-  if (globalDetectorPromise) {
-    try {
-      await globalDetectorPromise;
-      return globalDetector;
-    } catch {
-      return null;
-    }
-  }
-  // 아직 초기화되지 않았으면 직접 초기화
-  isGlobalDetectorLoading = true;
-  globalDetectorPromise = (async () => {
-    await tf.ready();
-    try { tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0); } catch {}
-    // ★ iGPU 호환성 플래그: Intel 통합 그래픽에서 score=0 버그 방지
-    try { tf.env().set('WEBGL_USE_SHAPES_UNIFORMS', false); } catch {}
-    try { tf.env().set('WEBGL_FLUSH_THRESHOLD', -1); } catch {}
-    const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
-    const detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
-    globalDetector = detector;
-    return detector;
-  })();
-  try {
-    await globalDetectorPromise;
-    return globalDetector;
-  } catch {
-    return null;
-  } finally {
-    isGlobalDetectorLoading = false;
-  }
-};
-
-/**
- * 이미지를 MoveNet 최적 크기로 다운스케일합니다.
- * iGPU에서 원본 해상도 추론 시 과부하를 방지합니다.
- */
-const downscaleForPose = (input: HTMLCanvasElement | HTMLImageElement, maxSize: number): HTMLCanvasElement => {
-  const w = input instanceof HTMLCanvasElement ? input.width : input.naturalWidth || input.width;
-  const h = input instanceof HTMLCanvasElement ? input.height : input.naturalHeight || input.height;
-  
-  // 이미 충분히 작으면 그대로 반환 (캔버스인 경우)
-  if (w <= maxSize && h <= maxSize && input instanceof HTMLCanvasElement) {
-    return input;
-  }
-  
-  const scale = maxSize / Math.max(w, h);
-  const targetW = Math.round(w * scale);
-  const targetH = Math.round(h * scale);
-  
-  const canvas = document.createElement('canvas');
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.drawImage(input, 0, 0, targetW, targetH);
-  }
-  return canvas;
-};
-
-/**
- * 추론 결과에 유효한 키포인트(score > 0.15)가 있는지 확인합니다.
- */
-const hasValidKeypoints = (poses: poseDetection.Pose[]): boolean => {
-  if (poses.length === 0) return false;
-  const validCount = poses[0].keypoints.filter(kp => (kp.score || 0) > 0.15).length;
-  return validCount >= 3; // 최소 3개 이상의 관절이 보여야 유효
-};
-
-/**
- * 캔버스/이미지 엘리먼트에서 포즈를 추정합니다.
- * 전역 LIGHTNING 모델을 재사용하여 WebGL 경합을 방지합니다.
- * ★ v4.2.6: 이미지 다운스케일 + 유효성 검증 + CPU fallback 추가
- */
-export const estimatePosesFromImage = async (
-  input: HTMLCanvasElement | HTMLImageElement
-): Promise<poseDetection.Pose[]> => {
-  const detector = await getGlobalDetector();
-  if (!detector) return [];
-  
-  // ★ 1단계: 이미지 다운스케일 (iGPU 과부하 방지)
-  const downscaled = downscaleForPose(input, 256);
-  
-  // ★ 2단계: WebGL로 추론 시도
-  let poses: poseDetection.Pose[] = [];
-  tf.engine().startScope();
-  try {
-    poses = await detector.estimatePoses(downscaled);
-  } catch (e) {
-    console.warn('[PoseEstimation] WebGL 추론 실패:', e);
-  } finally {
-    tf.engine().endScope();
-  }
-  
-  // ★ 3단계: 결과 유효성 검증 → 실패 시 WebGL 재시도 (원본 이미지)
-  if (!hasValidKeypoints(poses)) {
-    console.warn('[PoseEstimation] WebGL 결과 부실 → 원본으로 재시도');
-    tf.engine().startScope();
-    try {
-      // 원본 이미지로 한 번 더 시도 (간혹 다운스케일 과정에서 손실 발생)
-      poses = await detector.estimatePoses(input);
-    } catch (e) {
-      console.warn('[PoseEstimation] WebGL 재시도 실패:', e);
-    } finally {
-      tf.engine().endScope();
-    }
-  }
-  
-  // ★ 4단계: 여전히 실패 시 WASM/CPU fallback
-  if (!hasValidKeypoints(poses)) {
-    console.warn('[PoseEstimation] WebGL 최종 실패 → WASM/CPU fallback 시도');
-    try {
-      const currentBackend = tf.getBackend();
-      
-      // WASM 시도
-      try {
-        await tf.setBackend('wasm');
-        await tf.ready();
-      } catch (wasmErr) {
-        console.warn('WASM 로드 실패, 순수 CPU 모드로 전환', wasmErr);
-        await tf.setBackend('cpu');
-        await tf.ready();
-      }
-      
-      tf.engine().startScope();
-      try {
-        poses = await detector.estimatePoses(downscaled);
-      } finally {
-        tf.engine().endScope();
-      }
-      
-      // 영구적으로 WASM을 유지할 수도 있으나, 일단 원래 백엔드로 복원
-      if (currentBackend && currentBackend !== tf.getBackend()) {
-        await tf.setBackend(currentBackend);
-        await tf.ready();
-      }
-    } catch (e) {
-      console.error('[PoseEstimation] Fallback도 실패:', e);
-    }
-  }
-  
-  // 다운스케일한 경우 좌표를 원본 비율로 복원
-  if (downscaled !== input && poses.length > 0) {
-    const origW = input instanceof HTMLCanvasElement ? input.width : input.naturalWidth || input.width;
-    const origH = input instanceof HTMLCanvasElement ? input.height : input.naturalHeight || input.height;
-    const scaleX = origW / downscaled.width;
-    const scaleY = origH / downscaled.height;
-    poses[0].keypoints.forEach(kp => {
-      kp.x *= scaleX;
-      kp.y *= scaleY;
-    });
-  }
-  
-  return poses;
-};
 
 export const usePoseEstimation = (
   videoRef: React.RefObject<HTMLVideoElement | null>,
@@ -237,9 +67,6 @@ export const usePoseEstimation = (
         try {
             tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
         } catch(e) {}
-        // ★ iGPU 호환성: Intel 통합 그래픽에서 score=0 반환 버그 방지
-        try { tf.env().set('WEBGL_USE_SHAPES_UNIFORMS', false); } catch(e) {}
-        try { tf.env().set('WEBGL_FLUSH_THRESHOLD', -1); } catch(e) {}
         
         const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
         const detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
@@ -292,16 +119,7 @@ export const usePoseEstimation = (
     balanceStateRef.current = { dropFrames: 0, lastNoseX: 0, swayPixels: 0, isFootDown: false };
 
     const detectPose = async () => {
-      if (!videoRef.current || !isMounted || !offscreenCanvasRef.current) return;
-
-      let currentDetector = globalDetector;
-      if (!currentDetector) {
-        currentDetector = await getGlobalDetector();
-        if (!currentDetector) {
-          if (isMounted) timeoutRef.current = setTimeout(detectPose, 500);
-          return;
-        }
-      }
+      if (!videoRef.current || !globalDetector || !isMounted || !offscreenCanvasRef.current) return;
 
       const video = videoRef.current;
       if (video.readyState < 2) {
@@ -332,43 +150,11 @@ export const usePoseEstimation = (
         let poses: poseDetection.Pose[] = [];
         tf.engine().startScope();
         try {
-          poses = await currentDetector.estimatePoses(offCanvas);
+          poses = await globalDetector.estimatePoses(offCanvas);
         } finally {
           tf.engine().endScope(); // 에러 발생 시에도 무조건 텍스처를 비우도록 강제 (메모리 누수 원천 차단)
         }
         
-        // ★ iGPU WebGL 실패 감지 및 WASM 자동 전환
-        if (!hasValidKeypoints(poses)) {
-          // hack: use window object for isolated tracking
-          (window as any).__webglFailCount = ((window as any).__webglFailCount || 0) + 1;
-          if ((window as any).__webglFailCount > 10 && tf.getBackend() !== 'wasm') {
-            console.warn('[PoseEstimation] 연속된 WebGL 인식 실패 감지. WASM 백엔드로 영구 전환합니다.');
-            try {
-              await tf.setBackend('wasm');
-              await tf.ready();
-            } catch (e) {
-              console.warn('WASM 전환 실패, CPU로 전환 시도', e);
-              await tf.setBackend('cpu');
-              await tf.ready();
-            }
-            (window as any).__webglFailCount = 0; // 리셋
-            
-            // ★ 백엔드가 변경되었으므로 기존 텐서를 물고 있는 detector 폐기
-            globalDetector = null;
-            globalDetectorPromise = null;
-            
-            if (isMounted) {
-              timeoutRef.current = setTimeout(detectPose, adaptiveInterval);
-            }
-            return;
-          }
-        } else {
-          // 정상 인식 시 카운터 초기화
-          if (tf.getBackend() !== 'wasm') {
-            (window as any).__webglFailCount = 0;
-          }
-        }
-
         if (!isMounted) return;
 
         await new Promise(r => setTimeout(r, 0)); // Yield

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import SettingsModal from './SettingsModal';
 import { startAutoBackup, stopAutoBackup } from '../services/backupService';
 import pkg from '../package.json';
+import { BRAND_NAME, SUB_NAME } from '@shared/constants/brand';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,34 +26,6 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   useEffect(() => {
     startAutoBackup();
     return () => stopAutoBackup();
-  }, []);
-
-  // 시작 시 업데이트 확인 알람
-  useEffect(() => {
-    if (window.electronAPI && window.electronAPI.onUpdaterMessage) {
-      const cleanupMessage = window.electronAPI.onUpdaterMessage((msg: any) => {
-        if (msg.status === 'available') {
-          if (window.confirm(`새로운 업데이트(v${msg.version})가 있습니다.\n지금 백그라운드에서 다운로드를 시작하시겠습니까?`)) {
-            window.electronAPI.downloadUpdate?.();
-            // To prevent spamming, we remove the listener after they accept
-            cleanupMessage();
-          }
-        } else if (msg.status === 'downloaded') {
-          if (window.confirm(`업데이트 다운로드가 완료되었습니다.\n지금 프로그램을 재시작하여 적용하시겠습니까?`)) {
-            window.electronAPI.installUpdate?.();
-          }
-        }
-      });
-      // 앱 시작 후 3초 뒤에 백그라운드에서 업데이트 확인
-      const timer = setTimeout(() => {
-        window.electronAPI.checkForUpdates();
-      }, 3000);
-      
-      return () => {
-        cleanupMessage();
-        clearTimeout(timer);
-      };
-    }
   }, []);
 
   return (
@@ -95,11 +68,11 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           </div>
           <div>
             <h1 className="font-black text-slate-100 text-base tracking-tight leading-tight drop-shadow-sm">
-              BTC 3바디 7코드 AI건강센터
+              {BRAND_NAME}
             </h1>
             <p className="text-[10px] font-bold tracking-[0.20em] uppercase"
               style={{ color: '#4f46e5' }}>
-              Brain Training Center · v{pkg.version}
+              {SUB_NAME}
             </p>
           </div>
         </div>
@@ -151,7 +124,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             <span>회원관리</span>
           </button>
 
-          {/* K관상 */}
+          {/* K-관상 */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('nav:kface'))}
             className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold transition-all"
@@ -165,8 +138,8 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(147,51,234,0.10)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.80)')}
           >
-            <i className="fas fa-mask text-xs" />
-            <span>K관상</span>
+            <i className="fas fa-smile text-xs" />
+            <span>K-관상</span>
           </button>
 
           {/* K타로 */}
@@ -230,7 +203,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         }}
       >
         © 2026 Brain Training Center.&nbsp;
-        <span style={{ color: '#4f46e5', fontWeight: 700 }}>AI Analyzer Pro v{pkg.version}</span>
+        <span style={{ color: '#4f46e5', fontWeight: 700 }}>AI Analyzer Web</span>
       </footer>}
 
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />

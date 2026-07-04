@@ -22,8 +22,6 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({ report }) => {
   const [brainRating, setBrainRating] = useState<RatingType | null>(null);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
-  const [correctedScore, setCorrectedScore] = useState<string>('');
-  const [correctedAge, setCorrectedAge] = useState<string>('');
 
   const canSubmit = physicalRating && faceRating && brainRating;
 
@@ -36,14 +34,11 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({ report }) => {
         faceRating: faceRating!,
         brainRating: brainRating!,
         notes: notes.trim() || undefined,
-        correctedOverallScore: correctedScore ? parseInt(correctedScore, 10) : undefined,
-        correctedPhysicalAge: correctedAge ? parseInt(correctedAge, 10) : undefined,
         submittedAt: new Date().toISOString(),
       });
       setStep('done');
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      setError(`저장 실패: ${errorMsg}`);
+    } catch {
+      setError('저장 실패. 다시 시도해 주세요.');
       setStep('idle');
     }
   };
@@ -129,25 +124,8 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({ report }) => {
 
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
           {renderRatingGroup('신체 나이 분석 정확도', physicalRating, setPhysicalRating)}
-          
-          {(physicalRating === 'normal' || physicalRating === 'dissatisfied' || physicalRating === 'very_dissatisfied') && (
-            <div className="bg-amber-50 rounded-2xl p-4 mb-6 border border-amber-100 animate-fade-in">
-              <p className="text-sm font-bold text-amber-800 mb-3"><i className="fas fa-exclamation-triangle mr-1"></i> 관리자 직접 교정 (AI 학습용)</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-amber-700 block mb-1">실제 추정 종합 점수</label>
-                  <input type="number" placeholder={`${report.overallScore} (AI 예측치)`} value={correctedScore} onChange={e => setCorrectedScore(e.target.value)} className="w-full p-2 rounded-xl border border-amber-200 bg-white text-sm" />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-amber-700 block mb-1">실제 추정 신체 나이</label>
-                  <input type="number" placeholder={`${report.physicalAge}세 (AI 예측치)`} value={correctedAge} onChange={e => setCorrectedAge(e.target.value)} className="w-full p-2 rounded-xl border border-amber-200 bg-white text-sm" />
-                </div>
-              </div>
-            </div>
-          )}
-
           {renderRatingGroup('얼굴 나이 분석 정확도', faceRating, setFaceRating)}
-          {renderRatingGroup('뇌 나이 (반응/기억력) 진단 정확도', brainRating, setBrainRating)}
+          {renderRatingGroup('뇌 나이 (반응/기억력) 분석 정확도', brainRating, setBrainRating)}
 
           <div>
             <label className="text-sm font-bold text-slate-700 block mb-2">관리자 종합 의견 (선택)</label>
@@ -172,7 +150,7 @@ const FeedbackPanel: React.FC<FeedbackPanelProps> = ({ report }) => {
               : 'bg-slate-300 cursor-not-allowed'
           }`}
         >
-          {canSubmit ? '진단 피드백 제출하기' : '모든 영역의 평가를 선택해주세요'}
+          {canSubmit ? '분석 피드백 제출하기' : '모든 영역의 평가를 선택해주세요'}
         </button>
       </div>
 

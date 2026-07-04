@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AssessmentStep, BrainTestData } from '../types';
-import { speak, stopSpeaking } from '../services/ttsService';
+import { AssessmentStep, BrainTestData, UserInfo } from '../types';
+import { speak } from '../services/ttsService';
 import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl';
 import * as poseDetection from '@tensorflow-models/pose-detection';
@@ -13,6 +13,7 @@ interface BrainTestModuleProps {
   testType: AssessmentStep;
   onComplete: (dataUrl: string, brainTestData: BrainTestData) => void;
   preferredCameraId?: string;
+  userInfo?: UserInfo | null;
 }
 
 type GamePhase = 'intro' | 'calibration' | 'handcheck' | 'countdown' | 'playing' | 'result';
@@ -29,26 +30,67 @@ const CROSS_INSTRUCTIONS = [
   { text: '왼손 → 머리 위', ttsText: '왼손, 머리 위', hand: 'left', target: 'head' },
 ];
 
-// ============ MART SHOPPING GAME DATA ============
+// ============ MART SHOPPING GAME DATA v5.1 ============
+// v5.1: 24개 물건, 이미지 전용 기억, 천원 단위 가격
 const MART_ITEMS = [
-  { id: 'apple', emoji: '🍎', name: '사과', price: 1000 },
-  { id: 'banana', emoji: '🍌', name: '바나나', price: 2000 },
-  { id: 'milk', emoji: '🥛', name: '우유', price: 3000 },
-  { id: 'bread', emoji: '🍞', name: '식빵', price: 2000 },
-  { id: 'egg', emoji: '🥚', name: '계란', price: 4000 },
-  { id: 'carrot', emoji: '🥕', name: '당근', price: 1000 },
-  { id: 'fish', emoji: '🐟', name: '생선', price: 5000 },
-  { id: 'cheese', emoji: '🧀', name: '치즈', price: 3000 },
-  { id: 'tomato', emoji: '🍅', name: '토마토', price: 2000 },
-  { id: 'chicken', emoji: '🍗', name: '치킨', price: 5000 },
-  { id: 'grape', emoji: '🍇', name: '포도', price: 4000 },
-  { id: 'watermelon', emoji: '🍉', name: '수박', price: 6000 },
-  { id: 'onion', emoji: '🧅', name: '양파', price: 1000 },
-  { id: 'corn', emoji: '🌽', name: '옥수수', price: 2000 },
-  { id: 'shrimp', emoji: '🦐', name: '새우', price: 3000 },
+  { id: 'apple', emoji: '🍎', name: '사과', price: 4000 },
+  { id: 'banana', emoji: '🍌', name: '바나나', price: 3000 },
+  { id: 'milk', emoji: '🥛', name: '우유', price: 4000 },
+  { id: 'bread', emoji: '🍞', name: '식빵', price: 3000 },
+  { id: 'egg', emoji: '🥚', name: '계란', price: 6000 },
+  { id: 'carrot', emoji: '🥕', name: '당근', price: 2000 },
+  { id: 'fish', emoji: '🐟', name: '생선', price: 8000 },
+  { id: 'cheese', emoji: '🧀', name: '치즈', price: 4000 },
+  { id: 'tomato', emoji: '🍅', name: '토마토', price: 3000 },
+  { id: 'chicken', emoji: '🍗', name: '닭고기', price: 7000 },
+  { id: 'grape', emoji: '🍇', name: '포도', price: 5000 },
+  { id: 'watermelon', emoji: '🍉', name: '수박', price: 9000 },
+  { id: 'onion', emoji: '🧅', name: '양파', price: 2000 },
+  { id: 'corn', emoji: '🌽', name: '옥수수', price: 3000 },
+  { id: 'shrimp', emoji: '🦐', name: '새우', price: 6000 },
+  { id: 'pepper', emoji: '🌶️', name: '고추', price: 2000 },
+  { id: 'mushroom', emoji: '🍄', name: '버섯', price: 4000 },
+  { id: 'peach', emoji: '🍑', name: '복숭아', price: 5000 },
+  { id: 'strawberry', emoji: '🍓', name: '딸기', price: 6000 },
+  { id: 'pear', emoji: '🍐', name: '배', price: 4000 },
+  { id: 'melon', emoji: '🍈', name: '참외', price: 3000 },
+  { id: 'sweetpotato', emoji: '🍠', name: '고구마', price: 3000 },
+  { id: 'broccoli', emoji: '🥦', name: '브로콜리', price: 3000 },
+  { id: 'avocado', emoji: '🥑', name: '아보카도', price: 5000 },
 ];
 
-const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete, preferredCameraId }) => {
+// v5.0 방해 과제: 3자리 받아올림/받아내림 연산 생성기
+const generateHardMathQuiz = (isAdd: boolean): { question: string; answer: number } => {
+  if (isAdd) {
+    // 덧셈: 받아올림이 2회 이상 발생하도록 설계
+    let a: number, b: number;
+    do {
+      a = Math.floor(Math.random() * 400) + 200; // 200~599
+      b = Math.floor(Math.random() * 400) + 150; // 150~549
+    } while (
+      (a % 10) + (b % 10) < 10 || // 일의자리 받아올림 필수
+      (Math.floor(a / 10) % 10) + (Math.floor(b / 10) % 10) < 9 || // 십의자리 받아올림 유도
+      a % 5 === 0 || b % 5 === 0 || // 5,0으로 끝나는 숫자 제외
+      a + b > 999 // 결과 3자리 유지
+    );
+    return { question: `${a} + ${b}`, answer: a + b };
+  } else {
+    // 뺄셈: 받아내림이 2회 이상 발생하도록 설계
+    let a: number, b: number;
+    do {
+      a = Math.floor(Math.random() * 400) + 400; // 400~799
+      b = Math.floor(Math.random() * 300) + 150; // 150~449
+    } while (
+      (a % 10) >= (b % 10) || // 일의자리 받아내림 필수 (a의 일의자리 < b의 일의자리)
+      (Math.floor(a / 10) % 10) >= (Math.floor(b / 10) % 10) || // 십의자리도 받아내림 유도
+      a % 5 === 0 || b % 5 === 0 || // 5,0으로 끝나는 숫자 제외
+      a - b < 100 // 결과 3자리 유지
+    );
+    return { question: `${a} - ${b}`, answer: a - b };
+  }
+};
+
+const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete, preferredCameraId, userInfo }) => {
   const [isPortraitMode, setIsPortraitMode] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -59,6 +101,15 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
   const offCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [retryCount, setRetryCount] = useState(0);
+
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+    setCameraReady(false);
+    setRetryCount(prev => prev + 1);
+  };
 
   useEffect(() => {
     offCanvasRef.current = document.createElement('canvas');
@@ -101,17 +152,17 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
   const martItemsRef = useRef<typeof MART_ITEMS>([]); // 클로저 문제 해결용 ref
   const [martRound, setMartRound] = useState(0);
   const [martTotalCorrect, setMartTotalCorrect] = useState(0);
-  const MART_ITEMS_TO_REMEMBER = 6;
-  const MART_SHELF_SIZE = 12;
+  const MART_ITEMS_TO_REMEMBER = 8;  // v5.0: 6→8개
+  const MART_SHELF_SIZE = 24;        // v5.0: 12→24개
   const [lastAddedItem, setLastAddedItem] = useState<string | null>(null);
   const [martTimeLeft, setMartTimeLeft] = useState(60); // 남은 시간 (초)
-  const [martShowingCountdown, setMartShowingCountdown] = useState(10); // 기억하기 카운트다운
-  const [distractionMath, setDistractionMath] = useState('17 + 24 = ?');
+  const [martShowingCountdown, setMartShowingCountdown] = useState(20); // v5.1: 20초
+  const [martPriceVisibleIds, setMartPriceVisibleIds] = useState<string[]>([]); // v5.1: 가격이 보이는 4개 아이템 ID
   const [distractionQuizzes, setDistractionQuizzes] = useState<{question: string; answer: number; options: number[]}[]>([]);
   const [distractionIndex, setDistractionIndex] = useState(0);
-  const [distractionSelected, setDistractionSelected] = useState<number | null>(null);
+  const [distractionSelected, setDistractionSelected] = useState<number | null>(null); // v5.1: 객관식
   const [distractionCorrect, setDistractionCorrect] = useState(0);
-  const [distractionCountdown, setDistractionCountdown] = useState(10);
+  const [distractionCountdown, setDistractionCountdown] = useState(15); // 15초
 
   // 마트 손 커서 상태 (오른손 한손만 사용)
   const [handCursor, setHandCursor] = useState<{ x: number; y: number } | null>(null);
@@ -121,11 +172,12 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
   const HOVER_GRAB_MS = 3000; // 3초 호버 → 바로 담기
   const shoppingContainerRef = useRef<HTMLDivElement>(null);
 
-  // 가격 계산 퀴즈 state
+  // 가격 계산 퀴즈 state — v5.0: 주관식 입력
   const [mathQuizPhase, setMathQuizPhase] = useState<'none' | 'quiz' | 'answered'>('none');
-  const [mathQuizOptions, setMathQuizOptions] = useState<number[]>([]);
   const [mathCorrectAnswer, setMathCorrectAnswer] = useState(0);
-  const [mathSelectedAnswer, setMathSelectedAnswer] = useState<number | null>(null);
+  const [mathPriceItems, setMathPriceItems] = useState<typeof MART_ITEMS>([]); // v5.0: 합산 대상 3개
+  const [mathInputValue, setMathInputValue] = useState(''); // v5.0: 주관식 입력
+  const [mathIsCorrect, setMathIsCorrect] = useState<boolean | null>(null);
   const [mathTimeLeft, setMathTimeLeft] = useState(30);
 
   // Calibration state
@@ -153,12 +205,30 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
     }
     const initCamera = async () => {
       try {
-        const constraints: MediaStreamConstraints = {
-          video: preferredCameraId 
-            ? { deviceId: { exact: preferredCameraId }, width: { ideal: 1280 }, height: { ideal: 720 } }
-            : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
-        };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        let stream: MediaStream | null = null;
+        try {
+          const constraints: MediaStreamConstraints = {
+            video: preferredCameraId 
+              ? { deviceId: { exact: preferredCameraId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+              : { facingMode: facingMode, width: { ideal: 1280 }, height: { ideal: 720 } }
+          };
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e) {
+          console.warn('Primary camera constraints failed, trying fallback 1 (no resolution)...', e);
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: preferredCameraId
+                ? { deviceId: { exact: preferredCameraId } }
+                : { facingMode: facingMode }
+            });
+          } catch (e2) {
+            console.warn("Fallback 1 failed, trying fallback 2 (basic video)...", e2);
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          }
+        }
+        
+        if (!stream) throw new Error("Failed to acquire camera stream");
+        
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -166,13 +236,14 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
         }
       } catch (e) {
         console.error('Camera init failed:', e);
+        alert(`카메라를 시작할 수 없습니다: ${e instanceof Error ? e.message : '알 수 없는 오류'}`);
       }
     };
     initCamera();
     return () => {
       streamRef.current?.getTracks().forEach(t => t.stop());
     };
-  }, [preferredCameraId, testType]);
+  }, [preferredCameraId, testType, facingMode, retryCount]);
 
   // Initialize pose detector (반응속도 테스트만 사용)
   useEffect(() => {
@@ -308,7 +379,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
       await new Promise(r => setTimeout(r, 0));
       if (running) {
         // 반응속도 테스트 진행 중일 때는 지연시간을 20ms(약 50FPS)로 최소화하여 정확도 극대화
-        const isReactionTesting = (testType === AssessmentStep.BRAIN_REACTION && phase === 'playing');
+        const isReactionTesting = (testType === ('BRAIN_REACTION' as any) && phase === 'playing');
         const delay = isReactionTesting ? 20 : 150;
         
         setTimeout(() => {
@@ -487,7 +558,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
         clearInterval(interval);
         
         // 반응속도 테스트인 경우 → 손 인식 확인 단계로
-        if (testType === AssessmentStep.BRAIN_REACTION) {
+        if (testType === ('BRAIN_REACTION' as any)) {
           speak('포즈 인식 완료. 이제 손 인식을 확인합니다. 오른손을 들어보세요.');
           setHandCheckStep('right');
           setRightHandChecked(false);
@@ -557,7 +628,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
   ];
 
   useEffect(() => {
-    if (testType !== AssessmentStep.BRAIN_REACTION || phase !== 'playing') return;
+    if (testType !== ('BRAIN_REACTION' as any) || phase !== 'playing') return;
     if (reactionRound >= REACTION_TOTAL) {
       // Test complete
       const avgTime = reactionTimes.length > 0 
@@ -639,7 +710,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
   // Detect hand raise for reaction test
   useEffect(() => {
-    if (testType !== AssessmentStep.BRAIN_REACTION || phase !== 'playing') return;
+    if (testType !== ('BRAIN_REACTION' as any) || phase !== 'playing') return;
     
     const checkInterval = setInterval(() => {
       if (!waitingForResponseRef.current) return;
@@ -985,13 +1056,13 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
   }, [testType, phase]);
 
   const startMartRound = () => {
-    // 랜덤으로 기억할 아이템 선택
     const shuffled = [...MART_ITEMS].sort(() => Math.random() - 0.5);
     const toRemember = shuffled.slice(0, MART_ITEMS_TO_REMEMBER);
+    const shelfItems = [...shuffled].sort(() => Math.random() - 0.5); // 24개 전부 진열
     
-    // 진열대에 올릴 아이템 추가 (나머지 5개 추가해서 10개 진열)
-    const additional = shuffled.slice(MART_ITEMS_TO_REMEMBER, MART_SHELF_SIZE);
-    const shelfItems = [...toRemember, ...additional].sort(() => Math.random() - 0.5);
+    // v5.1: 8개 중 랜덤 4개만 가격 표시
+    const priceVisible = [...toRemember].sort(() => Math.random() - 0.5).slice(0, 4).map(i => i.id);
+    setMartPriceVisibleIds(priceVisible);
     
     setMartItemsToRemember(toRemember);
     setMartShelfItems(shelfItems);
@@ -999,42 +1070,43 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
     setMartPhase('showing');
     setMartMessage('');
     
-    // 순차적으로 아이템 보여주기
     showMartItems(toRemember);
   };
 
+  // v5.1: 두자리 사칙연산 객관식 문제 생성
+  const genSimpleMathQuiz = () => {
+    const isAdd = Math.random() > 0.5;
+    const a = Math.floor(Math.random() * 60) + 20; // 20~79
+    const b = Math.floor(Math.random() * 40) + 15; // 15~54
+    const question = isAdd ? `${a} + ${b}` : `${Math.max(a,b)} - ${Math.min(a,b)}`;
+    const answer = isAdd ? a + b : Math.max(a,b) - Math.min(a,b);
+    const wrongSet = new Set<number>();
+    while (wrongSet.size < 3) {
+      const off = (Math.floor(Math.random() * 8) + 1) * (Math.random() > 0.5 ? 1 : -1);
+      const w = answer + off;
+      if (w > 0 && w !== answer) wrongSet.add(w);
+    }
+    return { question, answer, options: [answer, ...wrongSet].sort(() => Math.random() - 0.5) };
+  };
+
   const showMartItems = (items: typeof MART_ITEMS) => {
-    setMartMessage(`🛒 20초 동안 물건 ${MART_ITEMS_TO_REMEMBER}개의 총 금액을 계산하고 기억하세요!`);
-    speak(`지금부터 20초 동안 살 물건 6개를 확인하세요. 물건의 이름과 총 가격을 기억해 주세요.`);
-    setMartShowingCountdown(20);
+    setMartMessage(`🛒 20초 동안 물건 ${MART_ITEMS_TO_REMEMBER}개를 기억하세요!`);
+    speak(`지금부터 20초 동안 살 물건 8개를 확인하세요. 물건의 이미지와 가격을 기억해 주세요.`);
+    setMartShowingCountdown(20); // v5.1: 20초
     const showInterval = setInterval(() => {
       setMartShowingCountdown(prev => {
         if (prev <= 1) {
           clearInterval(showInterval);
-          // 사칙연산 객관식 2문제 생성
-          const genMathQuiz = () => {
-            const isAdd = Math.random() > 0.5;
-            const a = Math.floor(Math.random() * 80) + 20;
-            const b = Math.floor(Math.random() * 80) + 10;
-            const question = isAdd ? `${a} + ${b}` : `${Math.max(a,b)} - ${Math.min(a,b)}`;
-            const answer = isAdd ? a + b : Math.max(a,b) - Math.min(a,b);
-            const wrongSet = new Set<number>();
-            while (wrongSet.size < 3) {
-              const off = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
-              const w = answer + off;
-              if (w > 0 && w !== answer) wrongSet.add(w);
-            }
-            return { question, answer, options: [answer, ...wrongSet].sort(() => Math.random() - 0.5) };
-          };
-          const quizzes = [genMathQuiz(), genMathQuiz()];
+          // v5.1: 두자리 사칙연산 객관식 2문제
+          const quizzes = [genSimpleMathQuiz(), genSimpleMathQuiz()];
           setDistractionQuizzes(quizzes);
           setDistractionIndex(0);
           setDistractionSelected(null);
           setDistractionCorrect(0);
-          setDistractionCountdown(10);
+          setDistractionCountdown(15);
           setMartPhase('distraction');
-          setMartMessage('🧠 10초 동안 2문제를 풀어보세요!');
-          speak('이제 10초 동안 수학 문제 2개를 풀어보세요.');
+          setMartMessage('🧠 15초 동안 2문제를 풀어보세요!');
+          speak('이제 15초 동안 수학 문제 2개를 풀어보세요.');
           return 0;
         }
         return prev - 1;
@@ -1042,16 +1114,16 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
     }, 1000);
   };
 
-  // distraction 카운트다운
+  // distraction 카운트다운 — v5.0: 15초
   useEffect(() => {
     if (testType !== AssessmentStep.BRAIN_MEMORY || phase !== 'playing' || martPhase !== 'distraction') return;
     const ci = setInterval(() => {
       setDistractionCountdown(prev => {
         if (prev <= 1) {
           clearInterval(ci);
-          speak('이제 아까 본 물건 6개를 찾아서 클릭해 주세요.');
+          speak(`이제 아까 본 물건 ${MART_ITEMS_TO_REMEMBER}개를 찾아서 클릭해 주세요.`);
           setMartPhase('shopping');
-          setMartMessage('👆 아까 기억한 물건 6개를 클릭해서 골라주세요');
+          setMartMessage(`👆 아까 기억한 물건 ${MART_ITEMS_TO_REMEMBER}개를 클릭해서 골라주세요`);
           return 0;
         }
         return prev - 1;
@@ -1060,6 +1132,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
     return () => clearInterval(ci);
   }, [testType, phase, martPhase]);
 
+  // v5.1: 방해 과제 객관식 답안 선택
   const handleDistractionAnswer = (selected: number) => {
     if (distractionSelected !== null) return;
     setDistractionSelected(selected);
@@ -1077,28 +1150,28 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
   useEffect(() => { cartItemsRef.current = cartItems; }, [cartItems]);
   useEffect(() => { martItemsRef.current = martItemsToRemember; }, [martItemsToRemember]);
 
-  // 쇼핑 완료 시 가격 퀴즈로 이동
-  useEffect(() => {
-    if (testType !== AssessmentStep.BRAIN_MEMORY || phase !== 'playing' || martPhase !== 'shopping') return;
-    if (cartItems.length < MART_ITEMS_TO_REMEMBER) return;
-    const cc = cartItems.filter(id => martItemsToRemember.some(i => i.id === id)).length;
-    // 가격 퀴즈 단계로 이동
-    const correctPrice = martItemsRef.current.reduce((sum, item) => sum + item.price, 0);
+  // v5.1: 쇼핑 완료 시 가격 퀴즈 — 가격이 보였던 4개의 합산 주관식
+  const moveToPriceQuiz = (cc: number) => {
+    // 기억 단계에서 가격이 보였던 4개 아이템의 합산
+    const priceQuizItems = martItemsRef.current.filter(item => martPriceVisibleIds.includes(item.id));
+    const correctPrice = priceQuizItems.reduce((sum, item) => sum + item.price, 0);
+    setMathPriceItems(priceQuizItems);
     setMathCorrectAnswer(correctPrice);
-    const wrongSet = new Set<number>();
-    while (wrongSet.size < 3) {
-      const off = (Math.floor(Math.random() * 3) + 1) * 1000 * (Math.random() > 0.5 ? 1 : -1);
-      const w = correctPrice + off;
-      if (w > 0 && w !== correctPrice) wrongSet.add(w);
-    }
-    setMathQuizOptions([correctPrice, ...wrongSet].sort(() => Math.random() - 0.5));
-    setMathSelectedAnswer(null);
+    setMathInputValue('');
+    setMathIsCorrect(null);
     setMathQuizPhase('quiz');
     setMathTimeLeft(30);
     setMartTotalCorrect(p => p + cc);
     setResultData({ memoryCorrect: cc, memorySpan: cc });
     setMartPhase('priceQuiz');
-    speak(`6개 중 ${cc}개를 골랐습니다. 이제 살 물건의 총 금액을 맞춰주세요!`);
+    speak(`${MART_ITEMS_TO_REMEMBER}개 중 ${cc}개를 골랐습니다. 이제 지정된 3개 물건의 총 금액을 입력해 주세요!`);
+  };
+
+  useEffect(() => {
+    if (testType !== AssessmentStep.BRAIN_MEMORY || phase !== 'playing' || martPhase !== 'shopping') return;
+    if (cartItems.length < MART_ITEMS_TO_REMEMBER) return;
+    const cc = cartItems.filter(id => martItemsToRemember.some(i => i.id === id)).length;
+    moveToPriceQuiz(cc);
   }, [testType, phase, martPhase, cartItems, martItemsToRemember]);
 
   // 쇼핑 제한시간 60초
@@ -1110,23 +1183,8 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
         if (prev <= 1) {
           clearInterval(ci);
           const cc = cartItemsRef.current.filter(id => martItemsRef.current.some(i => i.id === id)).length;
-          // 시간 초과 시 가격 퀴즈로 이동
-          const correctPrice = martItemsRef.current.reduce((sum, item) => sum + item.price, 0);
-          setMathCorrectAnswer(correctPrice);
-          const wrongSet = new Set<number>();
-          while (wrongSet.size < 3) {
-            const off = (Math.floor(Math.random() * 3) + 1) * 1000 * (Math.random() > 0.5 ? 1 : -1);
-            const w = correctPrice + off;
-            if (w > 0 && w !== correctPrice) wrongSet.add(w);
-          }
-          setMathQuizOptions([correctPrice, ...wrongSet].sort(() => Math.random() - 0.5));
-          setMathSelectedAnswer(null);
-          setMathQuizPhase('quiz');
-          setMathTimeLeft(30);
-          setMartTotalCorrect(p => p + cc);
-          setResultData({ memoryCorrect: cc, memorySpan: cc });
-          setMartPhase('priceQuiz');
-          speak(`시간 초과! ${cc}개를 골랐습니다. 총 금액을 맞춰주세요.`);
+          moveToPriceQuiz(cc);
+          speak(`시간 초과! ${cc}개를 골랐습니다.`);
           return 0;
         }
         return prev - 1;
@@ -1142,6 +1200,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
         if (prev <= 1) {
           clearInterval(t);
           setMathQuizPhase('answered');
+          setMathIsCorrect(false);
           setResultData(prev => ({ ...prev, mathCorrect: false }));
           speak('시간 초과입니다.');
           setTimeout(() => setPhase('result'), 2500);
@@ -1153,19 +1212,54 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
     return () => clearInterval(t);
   }, [mathQuizPhase]);
 
-  const handleMathAnswer = (answer: number) => {
-    if (mathQuizPhase !== 'quiz') return;
-    setMathSelectedAnswer(answer);
+  // v5.0: 가격 주관식 제출
+  const handleMathSubmit = () => {
+    if (mathQuizPhase !== 'quiz' || !mathInputValue.trim()) return;
     setMathQuizPhase('answered');
-    const ok = answer === mathCorrectAnswer;
-    setResultData(prev => ({ ...prev, mathCorrect: ok, distractionCorrect }));
-    speak(ok ? '정답입니다!' : '아쉽습니다.');
+    const userPrice = parseInt(mathInputValue);
+    // 오차 ±500원 이내면 정답 처리
+    const ok = Math.abs(userPrice - mathCorrectAnswer) <= 500;
+    setMathIsCorrect(ok);
+
+    // v5.0 배점 구조: 기억 50점 + 방해과제 15점 + 가격계산 15점 + 속도 10점 + 감점
+    const shoppingTime = 60 - martTimeLeft;
+    const mathTime = 30 - mathTimeLeft;
+    
+    const memoryCorrect = resultData.memoryCorrect || 0;
+    // 기억력 50점 (8개 만점)
+    const memoryScore = (memoryCorrect / MART_ITEMS_TO_REMEMBER) * 50;
+    // 방해과제 15점 (2문제)
+    const distractionScore = (distractionCorrect / 2) * 15;
+    // 가격계산 15점
+    const priceScore = ok ? 15 : 0;
+    // 속도 보너스/패널티 (최대 ±10점)
+    let speedAdjustment = 0;
+    if (shoppingTime <= 20) speedAdjustment += 10;
+    else if (shoppingTime <= 35) speedAdjustment += 5;
+    else if (shoppingTime >= 50) speedAdjustment -= 10;
+    if (mathTime <= 8) speedAdjustment += 5;
+    else if (mathTime >= 25) speedAdjustment -= 5;
+    // 오답 감점: 잘못 고른 물건 수 * -3점
+    const wrongPicks = cartItemsRef.current.filter(id => !martItemsRef.current.some(i => i.id === id)).length;
+    const wrongPenalty = wrongPicks * -3;
+    
+    const finalScore = Math.max(0, Math.min(100, Math.round(memoryScore + distractionScore + priceScore + speedAdjustment + wrongPenalty)));
+
+    setResultData(prev => ({ 
+      ...prev, 
+      mathCorrect: ok, 
+      distractionCorrect,
+      finalScore,
+      shoppingTime,
+      mathTime
+    }));
+    
+    speak(ok ? '정답입니다!' : `아쉽습니다. 정답은 ${mathCorrectAnswer.toLocaleString()}원이었습니다.`);
     setTimeout(() => setPhase('result'), 2500);
   };
 
   // Handle start
   const handleStart = () => {
-    stopSpeaking(); // 테스트 진입 시 진행중이던 안내 나레이션 즉시 중단
     if (testType === AssessmentStep.BRAIN_MEMORY) {
       // 카메라 없이 바로 시작
       setPhase('countdown');
@@ -1181,7 +1275,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
     const dataUrl = captureFrame();
     // 수동 오답 수정이 있으면 반영
     const finalData = { ...resultData };
-    if (testType === AssessmentStep.BRAIN_REACTION && manualReactionErrors !== '') {
+    if (testType === ('BRAIN_REACTION' as any) && manualReactionErrors !== '') {
       finalData.reactionErrors = parseInt(manualReactionErrors) || 0;
     }
     onComplete(dataUrl, finalData);
@@ -1189,7 +1283,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
   const getTestTitle = () => {
     switch (testType) {
-      case AssessmentStep.BRAIN_REACTION: return { icon: '🧠', title: '인지 능력 테스트', subtitle: '색상 규칙에 따라 충동을 통제하세요' };
+      case ('BRAIN_REACTION' as any): return { icon: '🧠', title: '인지 능력 테스트', subtitle: '색상 규칙에 따라 충동을 통제하세요' };
       case AssessmentStep.BRAIN_MEMORY: return { icon: '🛒', title: '마트 장보기', subtitle: '물건을 기억하고 클릭으로 골라주세요' };
       default: return { icon: '🧠', title: '뇌 테스트', subtitle: '' };
     }
@@ -1201,7 +1295,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
   const getStepLabel = () => {
     switch (testType) {
-      case AssessmentStep.BRAIN_REACTION: return { step: '뇌 기능 1단계', title: '🧠 인지 능력 테스트' };
+      case ('BRAIN_REACTION' as any): return { step: '뇌 기능 1단계', title: '🧠 인지 능력 테스트' };
 
       case AssessmentStep.BRAIN_MEMORY: return { step: '뇌 기능 2단계', title: '🛒 마트 장보기 기억력' };
       default: return { step: '', title: '' };
@@ -1211,32 +1305,57 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
   const stepLabel = getStepLabel();
 
   return (
-    <div className="flex-1 flex flex-col p-6 overflow-auto">
+    <div className={`flex-1 flex flex-col p-4 sm:p-6 ${testType === AssessmentStep.BRAIN_MEMORY ? 'overflow-hidden' : 'overflow-hidden'}`}>
       {/* Header - 기존 테스트와 동일한 스타일 */}
-      <div className="mb-4 flex justify-between items-end">
+      <div className="mb-3 flex justify-between items-center shrink-0">
         <div>
           <span className="text-indigo-600 font-bold text-xs uppercase tracking-widest">{stepLabel.step}</span>
-          <h3 className="text-2xl font-bold text-slate-800">{stepLabel.title}</h3>
+          <h3 className="text-xl sm:text-2xl font-bold text-slate-800">{stepLabel.title}</h3>
         </div>
-        <button
-          onClick={() => setIsPortraitMode(!isPortraitMode)}
-          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-colors border border-slate-700"
-        >
-          <i className={`fas fa-${isPortraitMode ? 'mobile-alt' : 'desktop'}`}></i>
-          {isPortraitMode ? '세로 모드' : '가로 모드'}
-        </button>
+        <div className="flex items-center gap-3">
+          {userInfo && (
+            <div className="bg-amber-500/20 border border-amber-500/40 text-amber-700 font-bold text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <span>👤</span>
+              <span>{userInfo.name}</span>
+              <span className="text-amber-400">|</span>
+              <span>{userInfo.gender === 'male' ? '남' : '여'}</span>
+              <span className="text-amber-400">|</span>
+              <span>{userInfo.age}세</span>
+            </div>
+          )}
+          <button
+            onClick={() => setIsPortraitMode(!isPortraitMode)}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-colors border border-slate-700"
+          >
+            <i className={`fas fa-${isPortraitMode ? 'mobile-alt' : 'desktop'}`}></i>
+            {isPortraitMode ? '세로 모드' : '가로 모드'}
+          </button>
+        </div>
       </div>
 
       {/* Camera + Game Area */}
-      <div className="flex-1 min-h-0 w-full flex justify-center items-center">
-        <div className={`relative w-full rounded-[2.5rem] overflow-hidden bg-black shadow-2xl transition-all duration-500
-          ${isPortraitMode ? 'max-w-[calc((100vh-280px)*9/16)] aspect-[9/16]' : 'max-w-5xl aspect-video mx-auto'}
+      <div className={`flex-1 w-full flex justify-center items-center ${testType === AssessmentStep.BRAIN_MEMORY ? 'overflow-hidden' : 'overflow-hidden min-h-0'}`}>
+        <div className={`relative w-full overflow-hidden bg-black shadow-2xl transition-all duration-500
+          ${testType === AssessmentStep.BRAIN_MEMORY
+            ? 'h-[calc(100vh-120px)] rounded-2xl'
+            : isPortraitMode ? 'rounded-[2rem] sm:rounded-[2.5rem] max-w-[calc((100vh-280px)*9/16)] aspect-[9/16]' : 'rounded-[2rem] sm:rounded-[2.5rem] max-w-5xl aspect-video mx-auto'}
         `}>
         {/* Camera feed - 반응속도만 표시 */}
         {testType !== AssessmentStep.BRAIN_MEMORY && (
           <>
             <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full scale-x-[-1]" />
+            
+            {/* Camera Switch Toggle Button */}
+            {cameraReady && phase !== 'playing' && phase !== 'countdown' && (
+              <button
+                onClick={toggleCamera}
+                className="absolute top-4 right-4 w-12 h-12 bg-black/40 backdrop-blur-md rounded-full text-white flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.3)] border border-cyan-400/30 z-[60] hover:bg-black/60 hover:scale-105 active:scale-95 transition-all pointer-events-auto"
+                title="카메라 방향 전환"
+              >
+                <i className="fas fa-sync-alt text-xl"></i>
+              </button>
+            )}
           </>
         )}
         {/* 마트 테스트 배경 */}
@@ -1249,33 +1368,33 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
           
           {/* INTRO PHASE */}
           {phase === 'intro' && (
-            <div className="text-center space-y-4 max-w-sm bg-black/60 backdrop-blur-sm rounded-3xl p-8 mx-4">
-              <h2 className="text-2xl font-black text-white">{info.title}</h2>
-              <p className="text-sm text-white/80 font-medium">{info.subtitle}</p>
+            <div className="text-center space-y-6 max-w-lg bg-black/60 backdrop-blur-sm rounded-3xl p-10 mx-4">
+              <h2 className="text-3xl sm:text-4xl font-black text-white">{info.title}</h2>
+              <p className="text-base sm:text-lg text-white/80 font-medium">{info.subtitle}</p>
               
-              <div className="text-left space-y-2 text-white/70 text-xs">
-                {testType === AssessmentStep.BRAIN_REACTION && (
+              <div className="text-left space-y-3 text-white/70 text-sm sm:text-base">
+                {testType === ('BRAIN_REACTION' as any) && (
                   <>
                     <p>🟢 <strong className="text-emerald-400">초록불</strong> → 오른손을 빠르게 들어올리세요</p>
                     <p>🔵 <strong className="text-blue-400">파란불</strong> → 왼손을 빠르게 들어올리세요</p>
                     <p>⚪ <strong className="text-white">흰색불</strong> → 양손을 모두 들어올리세요!</p>
                     <p>🔴 <strong className="text-rose-400">빨간불</strong> → 움직이지 마세요!</p>
-                    <p className="mt-3 text-amber-300 font-bold bg-amber-500/20 px-2 py-1 rounded">⚠️ 주의: 나중에는 화살표 방향이 무작위로 나옵니다. 방향에 속지 말고 색상에만 반응하세요!</p>
+                    <p className="mt-3 text-amber-300 font-bold bg-amber-500/20 px-3 py-2 rounded-lg">⚠️ 주의: 나중에는 화살표 방향이 무작위로 나옵니다. 방향에 속지 말고 색상에만 반응하세요!</p>
                     <p className="mt-1">📊 총 10회 진행</p>
                   </>
                 )}
 
                 {testType === AssessmentStep.BRAIN_MEMORY && (
                   <>
-                    <p>🛒 마트에서 살 물건 <strong className="text-amber-400">6개</strong>를 기억하세요</p>
-                    <p>💰 6개 물건의 <strong className="text-rose-400">값을 계산</strong>해주세요</p>
+                    <p className="text-base sm:text-lg">🛒 20초 동안 물건 <strong className="text-amber-400">8개</strong>의 이미지를 기억하세요</p>
+                    <p className="text-base sm:text-lg">💰 가격이 표시된 물건의 <strong className="text-rose-400">가격 합계</strong>를 기억하세요</p>
                   </>
                 )}
               </div>
 
               <button
                 onClick={handleStart}
-                className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-lg font-black rounded-2xl shadow-lg hover:scale-[1.02] transition-all"
+                className="w-full py-5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xl sm:text-2xl font-black rounded-2xl shadow-lg hover:scale-[1.02] transition-all"
               >
                 시작하기
               </button>
@@ -1446,7 +1565,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
           )}
 
           {/* PLAYING - REACTION (점진적 난이도 10회) */}
-          {phase === 'playing' && testType === AssessmentStep.BRAIN_REACTION && (
+          {phase === 'playing' && testType === ('BRAIN_REACTION' as any) && (
             <>
               {/* 오답 시 화면 번첩임 효과 */}
               {reactionFlash === 'wrong' && (
@@ -1501,14 +1620,12 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
           {/* PLAYING - MART SHOPPING GAME (손 커서 기반) */}
           {phase === 'playing' && testType === AssessmentStep.BRAIN_MEMORY && (
-            <div className={`absolute inset-0 flex items-center justify-center z-20 overflow-hidden ${isPortraitMode ? 'bg-slate-950/80 p-2 md:p-8' : ''}`}>
-              <div className={`relative w-full h-full flex flex-col transition-all duration-500 overflow-hidden mx-auto
-                ${isPortraitMode ? 'w-[95%] max-w-3xl max-h-[85vh] aspect-[4/5] rounded-[3rem] bg-slate-900 border border-slate-700/50 shadow-[0_0_50px_rgba(0,0,0,0.8)]' : ''}
-              `}>
+            <div className="absolute inset-0 flex flex-col z-20 overflow-auto">
+              <div className="relative w-full h-full flex flex-col overflow-visible">
               {/* 상단: 메시지 + 타이머 (showing 단계에서는 아이템 영역에 통합 표시) */}
-              <div className={`absolute top-4 inset-x-0 text-center z-50 pointer-events-none ${martPhase === 'showing' ? 'hidden' : ''}`}>
+              <div className={`absolute top-3 inset-x-0 text-center z-50 pointer-events-none ${martPhase === 'showing' ? 'hidden' : ''}`}>
                 {martPhase === 'shopping' && (
-                  <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 mb-2 font-black text-lg shadow-lg ${
+                  <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 mb-2 font-black text-base sm:text-lg shadow-lg ${
                     martTimeLeft <= 10 
                       ? 'bg-red-500/90 text-white animate-pulse' 
                       : martTimeLeft <= 30 
@@ -1528,48 +1645,54 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                 )}
               </div>
 
-              {/* 기억하기 단계 */}
+              {/* v5.0: 기억하기 단계 — 이미지 전용 + 가격 표시 */}
               {martPhase === 'showing' && (
-                <div className={`flex-1 flex flex-col items-center ${isPortraitMode ? 'justify-start pt-28 pb-8' : 'justify-center'} p-3`}>
-                  <div className={`w-full ${isPortraitMode ? 'max-w-xl px-4' : 'max-w-4xl'}`}>
+                <div className={`flex-1 flex flex-col items-center ${isPortraitMode ? 'justify-start pt-4' : 'justify-center'} p-3 sm:p-4 overflow-auto`}>
+                  <div className={`w-full ${isPortraitMode ? 'max-w-xl px-3' : 'max-w-4xl px-2 sm:px-4'}`}>
                     {/* 안내 + 타이머 */}
-                    <div className={`flex items-center justify-between bg-black/50 backdrop-blur-sm border border-white/10 ${isPortraitMode ? 'mb-8 rounded-2xl px-6 py-5 shadow-xl' : 'mb-4 rounded-3xl px-8 py-6'}`}>
-                      <span className={`text-white font-bold ${isPortraitMode ? 'text-lg' : 'text-2xl'}`}>🛒 물건 6개와 총 금액을 기억하세요</span>
-                      <span className={`font-black ml-3 ${isPortraitMode ? 'text-3xl drop-shadow-md' : 'text-4xl'} ${martShowingCountdown <= 5 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`}>
+                    <div className={`flex items-center justify-between bg-black/50 backdrop-blur-sm border border-white/10 mb-4 sm:mb-6 rounded-2xl sm:rounded-3xl px-4 sm:px-8 py-3 sm:py-5`}>
+                      <span className="text-white font-bold text-sm sm:text-xl">🛒 물건 8개와 표시된 가격을 기억하세요</span>
+                      <span className={`font-black ml-3 text-xl sm:text-3xl ${martShowingCountdown <= 5 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`}>
                         ⏱️ {martShowingCountdown}초
                       </span>
                     </div>
-                    {/* 6개 아이템 그리드 */}
-                    <div className={`grid ${isPortraitMode ? 'grid-cols-2 gap-6' : 'grid-cols-3 gap-6'}`}>
-                      {martItemsToRemember.map((item, i) => (
-                        <div key={item.id}
-                          className={`flex flex-col items-center justify-center rounded-3xl bg-amber-500/20 border border-amber-500/50 ${isPortraitMode ? 'px-4 py-8 shadow-inner' : 'px-6 py-8'}`}>
-                          <span className={isPortraitMode ? 'text-[90px] leading-none drop-shadow-xl mb-3' : 'text-7xl'}>{item.emoji}</span>
-                          <span className={`text-white font-bold mt-3 ${isPortraitMode ? 'text-2xl' : 'text-2xl'}`}>{item.name}</span>
-                          <span className={`text-amber-300 font-black mt-2 ${isPortraitMode ? 'text-xl' : 'text-xl'}`}>{item.price/1000}천원</span>
-                        </div>
-                      ))}
+                    {/* v5.1: 8개 아이템 그리드 — 이미지 전용, 랜덤 4개만 가격 표시 */}
+                    <div className={`grid ${isPortraitMode ? 'grid-cols-2 gap-3' : 'grid-cols-4 gap-3 sm:gap-4'}`}>
+                      {martItemsToRemember.map((item, i) => {
+                        const showPrice = martPriceVisibleIds.includes(item.id);
+                        return (
+                          <div key={item.id}
+                            className={`flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl border ${showPrice ? 'bg-amber-500/20 border-amber-500/50' : 'bg-slate-700/30 border-white/20'} ${isPortraitMode ? 'px-3 py-4' : 'px-3 sm:px-5 py-3 sm:py-5'}`}>
+                            <span className={`${isPortraitMode ? 'text-5xl' : 'text-4xl sm:text-6xl'}`}>{item.emoji}</span>
+                            {showPrice ? (
+                              <span className={`text-amber-300 font-black mt-2 ${isPortraitMode ? 'text-base' : 'text-sm sm:text-lg'}`}>{item.price.toLocaleString()}원</span>
+                            ) : (
+                              <span className={`text-white/30 font-bold mt-2 ${isPortraitMode ? 'text-sm' : 'text-xs sm:text-sm'}`}>???</span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* 문제 풀기 10초 (Distraction) - 객관식 2문제 */}
+              {/* v5.1: 방해 과제 15초 — 두자리 객관식 4지선다 2문제 */}
               {martPhase === 'distraction' && distractionQuizzes.length > 0 && (
                 <div className="flex-1 flex flex-col items-center justify-center p-4">
-                  <div className={`bg-indigo-900/80 backdrop-blur-md rounded-3xl border border-indigo-400/50 text-center shadow-[0_0_50px_rgba(79,70,229,0.5)] w-full ${isPortraitMode ? 'p-6 max-w-sm' : 'p-12 max-w-2xl'}`}>
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className={`font-bold text-indigo-200 ${isPortraitMode ? 'text-lg' : 'text-3xl'}`}>🧠 사칙연산 ({distractionIndex + 1}/2)</h3>
-                      <div className={`font-black px-4 py-2 rounded-full ${isPortraitMode ? 'text-lg' : 'text-3xl'} ${distractionCountdown <= 3 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/10 text-white'}`}>⏱️ {distractionCountdown}초</div>
+                  <div className="bg-indigo-900/80 backdrop-blur-md rounded-3xl border border-indigo-400/50 text-center shadow-[0_0_50px_rgba(79,70,229,0.5)] w-full p-6 sm:p-12 max-w-sm sm:max-w-2xl">
+                    <div className="flex justify-between items-center mb-4 sm:mb-6">
+                      <h3 className="font-bold text-indigo-200 text-lg sm:text-3xl">🧠 사칙연산 ({distractionIndex + 1}/2)</h3>
+                      <div className={`font-black px-3 sm:px-4 py-2 rounded-full text-lg sm:text-3xl ${distractionCountdown <= 3 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/10 text-white'}`}>⏱️ {distractionCountdown}초</div>
                     </div>
-                    <div className={`font-black text-white tracking-wider bg-black/30 py-8 rounded-2xl border border-white/10 mb-8 ${isPortraitMode ? 'text-5xl' : 'text-7xl'}`}>
+                    <div className="font-black text-white tracking-wider bg-black/30 py-6 sm:py-8 rounded-2xl border border-white/10 mb-6 sm:mb-8 text-4xl sm:text-7xl">
                       {distractionQuizzes[distractionIndex].question} = ?
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
                       {distractionQuizzes[distractionIndex].options.map((opt, i) => (
                         <button key={i} onClick={() => handleDistractionAnswer(opt)}
                           disabled={distractionSelected !== null}
-                          className={`rounded-2xl font-black transition-all ${isPortraitMode ? 'py-4 text-2xl' : 'py-8 text-5xl'} ${
+                          className={`rounded-2xl font-black transition-all py-4 sm:py-8 text-2xl sm:text-5xl ${
                             distractionSelected !== null
                               ? opt === distractionQuizzes[distractionIndex].answer ? 'bg-emerald-500 text-white scale-105 shadow-xl shadow-emerald-500/50' : opt === distractionSelected ? 'bg-red-500 text-white' : 'bg-white/10 text-white/40'
                               : 'bg-white/15 text-white hover:bg-indigo-500/50 hover:scale-105 active:scale-95'
@@ -1580,12 +1703,12 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                 </div>
               )}
 
-              {/* 쇼핑 단계: 터치/클릭으로 물건 담기 (간결화) */}
+              {/* v5.1: 쇼핑 단계 — 24개 중 8개 선택 */}
               {martPhase === 'shopping' && (
-                <div className={`flex-1 flex flex-col relative pt-16`}>
+                <div className={`flex-1 flex flex-col relative ${isPortraitMode ? '' : 'pt-14'}`}>
                   {/* Grid Area */}
-                  <div className={`flex-1 flex justify-center overflow-y-auto ${isPortraitMode ? 'flex-col items-center justify-center px-6 pt-10 pb-6' : 'items-center px-8 pb-2 pt-2'}`}>
-                    <div className={`grid w-full ${isPortraitMode ? 'grid-cols-3 gap-5 max-w-xl' : 'grid-cols-6 gap-3 max-w-5xl'}`}>
+                  <div className={`flex-1 flex justify-center ${isPortraitMode ? 'items-center' : 'items-start overflow-y-auto px-4 sm:px-6 pb-2 pt-2'}`}>
+                    <div className={`grid ${isPortraitMode ? 'grid-cols-4 gap-4 w-[90vw]' : 'w-full grid-cols-4 sm:grid-cols-6 gap-3 sm:gap-4 max-w-4xl'}`}>
                       {martShelfItems.map((item) => {
                         const inCart = cartItems.includes(item.id);
                         return (
@@ -1594,22 +1717,19 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                             onClick={() => {
                               if (inCart) {
                                 setCartItems(prev => prev.filter(id => id !== item.id));
-                                speak(`${item.name} 취소`);
                               } else if (cartItems.length < MART_ITEMS_TO_REMEMBER) {
                                 setCartItems(prev => [...prev, item.id]);
-                                speak(`${item.name}`);
                                 setLastAddedItem(item.id);
                                 setTimeout(() => setLastAddedItem(null), 400);
                               }
                             }}
-                            className={`relative flex flex-col items-center justify-center rounded-3xl border-2 transition-all duration-200 select-none active:scale-95 ${isPortraitMode ? 'py-6 px-3' : 'py-3 px-2'} ${
+                            className={`relative flex flex-col items-center justify-center rounded-2xl border-2 transition-all duration-200 select-none active:scale-95 ${isPortraitMode ? 'aspect-square' : 'py-4 sm:py-5 px-2'} ${
                               inCart ? 'bg-emerald-500/30 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
                               : cartItems.length >= MART_ITEMS_TO_REMEMBER ? 'border-white/10 bg-white/5 opacity-30 cursor-not-allowed'
-                              : 'border-white/20 bg-slate-800/80 hover:bg-indigo-500/30 hover:border-indigo-400 active:bg-indigo-500/50 cursor-pointer shadow-xl'
+                              : 'border-white/20 bg-slate-800/80 hover:bg-indigo-500/30 hover:border-indigo-400 active:bg-indigo-500/50 cursor-pointer shadow-lg'
                             }`}>
-                            <span className={`transition-transform drop-shadow-xl ${isPortraitMode ? 'text-[70px] leading-none mb-3' : 'text-5xl'} ${lastAddedItem === item.id ? 'scale-125' : ''}`}>{item.emoji}</span>
-                            <span className={`text-white font-bold mt-2 ${isPortraitMode ? 'text-xl text-white/90' : 'text-sm'}`}>{item.name}</span>
-                            {inCart && <div className={`absolute bg-emerald-500 rounded-full flex items-center justify-center text-white font-black shadow-xl ${isPortraitMode ? '-top-3 -right-3 w-8 h-8 text-sm' : '-top-2 -right-2 w-8 h-8 text-sm border-2 border-slate-900'}`}>✓</div>}
+                            <span className={`transition-transform drop-shadow-xl ${isPortraitMode ? 'text-[4rem]' : 'text-4xl sm:text-5xl'} ${lastAddedItem === item.id ? 'scale-125' : ''}`}>{item.emoji}</span>
+                            {inCart && <div className={`absolute bg-emerald-500 rounded-full flex items-center justify-center text-white font-black shadow-xl border-2 border-slate-900 ${isPortraitMode ? '-top-2 -right-2 w-9 h-9 text-base' : '-top-2 -right-2 w-7 h-7 sm:w-8 sm:h-8 text-xs sm:text-sm'}`}>✓</div>}
                           </button>
                         );
                       })}
@@ -1617,31 +1737,28 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                   </div>
 
                   {/* Cart Area */}
-                  <div className={`${isPortraitMode ? 'relative z-10 w-full mx-auto pb-8 px-6 max-w-xl' : 'w-full px-8 pb-4 shrink-0 flex justify-center'}`}>
-                    <div className={`bg-gradient-to-br from-amber-600/40 to-orange-600/40 border-amber-400/50 backdrop-blur-xl rounded-3xl border-2 transition-all ${isPortraitMode ? 'p-6 shadow-[0_0_40px_rgba(245,158,11,0.4)]' : 'p-3 max-w-5xl w-full flex flex-col'}`}>
-                      <div className="flex items-center gap-4">
-                        <span className={isPortraitMode ? 'text-3xl' : 'text-2xl'}>🛒</span>
-                        <span className={`text-white font-black flex-1 ${isPortraitMode ? 'text-xl' : 'text-lg'}`}>장바구니</span>
-                        <span className={`text-amber-300 font-black ${isPortraitMode ? 'text-2xl' : 'text-xl'}`}>{cartItems.length}/{MART_ITEMS_TO_REMEMBER}</span>
+                  <div className="w-full px-4 sm:px-8 pb-3 sm:pb-4 shrink-0 flex justify-center">
+                    <div className="bg-gradient-to-br from-amber-600/40 to-orange-600/40 border-amber-400/50 backdrop-blur-xl rounded-2xl sm:rounded-3xl border-2 p-3 max-w-5xl w-full flex flex-col transition-all">
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <span className="text-xl sm:text-2xl">🛒</span>
+                        <span className="text-white font-black flex-1 text-base sm:text-lg">장바구니</span>
+                        <span className="text-amber-300 font-black text-lg sm:text-xl">{cartItems.length}/{MART_ITEMS_TO_REMEMBER}</span>
                       </div>
-                      
-                      {!isPortraitMode && <div className="w-full h-px bg-white/20 my-2"></div>}
-                      <div className={`flex flex-wrap content-start mt-4 gap-3 ${isPortraitMode ? 'items-start min-h-[48px]' : 'items-center justify-center min-h-[60px] max-h-[80px] overflow-y-auto overflow-x-hidden'}`}>
+                      <div className="w-full h-px bg-white/20 my-2"></div>
+                      <div className="flex flex-wrap content-start gap-2 sm:gap-3 items-center justify-center min-h-[50px] sm:min-h-[60px] max-h-[80px] overflow-y-auto overflow-x-hidden">
                         {cartItems.length === 0 ? (
-                          <div className={`w-full flex flex-col items-center justify-center opacity-40 ${isPortraitMode ? 'py-3' : 'py-1 gap-2'}`}>
-                            <span className={isPortraitMode ? 'hidden' : 'text-2xl'}>👆</span>
-                            <span className={`text-white font-bold text-center ${isPortraitMode ? 'text-sm' : 'text-sm'}`}>물건을 터치해서 담아주세요</span>
+                          <div className="w-full flex flex-col items-center justify-center opacity-40 py-1 gap-1">
+                            <span className="text-xl sm:text-2xl">👆</span>
+                            <span className="text-white font-bold text-center text-xs sm:text-sm">기억한 물건을 터치해서 담아주세요</span>
                           </div>
                         ) : cartItems.map(id => { 
                           const it = MART_ITEMS.find(i => i.id === id); 
                           return (
                             <button key={id} 
-                              onClick={() => { setCartItems(prev => prev.filter(x => x !== id)); speak(`${it?.name} 취소`); }}
-                              className={`bg-slate-800/80 border border-white/20 rounded-2xl hover:bg-red-500/50 hover:border-red-400 active:scale-95 transition-all cursor-pointer shadow-lg flex items-center justify-center ${isPortraitMode ? 'px-4 py-3 gap-2' : 'px-3 py-1.5 flex-row gap-2'}`}
+                              onClick={() => setCartItems(prev => prev.filter(x => x !== id))}
+                              className="bg-slate-800/80 border border-white/20 rounded-xl sm:rounded-2xl hover:bg-red-500/50 hover:border-red-400 active:scale-95 transition-all cursor-pointer shadow-lg flex items-center justify-center px-2 sm:px-3 py-1 sm:py-1.5"
                             >
-                              <span className={isPortraitMode ? 'text-3xl drop-shadow-md' : 'text-2xl drop-shadow-md'}>{it?.emoji}</span>
-                              <span className={isPortraitMode ? 'text-white font-bold text-sm' : 'hidden'}>{it?.name}</span>
-                              {!isPortraitMode && <span className="text-white font-bold text-xs">{it?.name}</span>}
+                              <span className="text-xl sm:text-2xl drop-shadow-md">{it?.emoji}</span>
                             </button>
                           ); 
                         })}
@@ -1651,32 +1768,53 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                 </div>
               )}
 
-              {/* 가격 계산 퀴즈 */}
+              {/* v5.1: 가격 주관식 퀴즈 — 가격 보였던 4개 물건 합계 입력 */}
               {martPhase === 'priceQuiz' && mathQuizPhase !== 'none' && (
                 <div className="flex-1 flex items-center justify-center px-4">
-                  <div className="bg-black/80 backdrop-blur-sm rounded-3xl p-6 max-w-xs w-full text-center">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-3xl">🧮</span>
-                      <div className={`text-lg font-black px-3 py-1 rounded-full ${mathTimeLeft <= 10 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/10 text-white'}`}>⏱️ {mathTimeLeft}초</div>
+                  <div className="bg-black/80 backdrop-blur-sm rounded-3xl p-8 sm:p-10 max-w-lg w-full text-center">
+                    <div className="flex justify-between items-center mb-6">
+                      <span className="text-4xl sm:text-5xl">🧮</span>
+                      <div className={`text-xl sm:text-2xl font-black px-4 py-2 rounded-full ${mathTimeLeft <= 10 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/10 text-white'}`}>⏱️ {mathTimeLeft}초</div>
                     </div>
-                    <h3 className="text-white font-black text-lg mb-2">살 물건의 총 금액은?</h3>
-                    <div className="flex flex-wrap gap-1 justify-center mb-4">
-                      {martItemsToRemember.map(item => <span key={item.id} className="bg-amber-500/20 rounded-xl px-3 py-2 text-2xl shadow-inner">{item.emoji}</span>)}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      {mathQuizOptions.map((opt, i) => (
-                        <button key={i} onClick={() => handleMathAnswer(opt)} disabled={mathQuizPhase === 'answered'}
-                          className={`py-4 rounded-2xl text-xl font-black transition-all ${
-                            mathQuizPhase === 'answered'
-                              ? opt === mathCorrectAnswer ? 'bg-emerald-500 text-white scale-105' : opt === mathSelectedAnswer ? 'bg-red-500 text-white' : 'bg-white/10 text-white/40'
-                              : 'bg-white/15 text-white hover:bg-indigo-500/50 hover:scale-105'
-                          }`}>{(opt/1000).toLocaleString()}천원</button>
+                    <h3 className="text-white font-black text-xl sm:text-2xl mb-5">가격이 보였던 물건의 총 금액은?</h3>
+                    <div className="flex gap-4 justify-center mb-6">
+                      {mathPriceItems.map(item => (
+                        <div key={item.id} className="bg-amber-500/20 rounded-2xl px-4 py-3 flex flex-col items-center border border-amber-500/30">
+                          <span className="text-5xl sm:text-6xl">{item.emoji}</span>
+                          <span className="text-amber-300/50 font-black text-sm mt-2">???원</span>
+                        </div>
                       ))}
                     </div>
+                    {mathQuizPhase === 'quiz' && (
+                      <div className="flex gap-3 items-center justify-center">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={mathInputValue}
+                          onChange={e => setMathInputValue(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleMathSubmit()}
+                          placeholder="금액 입력 (예: 12300)"
+                          className="w-48 text-center text-xl font-black bg-white/10 border-2 border-amber-400/50 rounded-2xl py-4 text-white placeholder-white/30 focus:outline-none focus:border-amber-400 focus:bg-white/15 transition-all"
+                          autoFocus
+                        />
+                        <button
+                          onClick={handleMathSubmit}
+                          disabled={!mathInputValue.trim()}
+                          className={`px-6 py-4 rounded-2xl font-black text-lg transition-all ${
+                            !mathInputValue.trim() ? 'bg-white/10 text-white/40' : 'bg-amber-500 text-white hover:bg-amber-400 active:scale-95'
+                          }`}
+                        >확인</button>
+                      </div>
+                    )}
                     {mathQuizPhase === 'answered' && (
-                      <p className={`mt-3 text-lg font-black ${mathSelectedAnswer === mathCorrectAnswer ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {mathSelectedAnswer === mathCorrectAnswer ? '🎉 정답!' : `❌ 정답: ${(mathCorrectAnswer/1000).toLocaleString()}천원`}
-                      </p>
+                      <div className="mt-3">
+                        <p className={`text-xl font-black ${mathIsCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {mathIsCorrect ? '🎉 정답!' : `❌ 정답: ${mathCorrectAnswer.toLocaleString()}원`}
+                        </p>
+                        {!mathIsCorrect && mathInputValue && (
+                          <p className="text-white/50 text-sm mt-1">입력값: {parseInt(mathInputValue).toLocaleString()}원 (오차: {Math.abs(parseInt(mathInputValue) - mathCorrectAnswer).toLocaleString()}원)</p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1688,69 +1826,53 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
           {/* RESULT PHASE */}
           {phase === 'result' && (
-            <div className={`text-center w-full bg-black/60 backdrop-blur-sm rounded-[2rem] shadow-2xl mx-4
-              ${isPortraitMode ? 'max-w-lg p-6 space-y-3' : 'max-w-3xl p-5'}`}>
-              <div className={isPortraitMode ? 'text-4xl mb-1' : 'text-3xl'}>{testType === AssessmentStep.BRAIN_REACTION ? '🧠' : '🧠'}</div>
-              <h2 className={`font-black text-white ${isPortraitMode ? 'text-3xl' : 'text-2xl'}`}>테스트 완료!</h2>
+            <div className="text-center w-full bg-black/60 backdrop-blur-sm rounded-[2rem] shadow-2xl mx-4 max-w-3xl p-5 sm:p-8 space-y-3 max-h-[90vh] overflow-y-auto">
+              <div className="text-3xl sm:text-4xl">🧠</div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white">테스트 완료!</h2>
               
-              {/* 뇌기능 1단계 - 반응속도 결과 */}
-              {testType === AssessmentStep.BRAIN_REACTION && (
-                <div className={`mt-3 ${isPortraitMode ? 'space-y-3' : 'grid grid-cols-3 gap-3'}`}>
+              {testType === ('BRAIN_REACTION' as any) && (
+                <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div className="bg-white/10 rounded-2xl p-3">
                     <span className="text-white/60 text-xs font-bold">평균 반응시간</span>
-                    <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-5xl' : 'text-3xl'}`}>{resultData.reactionTimeMs}ms</div>
+                    <div className="text-3xl sm:text-4xl font-black text-white mt-1">{resultData.reactionTimeMs}ms</div>
                   </div>
                   <div className="bg-white/10 rounded-2xl p-3">
                     <span className="text-white/60 text-xs font-bold">AI 측정 오답</span>
-                    <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-2xl' : 'text-xl'}`}>{resultData.reactionErrors}회</div>
-                  </div>
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3">
-                    <label className="text-amber-300 text-xs font-bold block mb-1">
-                      <i className="fas fa-edit mr-1"></i> 수동 오답 수정
-                    </label>
-                    <input 
-                      type="number" 
-                      value={manualReactionErrors}
-                      onChange={(e) => setManualReactionErrors(e.target.value)}
-                      placeholder={`AI: ${resultData.reactionErrors}회`}
-                      className="w-full text-center text-xl font-black text-white py-1.5 bg-white/10 border-2 border-amber-500/30 rounded-xl focus:outline-none focus:border-amber-500 transition-colors"
-                    />
-                    <p className="text-[10px] text-amber-300/60 mt-1">비워두면 AI 측정값 사용</p>
+                    <div className="text-xl sm:text-2xl font-black text-white mt-1">{resultData.reactionErrors}회</div>
                   </div>
                 </div>
               )}
 
-              {/* 뇌기능 2단계 - 마트 장보기 결과 */}
               {testType === AssessmentStep.BRAIN_MEMORY && (
-                <div className={`mt-3 ${isPortraitMode ? 'space-y-3' : 'grid grid-cols-2 gap-3'}`}>
+                <div className="mt-3 grid grid-cols-2 gap-3">
                   <div className="bg-white/10 rounded-2xl p-3">
                     <span className="text-white/60 text-xs font-bold">기억력 정답</span>
-                    <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-5xl' : 'text-3xl'}`}>{resultData.memoryCorrect}/{MART_ITEMS_TO_REMEMBER}개</div>
-                    <p className="text-white/40 text-[10px] mt-1 font-bold">틀린 개수: {MART_ITEMS_TO_REMEMBER - (resultData.memoryCorrect || 0)}개 (감점)</p>
+                    <div className="text-3xl sm:text-4xl font-black text-white mt-1">{resultData.memoryCorrect}/{MART_ITEMS_TO_REMEMBER}개</div>
+                    <p className="text-white/40 text-[10px] mt-1 font-bold">틀린 개수: {MART_ITEMS_TO_REMEMBER - (resultData.memoryCorrect || 0)}개</p>
                   </div>
-                  {resultData.distractionCorrect !== undefined && (
+                  <div className={`rounded-2xl p-3 ${(resultData as any).finalScore >= 80 ? 'bg-emerald-500/20 border-2 border-emerald-500/30' : (resultData as any).finalScore >= 50 ? 'bg-amber-500/20 border-2 border-amber-500/30' : 'bg-red-500/20 border-2 border-red-500/30'}`}>
+                    <span className="text-white/60 text-xs font-bold">종합 평가</span>
+                    <div className="text-2xl sm:text-3xl font-black text-white mt-1">
+                      {(resultData as any).finalScore >= 80 ? '🌟 우수' : (resultData as any).finalScore >= 50 ? '👍 보통' : '💪 노력 필요'}
+                    </div>
+                    <p className="text-white/50 text-[10px] mt-1 font-bold">종합 인지 능력: {(resultData as any).finalScore || 0}점</p>
+                  </div>
+                  {(resultData as any).distractionCorrect !== undefined && (
                     <div className="bg-white/10 rounded-2xl p-3">
-                      <span className="text-white/60 text-xs font-bold">사칙연산 (방해 자극)</span>
-                      <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-2xl' : 'text-xl'}`}>{resultData.distractionCorrect}/2개 정답</div>
+                      <span className="text-white/60 text-xs font-bold">3자리 연산 (방해 자극)</span>
+                      <div className="text-xl font-black text-white mt-1">{(resultData as any).distractionCorrect}/2개 정답</div>
                     </div>
                   )}
                   <div className="bg-white/10 rounded-2xl p-3">
-                    <span className="text-white/60 text-xs font-bold">총 금액 계산</span>
-                    <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-2xl' : 'text-xl'}`}>{resultData.mathCorrect ? '✅ 정답' : '❌ 오답'}</div>
-                  </div>
-                  <div className={`rounded-2xl p-3 ${(resultData.memoryCorrect || 0) >= 5 && resultData.mathCorrect ? 'bg-emerald-500/20 border-2 border-emerald-500/30' : (resultData.memoryCorrect || 0) >= 3 ? 'bg-amber-500/20 border-2 border-amber-500/30' : 'bg-red-500/20 border-2 border-red-500/30'}`}>
-                    <span className="text-white/60 text-xs font-bold">종합 평가</span>
-                    <div className={`font-black text-white mt-1 ${isPortraitMode ? 'text-3xl' : 'text-2xl'}`}>
-                      {(resultData.memoryCorrect || 0) >= 5 && resultData.mathCorrect ? '🌟 우수' : (resultData.memoryCorrect || 0) >= 3 ? '👍 보통' : '💪 노력 필요'}
-                    </div>
+                    <span className="text-white/60 text-xs font-bold">가격 계산 (주관식)</span>
+                    <div className="text-xl font-black text-white mt-1">{resultData.mathCorrect ? '✅ 정답' : '❌ 오답'}</div>
                   </div>
                 </div>
               )}
 
               <button
                 onClick={handleComplete}
-                className={`w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-all
-                  ${isPortraitMode ? 'py-4 mt-3 text-xl' : 'py-3 mt-3 text-lg'}`}
+                className="w-full py-4 mt-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-lg sm:text-xl font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
               >
                 다음 단계로 →
               </button>

@@ -1,15 +1,17 @@
-import { GoogleGenAI, Type } from "@google/genai";
+// Gemini AI 분석 서비스 — /api/gemini 서버리스 프록시 경유
+import { Type } from "@google/genai";
 import { BodyReport, CapturedImage, UserInfo, MemberRecord, CheonbugyeongCharacter } from "../types";
 import { MASTERS } from '../constants/masters';
 import { findSimilarCases, buildFewShotPrompt, findSimilarFaceCases, buildFaceFewShotPrompt, findSimilarTarotCases, buildTarotFewShotPrompt } from "./feedbackService";
 import { getRecordsLocally } from "./localDb";
 import { ErrorLogger } from "./ErrorLogger";
+import { buildMeasurementVersion } from "./assessmentVersions";
 
 // --- API Key 관리 (SettingsModal에서 사용) ---
-let customApiKey: string = localStorage.getItem('bt_custom_api_key_lite') || '';
+let customApiKey: string = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('bt_custom_api_key_lite') || '' : '';
 
 export const getActiveApiKey = (): string => {
-  return customApiKey || 'VercelProxy';
+  return customApiKey || process.env.GEMINI_API_KEY || '';
 };
 
 export const setCustomApiKey = (key: string): void => {
@@ -25,45 +27,28 @@ export const isUsingCustomKey = (): boolean => {
   return !!customApiKey;
 };
 
-// --- Gemini API Proxy 호출 공통 헬퍼 ---
-const callGeminiApiViaProxy = async (
+// --- 서버리스 프록시 호출 헬퍼 (API 키를 서버에서만 관리) ---
+const callGeminiProxy = async (
   model: string,
   contents: any,
-  config?: any
-): Promise<{ text: string }> => {
-  const customKey = localStorage.getItem('bt_custom_api_key_lite') || '';
-  
-  if (customKey) {
-    const ai = new GoogleGenAI({ apiKey: customKey });
-    const response = await ai.models.generateContent({ model, contents, config });
-    return { text: response.text || '' };
-  }
-
-  // 본사 API Key를 사용하는 경우 Vercel Serverless Proxy 호출
-  const response = await fetch('https://btc-3body-outdoor-lite.vercel.app/api/analyze', {
+  config?: Record<string, any>
+): Promise<{ text: string | null; inlineData: any }> => {
+  const res = await fetch('/api/gemini', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, contents, config }),
   });
-
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData.error || 'Gemini 분석 프록시 요청에 실패했습니다.');
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error?.message || errData.error || `Gemini proxy error (${res.status})`);
   }
-
-  return await response.json();
+  return res.json();
 };
 
 // --- 환경 점검 (SystemCheckOverlay에서 사용) ---
 export const checkEnvironment = async (imageDataUrl: string): Promise<{ isValid: boolean; message: string }> => {
-  const apiKey = getActiveApiKey();
-  if (!apiKey) {
-    return { isValid: true, message: 'API 키 미설정 - 환경 점검을 건너뜁니다.' };
-  }
   try {
-    const response = await callGeminiApiViaProxy(
+    const result = await callGeminiProxy(
       'gemini-2.5-flash',
       {
         parts: [
@@ -82,9 +67,8 @@ export const checkEnvironment = async (imageDataUrl: string): Promise<{ isValid:
         }
       }
     );
-    const text = response.text;
-    if (!text) return { isValid: true, message: '환경 점검 완료' };
-    return JSON.parse(text);
+    if (!result.text) return { isValid: true, message: '환경 점검 완료' };
+    return JSON.parse(result.text);
   } catch (e) {
     console.error('Environment check error:', e);
     ErrorLogger.logApiError('geminiService.checkEnvironment', 'Environment check error', e);
@@ -92,13 +76,28 @@ export const checkEnvironment = async (imageDataUrl: string): Promise<{ isValid:
   }
 };
 
+// AI가 생성한 레포트 데이터 전역에서 '차크라' 단어를 '코드'로 재귀 치환하는 헬퍼 함수
+const sanitizeChakra = (val: any): any => {
+  if (typeof val === 'string') {
+    return val
+      .replace(/(\d)차크라/g, '$1코드')
+      .replace(/차크라/g, '코드');
+  }
+  if (Array.isArray(val)) {
+    return val.map(sanitizeChakra);
+  }
+  if (typeof val === 'object' && val !== null) {
+    const res: any = {};
+    for (const key of Object.keys(val)) {
+      res[key] = sanitizeChakra(val[key]);
+    }
+    return res;
+  }
+  return val;
+};
+
 // --- 핵심 AI 건강 분석 함수 ---
 export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[]): Promise<BodyReport> => {
-  const apiKey = getActiveApiKey();
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured. Please check your environment variables.");
-  }
-  const ai = new GoogleGenAI({ apiKey });
 
   const parts = images
     .filter(img => img.dataUrl && img.dataUrl.includes(','))
@@ -125,15 +124,16 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
 
   // --- 뇌 나이 및 7코드 데이터 추출 ---
   const reactionImg = images.find(i => i.step === 'BRAIN_REACTION');
-  const reactionTimeMs = reactionImg?.brainTestData?.reactionTimeMs ?? reactionImg?.reps ?? 500;
-  const reactionErrors = reactionImg?.brainTestData?.reactionErrors ?? 0;
+  const hasReactionTest = !!reactionImg; // 라이트 버전에서는 false
+  const reactionTimeMs = hasReactionTest ? (reactionImg?.brainTestData?.reactionTimeMs ?? reactionImg?.reps ?? 500) : 0;
+  const reactionErrors = hasReactionTest ? (reactionImg?.brainTestData?.reactionErrors ?? 0) : 0;
 
   const memoryImg = images.find(i => i.step === 'BRAIN_MEMORY');
   const memorySpan = memoryImg?.brainTestData?.memoryCorrect ?? memoryImg?.reps ?? 0;
 
   const sevenCodeImg = images.find(i => i.step === 'SEVEN_CODE_CHECK');
   const sevenCodeKeywords = sevenCodeImg?.sevenCodeKeywords ?? [];
-  const weakestCode = sevenCodeImg?.weakestCode ?? 1;
+  const weakestCode = sevenCodeImg?.weakestCode ?? 4; // 기본값: 4코드(가슴, 중간 코드) — 1코드 편향 방지
 
   // --- 기하학적 체형 수치 추출 ---
   const frontImg = images.find(i => i.step === 'POSTURE_FRONT');
@@ -156,6 +156,8 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
   const flexImg = images.find(i => i.step === 'FLEXIBILITY_TEST');
   const armRaiseData = armRaiseImg?.postureData;
   const flexData = flexImg?.postureData;
+  const hasArmRaise = !!armRaiseImg;
+  const hasFlex = !!flexImg;
 
   // --- 안면 밝기(Luma) 실시간 데이터 추출 ---
   const faceImg = images.find(i => i.step === 'FACE_ANALYSIS');
@@ -163,42 +165,67 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
 
   const mathCorrect = memoryImg?.brainTestData?.mathCorrect ?? false;
 
-  // --- 뇌 나이 산출 v3.0 (절대 점수 기반, 실제 나이 무관) ---
+  // --- 뇌 나이 산출 v4.0 (절대 점수 기반, 실제 나이 무관, 엄격화 패치) ---
   // 1단계: 두뇌 인지 반응 100점 (정확도/오답억제 70점 + 반응속도 30점)
   let reactionTimeScore = 0;
-  if (reactionTimeMs <= 600) reactionTimeScore = 30;
-  else if (reactionTimeMs <= 900) reactionTimeScore = 20;
-  else if (reactionTimeMs <= 1200) reactionTimeScore = 10;
+  if (reactionTimeMs <= 400) reactionTimeScore = 30;
+  else if (reactionTimeMs <= 550) reactionTimeScore = 20;
+  else if (reactionTimeMs <= 700) reactionTimeScore = 15;
+  else if (reactionTimeMs <= 900) reactionTimeScore = 10;
+  else reactionTimeScore = 5;
 
   let reactionErrorScore = 0;
   if (reactionErrors === 0) reactionErrorScore = 70;
-  else if (reactionErrors === 1) reactionErrorScore = 50;
-  else if (reactionErrors === 2) reactionErrorScore = 30;
-  else if (reactionErrors >= 3) reactionErrorScore = 10;
+  else if (reactionErrors === 1) reactionErrorScore = 40; // 1회 오류 패널티 대폭 강화
+  else if (reactionErrors === 2) reactionErrorScore = 20;
+  else if (reactionErrors === 3) reactionErrorScore = 5;
+  else reactionErrorScore = 0;
 
   const test1Score = reactionTimeScore + reactionErrorScore; // 100점 만점
 
-  // 2단계: 마트 장보기 100점 (기억력 50점 + 가격 30점 + 사칙연산 20점)
-  let memoryScore2 = 5;
-  if (memorySpan >= 6) memoryScore2 = 50;
-  else if (memorySpan === 5) memoryScore2 = 40;
-  else if (memorySpan === 4) memoryScore2 = 30;
+  // 2단계: 마트 장보기 100점 (기억력 60점 + 계산&기억 20점 + 혼란 10점 + 속도 10점)
+  // 전문가적 기준에 부합하도록 4가지 독립 인지 요소를 다차원으로 정밀 측정함
+  
+  // 1. 기억력 (60점 만점 - 6개 물건 기억력)
+  let memoryScore2 = 0;
+  if (memorySpan === 6) memoryScore2 = 60;
+  else if (memorySpan === 5) memoryScore2 = 50;
+  else if (memorySpan === 4) memoryScore2 = 35;
   else if (memorySpan === 3) memoryScore2 = 20;
-  else if (memorySpan === 2) memoryScore2 = 10;
+  else memoryScore2 = 0;
 
-  const priceScore = mathCorrect ? 30 : 10; // 정답 30, 오답 10, 시간초과는 false로 처리됨
+  // 2. 계산 & 기억 (20점 만점 - 사칙연산 및 가격 기억)
+  const priceScore = mathCorrect ? 20 : 0;
+
+  // 3. 혼란 문제 (10점 만점 - 방해 조건 하의 연산 2개)
   const distractionCount = memoryImg?.brainTestData?.distractionCorrect ?? 0;
   let distractionScore = 0;
-  if (distractionCount >= 2) distractionScore = 20;
-  else if (distractionCount === 1) distractionScore = 10;
+  if (distractionCount === 2) distractionScore = 10;
+  else if (distractionCount === 1) distractionScore = 5;
+  else distractionScore = 0;
 
-  const test2Score = memoryScore2 + priceScore + distractionScore; // 100점 만점
+  // 4. 속도 부분 (10점 만점 - 처리 속도 및 경과 시간 평가)
+  const memoryTimeMs = memoryImg?.brainTestData?.reactionTimeMs ?? 0;
+  let speedScore = 8; // 기본값 (시간 데이터 누락 시 8점 제공)
+  if (memoryTimeMs > 0) {
+    if (memoryTimeMs <= 20000) speedScore = 10;      // 20초 이하: 매우 빠름
+    else if (memoryTimeMs <= 30000) speedScore = 8; // 30초 이하: 정상 속도
+    else if (memoryTimeMs <= 45000) speedScore = 6; // 45초 이하: 다소 지연
+    else if (memoryTimeMs <= 60000) speedScore = 4; // 60초 이하: 지연 주의
+    else speedScore = 2;                            // 60초 초과: 인지 피로/지연
+  }
 
-  // 각 테스트 독립 뇌나이 산출: 100점=20세, 0점=90세
-  const toAge = (score: number) => Math.max(20, Math.min(90, Math.round(90 - (score / 100) * 70)));
+  const test2Score = memoryScore2 + priceScore + distractionScore + speedScore; // 100점 만점
+
+  // 각 테스트 독립 뇌나이 산출: 실제 나이 기준 오프셋 적용 (100점 = 실제나이 - 10세, 0점 = 실제나이 + 15세)
+  const toAge = (score: number) => {
+    const offset = Math.round(15 - (score / 100) * 25);
+    return Math.max(20, Math.min(85, userInfo.age + offset));
+  };
   const reactionAge = toAge(test1Score);
   const memoryAge = toAge(test2Score);
-  const cognitiveBrainAge = Math.round((reactionAge + memoryAge) / 2);
+  // 라이트 버전은 반응속도 테스트가 없으므로 오직 마트 장보기 기억력 나이로만 뇌나이를 산출함
+  const cognitiveBrainAge = Math.round(memoryAge);
 
   // --- 근력 기준표 v3.0 (15초 순간 근력 기준 / 상대 나이 역산 공식) ---
   //
@@ -369,6 +396,7 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
 ${fewShotBlock ? fewShotBlock + '\n---\n' : ''}당신은 운동역학, 노인의학, 신체기능 평가 분야의 최고 전문가입니다.
 아래 제공된 사진들과 실시간 측정 데이터를 기반으로, 대상자의 신체 건강 상태를 정밀 분석해 주세요.
 (※ 주의: 본 시스템은 의료용 진단기기가 아닌 '체력 및 건강 증진용 웰니스 스크리닝 도구'입니다. 특정 질병이나 질환을 단정 짓거나 확진하는 표현은 절대 사용하지 마세요.)
+(※ 주의: 본 평가는 근력 테스트(스쿼트, 푸시업 등)를 생략한 라이트(Lite) 버전입니다. 따라서 근력 상태를 평가하거나 "근력 측정 데이터가 부족하다"는 등의 언급을 절대 하지 마세요.)
 모든 분석 결과와 권장 사항은 반드시 **한국어**로 작성하세요.
 
 ■ 사용자 기본 정보
@@ -391,20 +419,22 @@ ${fewShotBlock ? fewShotBlock + '\n---\n' : ''}당신은 운동역학, 노인의
   - 등 굽힘(흉추 후만) 각도: ${kyphosisAngle}도 (정상: 0~10도, 15도 이상=굽음 주의, 25도 이상=심한 굽음)
 
 ※ 위 수치 데이터를 최우선적으로 신뢰하여 분석 결과를 도출하세요.
+※ 수치가 'N/A'인 항목이 있더라도 "데이터 부족" 또는 "측정 불가"라고 쓰지 마세요. N/A인 수치는 무시하고, 제공된 사진을 직접 보고 시각적으로 분석하여 평가하세요.
 ※ 제공된 사진은 윤곽과 근육의 형태를 파악하는 보조 수단으로만 사용하세요.
 ※ 틀어짐 분석: 위 수치를 종합하여 '어깨-골반 불균형', '거북목+라운드숄더 복합', 'O/X자 다리로 인한 무릎 부담' 등 연관 패턴을 도출하세요.
+※ ★★★ 절대 금지 표현 ★★★ 리포트 어디에서든 다음 표현을 절대 사용하지 마세요: "데이터 부족", "데이터가 부족", "측정 데이터 부족", "측정 불가", "분석 불가", "자세 측정 데이터 부족", "데이터 없음", "사진 데이터 부족", "평가가 어렵", "정확한 평가가 어려", "정확한 자세 평가는 어려". 이런 표현 대신 사진을 기반으로 분석 결과를 작성하세요.
 
 ■ 실시간 AI 모션 센서 측정 데이터
-  - 팔 올리기 (견관절 가동범위):
+${hasArmRaise ? `  - 팔 올리기 (견관절 가동범위):
     · 종합 평가: ${armRaiseData?.armRaiseGrade ?? 'N/A'}
     · 평균 올림 각도: ${armRaiseData?.armAvgAngle ?? 'N/A'}도 (180도가 완벽한 수직)
     · 팔과 귀 밀착도: ${armRaiseData?.earProximity ?? 'N/A'}
-    · 팔꿈치 펴짐: ${armRaiseData?.elbowStraight ? '정상' : '굽어짐 (감점)'}
-  - 유연성 (전굴):
+    · 팔꿈치 펴짐: ${armRaiseData?.elbowStraight ? '정상' : '굽어짐 (감점)'}` : ''}
+${hasFlex ? `  - 유연성 (전굴):
     · 종합 평가: ${flexData?.flexGrade ?? 'N/A'}
     · 손끝 닿는 위치: ${flexData?.handPosition ?? 'N/A'}
     · 무릎 펴짐: ${flexData?.kneeStraight ? '정상' : '굽어짐 (감점)'}
-    · 허리 굽힘 여부: ${flexData?.waistPenalty ? '부족 (감점)' : '정상'}
+    · 허리 굽힘 여부: ${flexData?.waistPenalty ? '부족 (감점)' : '정상'}` : ''}
   - 눈 감고 한발 서기 (15초):
     · 측정 조건: ${eyesClosed ? '눈 감음 (정규 측정)' : '눈 뜨고 수행 (노약자 옵션 - 최고 60점 제한 및 나이 페널티)'}
     · 발 땅 닿음 횟수 (footDrops): ${footDrops !== null ? footDrops + '회' : '데이터 없음'}
@@ -412,18 +442,25 @@ ${fewShotBlock ? fewShotBlock + '\n---\n' : ''}당신은 운동역학, 노인의
     · [이 나이/성별의 평가 기준표] ${balanceStandard}
 
 ■ 뇌 기능 분석 데이터
-  - 두뇌 인지 반응: (속도: ${reactionTimeMs}ms, 오류: ${reactionErrors}회) -> 환산 뇌 나이: ${Math.round(reactionAge)}세
-  - 기억력(장보기): ${memorySpan}/5 정답, 가격 계산: ${mathCorrect ? '정답' : '오답/미수행'} -> 환산 뇌 나이: ${Math.round(memoryAge)}세
-  - 인지 뇌 나이 (인지 테스트 기반): ${cognitiveBrainAge}세
-  ※ 평가 지침: 뇌 나이 테스트 결과에 대해 매우 짧게(1~2문장) "어떤 부분이 강점이고 어떤 부분이 노화되었는지" 평가를 작성하세요.
+${hasReactionTest ? `  - 두뇌 인지 반응: (속도: ${reactionTimeMs}ms, 오류: ${reactionErrors}회) -> 환산 뇌 나이: ${Math.round(reactionAge)}세` : '  - 두뇌 인지 반응: 미실시 (라이트 버전에서는 이 테스트를 수행하지 않음)'}
+  - 기억력(장보기): ${memorySpan}/8 정답, 가격 계산: ${mathCorrect ? '정답' : '오답/미수행'} -> 환산 뇌 나이: ${Math.round(memoryAge)}세
+  - 인지 뇌 나이 (마트 장보기 기억력 테스트 기반): ${cognitiveBrainAge}세
+  ※ 평가 지침: ${hasReactionTest ? '뇌 나이 테스트 결과에 대해 매우 짧게(1~2문장) "어떤 부분이 강점이고 어떤 부분이 노화되었는지" 평가를 작성하세요.' : '라이트 버전에서는 마트 장보기 기억력 테스트 1개만 수행합니다. 두뇌 인지 반응 속도는 측정하지 않았으므로 언급하지 마세요. 기억력 테스트 결과만으로 뇌 나이를 평가하세요.'}
 
 ■ 7코드 건강 점검 다중 선택 결과
   - 선택된 키워드 목록: ${sevenCodeKeywords.join(', ')}
-  - 에너지가 가장 부족한(방전된) 코드(BHP) 시스템 도출 결과: ${weakestCode}번 7코드
+  - 에너지가 가장 부족한(방전된) 코드(BHP) 시스템 도출 결과: ${weakestCode}번 코드
+
+■ 사용자 건강 니즈 (관심 건강 목표)
+  - 선택된 건강 니즈: ${userInfo.healthNeeds && userInfo.healthNeeds.length > 0 ? userInfo.healthNeeds.join(', ') : '선택 없음 (일반 건강 증진)'}
+  ※ needsSolution 작성 시 이 건강 니즈를 핵심 기반으로 활용하세요.
 
   ※ physicalAge(종합 신체 기능 나이) 산출 공식:
-     = 균형(40%) + 자세(30%) + 유연성(15%) + 팔올리기(15%) 가중 평균
-     균형/자세/유연성/팔올리기의 신체 나이 상당값을 사진으로 추정하여 가중 평균 후 physicalAge 기입.
+${hasFlex && hasArmRaise ? 
+`     = 균형(40%) + 자세(30%) + 유연성(15%) + 팔올리기(15%) 가중 평균
+     균형/자세/유연성/팔올리기의 신체 나이 상당값을 사진으로 추정하여 가중 평균 후 physicalAge 기입.` :
+`     = 균형(50%) + 자세(50%) 가중 평균
+     균형과 자세의 신체 나이 상당값을 추정하여 가중 평균 후 physicalAge 기입. (유연성과 팔올리기는 미수행이므로 평가 및 나이 계산에서 절대 제외하세요.)`}
 
 ■ 정확도 강화를 위한 100점 만점 엄격 채점 지침 및 웰니스 가이드라인
 - **[법적 주의사항]** "진단", "치료", "환자", "처방" 등의 의료적 단어는 "스크리닝", "웰니스 관리", "고객/회원", "맞춤형 운동 제안" 등의 용어로 교체하세요.
@@ -437,45 +474,47 @@ ${fewShotBlock ? fewShotBlock + '\n---\n' : ''}당신은 운동역학, 노인의
      • Poor(0~59):   귀 중심이 3cm 이상 앞 (심한 거북목 — 노화 +5~10세 신호)
 
   2) "어깨 / 골반 좌우 대칭" [정면 사진 기준]
-     • Good(90~100): 양 어깨·골반 높이 차 0.5cm �  - **overallScore(3바디 코어 밸런스 점수):** 3바디 코어 밸런스 점수는 신체, 얼굴, 뇌, 마음(7코드) 4가지 요소를 모두 반영한 점수입니다. 시스템이 자동 계산하므로, summary 작성 시 이 점수가 "신체 측정뿐만 아니라 얼굴 노화도, 두뇌 인지 반응, 7코드 에너지 밸런스를 모두 종합한 3바디 코어 밸런스 점수"라는 점을 강조하세요.
-- 체형 패턴 안내: bodyTypeAnalysis에서 지방 과다 패턴이 관찰될 경우, summary에 체지방 관리와 관절 부하 감소를 위한 생활 습관 개선 방향을 참고로 안내하세요. (단, 전문 의료기관 상담을 권장하는 표현으로 대체)
-- 3바디 7코드 분석: 신체 측정 데이터와 3바디 7코드의 연관성을 관찰형 언어로 설명하고, 충전명상 수련이 건강 증진에 도움이 될 수 있음을 안내하세요. (절대 단정적 표현 금지)
-- **[핵심 결론 메시지 — summary 마지막 부분에 반드시 포함]**
-  summary의 최종 마무리에 아래 핵심 메시지를 자연스럽게 녹여 작성하세요:
-  "온전한 건강은 몸(Body)과 마음·에너지(Mind), 뇌·의식(Brain) 세 가지가 모두 건강한 상태를 의미합니다. 이 3가지를 '3바디'라고 하며, 7코드 에너지 밸런스를 통해 통합 관리하는 곳이 바로 브레인트레이닝센터(BTC)입니다."
-  — 단, 위 문장을 그대로 복사하지 말고, 회원의 측정 결과에 맞게 자연스럽게 연결하여 작성하세요. 예를 들어: "회원님의 신체(Body)는 우수하지만, 에너지(Mind) 밸런스에서 충전이 필요한 코드가 있습니다. 온전한 건강은 몸·마음·뇌 세 가지가 모두 충만해야 이루어집니다. BTC의 3바디 7코드 프로그램으로 부족한 에너지를 채워보세요."
+     • Good(90~100): 양 어깨·골반 높이 차 0.5cm 미만, 거의 완벽한 수평
+     • Fair(60~89):  어깨 또는 골반 한쪽 1~2cm 기울어짐
+     • Poor(0~59):   2cm 이상 차이 또는 양쪽 모두 비대칭 (척추 비평형 노화 신호)
 
-■ 3BODY & 7CODE & 추천 프로그램 JSON 생성 지침 (절대 원칙 준수)
-1. **threeBodyAnalysis**: 체형/유연성/근력 분석 결과를 바탕으로 BODY, MIND, BRAIN 각각의 점수와 원인-결과 해석을 작성하세요.
-2. **sevenCodeAnalysis (7코드 분석)**:
-   사용자가 직접 선택한 '선택된 키워드 목록'과 '에너지가 가장 부족한(방전된) 코드(${weakestCode})'를 바탕으로 작성하세요. 
-   해당 코드(${weakestCode})를 중심으로 에너지가 가장 부족하고 방전된 상태로 평가하고, 신체 측정 결과를 보조로 활용하여 각 1~7코드의 0~100점 점수와 해석을 도출하세요. 점수가 낮은 코드에 대해서는 '에너지 충전이 필요한 상태'로, 점수가 높은 코드는 '에너지가 충만한 상태'로 해석하세요.
-   * 용어 지침: 반드시 "7코드"라고 표기하고, 지속적으로 "7코드"로 통일하세요. 
-   * 금지어: "타로", "K-타로", "카드" 등의 단어는 절대 사용하지 마세요! (이것은 타로 서비스가 아니라 선택된 키워드 기반의 에너지 파동 스크리닝입니다). "질환", "병명" 절대 금지!
-   * 권장 구조: 관찰형 표현 사용 ("에너지 방전 패턴", "에너지 충전 필요", "충만한 에너지 상태", "밸런스 회복을 위한 충전 권장"). '막혀있다'는 올드한 표현 절대 금지. '부족하다', '방전되었다', '충전이 필요하다', '충만하다' 등의 현대적 표현을 사용하세요.
-   * 반드시 "데이터 → 의미 → 웰니스 개선 방향" 순서의 템플릿 구조를 따르세요. 
-   * evidence 배열: 각 7코드 점수를 깎아먹은 측정 근거 또는 선택된 키워드 2~3개를 한글 배열로 추가하세요.
-3. **kwangmyungChakra (충전명상 특별수련)**:
-   - \`reason\`: 왜 충전명상이 필요한지 현재 회원의 상태(부정적 키워드나 자세 등)를 기반으로 깊이 공감하며 설명하세요. (예: "현재 머리가 무겁고 집중이 잘 안 되시는 상태로 보입니다. 이는 상위 7코드 에너지가 방전되었기 때문입니다...")
-   - \`expectedBenefit\`: 수련을 통해 얻게 될 변화를 삶의 질 향상 측면에서 매력적으로 묘사하세요. (예: "내면의 빛을 밝힘으로써 정신적 혼란이 사라지고, 삶의 활력과 명료한 직관을 되찾게 될 것입니다.")
-4. **programRecommendation**: 현재 상태에 가장 적합한 프로그램을 추천하세요.
-${userInfo.memberType === 'existing' 
-  ? `   **[기존 수련 회원 전용 중요 기준 - 반드시 아래 규칙을 따르세요!]**
-   - 기존 회원은 21일/66일/100일 추천 대신, 7코드 중 **가장 점수가 낮거나 불균형한 코드 영역**을 찾아 아래 매핑된 프로그램 리스트 중 **적합한 2~3가지를 쉼표로 연결**하여 \`recommended\` 에 적어주세요.
-   - [하위 코드(1,2) 취약]: 충전명상, 장생스쿨(60세 이상만 기입), 바디프리
-   - [중간 코드(3,4) 취약]: 충전명상, 솔라시스템, 마음프리
-    - [상위 코드(5,6,7) 취약]: 충전명상, PBM(Power Brain Method), 성인운기스쿨
-    - \`reason\`과 \`duration\`에는 해당 프로그램들이 왜 다음 단계의 의식 성장을 위해 필요한지 구체적인 기대 효과 위주로 공감되게 설명하세요. (참고: PBM은 Perfect Body가 아닌 Power Brain Method의 약자입니다.)`
-  : `   **[신규 회원 전용 중요 기준 - 반드시 아래 규칙을 따르세요!]**
-    - 종합 점수(overallScore) 90점 이상: 21일 (건강 유지 및 집중 관리)
-    - 종합 점수(overallScore) 70점 ~ 89점: 66일 (습관 개선 및 체질 변화)
-    - 종합 점수(overallScore) 70점 미만: 100일 (근본적인 회복 및 재건)
-    위 기준에 맞춰서 추천 프로그램(recommended)에 "21일", "66일", "100일" 중 하나만 적고, 그 이유(reason)는 회원의 현재 상태(점수, 자세, 에너지 등)를 짚어주며 **왜 이 기간 동안 꾸준히 수련해야만 근본적인 체질 변화가 일어나는지** 깊이 공감하고 동기를 부여하는 문장으로 작성하세요. 단순히 "점수가 낮아서"가 아니라 "오랜 시간 누적된 긴장을 풀고 새로운 에너지 습관을 몸에 새기기 위해 최소 00일의 시간이 필요합니다"와 같은 형태를 권장합니다.`}
-- 팔 올리기(견관절 가동범위): armRaiseScore를 100점 만점으로 매우 엄격하게 채점하세요 (일반인 평균 70점).
+  3) "측면 척추 정렬 (흉추/요추)" [측면 사진 기준]
+     • Good(90~100): 흉추 후만 20~40도 + 요추 전만 30~50도 (자연 S자 곡선)
+     • Fair(60~89):  흉추 40~50도 또는 요추 50~60도 (편평등 또는 경미한 굽은등)
+     • Poor(0~59):   흉추 50도 초과 또는 요추 60도 초과 (심한 굽은등·과다전만)
+
+  4) "하체 기저면 (무릎/다리/발목)" [정면 사진 기준]
+     • Good(90~100): X·O다리 없음, 발 방향 정상, 무릎이 2~3번째 발가락 방향
+     • Fair(60~89):  경미한 X다리(외반슬) 또는 O다리(내반슬), 발 외회전 10~20도
+     • Poor(0~59):   뚜렷한 X·O다리, 발 외회전 20도 초과 (연골 노화 신호)
+
+  5) "귀-어깨-고관절-무릎 수직선 이탈" [측면 사진 기준]
+     • Good(90~100): 귀·견봉·대전자·무릎이 수직선 오차 1cm 이내
+     • Fair(60~89):  1개 지점 1~3cm 이탈 (전방·후방 경사 조짐)
+     • Poor(0~59):   복수 지점 이탈 또는 1개가 3cm 초과
+
+- 체형 패턴(bodyTypeAnalysis) 별도 평가. 예: 편평등(Flat Back), 굽은등(Kyphosis), Sway Back, 거북목+강직 후만 등
+
+- ★ 자세 신체 나이(posturePhysicalAge) 역산 공식 [항목별 가중치 적용]:
+  weightedScore = ①거북목×0.25 + ②어깨골반×0.20 + ③척추정렬×0.25 + ④하체기저면×0.15 + ⑤수직선×0.15
+  (③척추정렬 점수 = (③-A흉추 + ③-B요추) ÷ 2 먼저 계산)
+
+  • weightedScore ≥ 90 → posturePhysicalAge = 실제나이 - 10
+  • weightedScore ≥ 80 → posturePhysicalAge = 실제나이 -  5
+  • weightedScore ≥ 70 → posturePhysicalAge = 실제나이
+  • weightedScore ≥ 60 → posturePhysicalAge = 실제나이 +  5
+  • weightedScore ≥ 50 → posturePhysicalAge = 실제나이 + 10
+  • weightedScore <  50 → posturePhysicalAge = 실제나이 + 15
+  (최소 20세, 최대 85세 범위로 제한)
+
+[사진 3~5: 균형·가동범위·유연성]
+- 한발 서기 (화면 점수): ${getBalanceScoreOutput(footDrops, swayScore, eyesClosed)}점 / 100점 (AI가 이 점수를 그대로 agingMetrics.score에 기입하세요)
+- 한발 서기 (균형 나이): ${getBalancePhysicalAge(footDrops, swayScore, eyesClosed)}세 수준 (AI가 임의 추정하지 말고 이 나이 수치를 100% 반영하여 평가하세요)
+${hasArmRaise ? `- 팔 올리기(견관절 가동범위): armRaiseScore를 100점 만점으로 매우 엄격하게 채점하세요 (일반인 평균 70점).
   • 100점: 양팔이 귀에 완벽히 밀착되고 수직(180도)인 엘리트.
   • 70점: 귀에서 약간 이탈하거나 팔꿈치가 살짝 굽혀짐 (일반인 평균).
-  • 50점 이하: 크게 벌어지거나 각도가 낮음.
-- 유연성(전굴): flexibilityScore를 100점 만점으로 매우 엄격하게 채점하세요 (일반인 평균 70점).
+  • 50점 이하: 크게 벌어지거나 각도가 낮음.` : '- 팔 올리기 평가는 미수행되었습니다. 어떠한 점수도 부여하지 말고, 언급하지 마세요.'}
+${hasFlex ? `- 유연성(전굴): flexibilityScore를 100점 만점으로 매우 엄격하게 채점하세요 (일반인 평균 70점).
   [여성 기준]
   • 손바닥 전면 닿음(100점)    → 실제나이 - 13세
   • 손끝 닿음(90점)            → 실제나이 -  8세
@@ -490,16 +529,21 @@ ${userInfo.memberType === 'existing'
   • 정강이 위(40~59점)         → 실제나이 +  7세
   • 무릎 미만(39점 이하)       → 실제나이 + 15세
 
-  (최소 20세, 최대 85세 범위로 제한)
+  (최소 20세, 최대 85세 범위로 제한)` : '- 유연성 평가는 미수행되었습니다. 어떠한 점수도 부여하지 말고, 언급하지 마세요.'}
 
-- **[중요 지침 1]** \`agingMetrics\` 배열에는 눈 감고 한발 서기, 유연성, 팔 올리기 등 지표만 기입하세요.
+- **[중요 지침 1]** \`agingMetrics\` 배열에는 수행한 평가 항목(${[
+    '눈 감고 한발 서기',
+    hasFlex ? '유연성' : '',
+    hasArmRaise ? '팔 올리기' : ''
+  ].filter(Boolean).join(', ')})만 기입하세요. 미수행 항목은 절대 추가하지 마세요.
+- **[중요 지침 1-2]** 유연성과 팔 올리기가 미수행일 경우, 종합 평가(summary)나 리포트 결과에서 "사진 데이터 부족으로 자세 평가가 어렵다" 또는 "유연성이 저조하다"는 식의 환각(Hallucination) 문장을 절대 지어내지 마세요. 생략된 항목에 대해서는 아무런 언급을 하지 않는 것이 원칙입니다.
 - **[중요 지침 2]** 전체 리포트의 모든 설명창은 미사여구를 빼고 핵심만 1~2문장(최대 100자) 이내로 요약하세요.
 - **[중요 지침 4]** 사진 판독 거절 규정: '정상적인 측정이 불가능한 불량 사진'이라고 판단될 경우, 점수를 최하점으로 처리하고, 설명란에 **"오류: 사진에 전신 동작이 정상적으로 인식되지 않아 측정이 취소되었습니다. 올바른 자세로 다시 측정해 주세요."** 라고만 명확하게 작성하세요.
 - **[중요 지침 5] 촬영된 사진의 각 항목별 필수 기준**:
   1. 정면 자세: 가장 중요한 것은 완벽한 '정면'이어야 하며, 반드시 '머리에서 발끝까지' 전신이 다 나와야 합니다. 이 기준에 부합하는지 먼저 확인 후 평가하세요.
   2. 측면 자세: '측면'에서 촬영되어야 하며, 반드시 '머리에서 발끝까지' 전신이 다 나와야 합니다.
-  3. 팔 들어 올리기: 팔이 귀에 얼마나 밀착되었는지, 팔꿈치가 굽혀지지 않고 쫙 펴졌는지를 최우선으로 판단해서 평가하세요.
-  4. 유연성 테스트: 두 발이 땅에 명확히 나오고, 손이 땅을 향해 얼마나 닿았는지를 기준으로 엄격하게 평가하세요.
+${hasArmRaise ? '  3. 팔 들어 올리기: 팔이 귀에 얼마나 밀착되었는지, 팔꿈치가 굽혀지지 않고 쫙 펴졌는지를 최우선으로 판단해서 평가하세요.' : ''}
+${hasFlex ? '  4. 유연성 테스트: 두 발이 땅에 명확히 나오고, 손이 땅을 향해 얼마나 닿았는지를 기준으로 엄격하게 평가하세요.' : ''}
 [사진 8: 안면 노화 및 건강 분석]
 - 1. 물리적 노화 평가: 피부 톤과 맑음 정도, 주름, 탄력을 세밀하게 분석하여 기본 안면 노화도를 평가하세요.
 - 2. 에너지 및 표정 평가: 카메라 측정 안면 평균 밝기(Luma)는 ${faceBrightness !== undefined ? faceBrightness : '측정불가'}입니다 (50~200 범위). 이 수치와 사진 상의 표정(미소, 생기)을 종합하여 '밝은 에너지'를 평가하세요.
@@ -508,41 +552,69 @@ ${userInfo.memberType === 'existing'
 
 ■ 종합 분석 (summary) 및 신체 나이·종합 점수 산출
   - **physicalAge(종합 신체 기능 나이)** 가중 평균 공식을 직접 계산하여 기입:
-    physicalAge = 반올림(balancePhysicalAge×0.40 + posturePhysicalAge×0.30 + flexibilityPhysicalAge×0.15 + armRaisePhysicalAge×0.15)
-  - **overallScore(3바디 코어 밸런스 점수):** 3바디 코어 밸런스 점수는 신체, 얼굴, 뇌, 마음(7코드) 4가지 요소를 모두 반영한 점수입니다. 시스템이 자동 계산하므로, summary 작성 시 이 점수가 "신체 측정뿐만 아니라 얼굴 노화도, 두뇌 인지 반응, 7코드(K차크라) 에너지 밸런스를 모두 종합한 3바디 코어 밸런스 점수"라는 점을 강조하세요.
+    physicalAge = 반올림(balancePhysicalAge×${hasFlex ? '0.40' : '0.50'} + posturePhysicalAge×${hasFlex ? '0.30' : '0.50'}${hasFlex ? ' + flexibilityPhysicalAge×0.15' : ''}${hasArmRaise ? ' + armRaisePhysicalAge×0.15' : ''})
+  - **overallScore(3바디 코어 밸런스 점수):** 3바디 코어 밸런스 점수는 신체, 얼굴, 뇌, 마음(7코드) 4가지 요소를 모두 반영한 점수입니다. 시스템이 자동 계산하므로, summary 작성 시 이 점수가 "신체 측정뿐만 아니라 얼굴 노화도, 두뇌 인지 반응, 7코드 에너지 밸런스를 모두 종합한 3바디 코어 밸런스 점수"라는 점을 강조하세요.
 - 체형 패턴 안내: bodyTypeAnalysis에서 지방 과다 패턴이 관찰될 경우, summary에 체지방 관리와 관절 부하 감소를 위한 생활 습관 개선 방향을 참고로 안내하세요. (단, 전문 의료기관 상담을 권장하는 표현으로 대체)
-- 3바디 7코드 분석: 신체 측정 데이터와 3바디 7코드의 연관성을 관찰형 언어로 설명하고, 광명차크라 수련이 건강 증진에 도움이 될 수 있음을 안내하세요. (절대 단정적 표현 금지)
+- 3바디 7코드 분석: 신체 측정 데이터와 3바디 7코드의 연관성을 관찰형 언어로 설명하고, 충전명상 수련이 건강 증진에 도움이 될 수 있음을 안내하세요. (절대 단정적 표현 금지)
 - **[핵심 결론 메시지 — summary 마지막 부분에 반드시 포함]**
   summary의 최종 마무리에 아래 핵심 메시지를 자연스럽게 녹여 작성하세요:
   "온전한 건강은 몸(Body)과 마음·에너지(Mind), 뇌·의식(Brain) 세 가지가 모두 건강한 상태를 의미합니다. 이 3가지를 '3바디'라고 하며, 7코드 에너지 밸런스를 통해 통합 관리하는 곳이 바로 브레인트레이닝센터(BTC)입니다."
   — 단, 위 문장을 그대로 복사하지 말고, 회원의 측정 결과에 맞게 자연스럽게 연결하여 작성하세요. 예를 들어: "회원님의 신체(Body)는 우수하지만, 에너지(Mind) 밸런스에서 충전이 필요한 코드가 있습니다. 온전한 건강은 몸·마음·뇌 세 가지가 모두 충만해야 이루어집니다. BTC의 3바디 7코드 프로그램으로 부족한 에너지를 채워보세요."
 
 ■ 3BODY & 7CODE & 추천 프로그램 JSON 생성 지침 (절대 원칙 준수)
-1. **threeBodyAnalysis**: 체형/유연성/근력 분석 결과를 바탕으로 BODY, MIND, BRAIN 각각의 점수와 원인-결과 해석을 작성하세요.
+1. **threeBodyAnalysis**: ${hasFlex && hasArmRaise ? '체형/균형/유연성/팔올리기' : '체형과 균형'} 분석 결과만을 바탕으로 BODY, MIND, BRAIN 각각의 점수와 원인-결과 해석을 작성하세요.
+   ★★★ [BODY description 작성 시 절대 금지 키워드 목록] ★★★
+   아래 단어들은 BODY 파트의 description에 **단 한 글자도 포함되어서는 안 됩니다.**
+   ${!hasFlex ? '금지: "유연성", "유연", "전굴", "스트레칭", "관절 가동", "가동범위", "가동 범위"' : ''}
+   ${!hasArmRaise ? '금지: "어깨 가동", "팔 올리기", "견관절", "팔올리기", "어깨 범위", "상지 가동"' : ''}
+   금지: "근력", "근육량", "스쿼트", "푸시업", "근지구력"
+   BODY description은 오직 **자세(정렬/체형)와 균형감각** 데이터만으로 작성하세요.
 2. **sevenCodeAnalysis (7코드 분석)**:
    사용자가 직접 선택한 '선택된 키워드 목록'과 '에너지가 가장 부족한(방전된) 코드(${weakestCode})'를 바탕으로 작성하세요. 
    해당 코드(${weakestCode})를 중심으로 에너지가 가장 부족하고 방전된 상태로 평가하고, 신체 측정 결과를 보조로 활용하여 각 1~7코드의 0~100점 점수와 해석을 도출하세요. 점수가 낮은 코드에 대해서는 '에너지 충전이 필요한 상태'로, 점수가 높은 코드는 '에너지가 충만한 상태'로 해석하세요.
-   * 용어 지침: 반드시 최초 언급 시 "7코드(K차크라)"라고 표기하고, 이후부터는 "7코드"로 통일하세요. 
+   * 용어 지침: 반드시 "7코드"로 통일하여 표기하세요. "차크라"라는 단어는 절대 사용하지 마세요. 
    * 금지어: "타로", "K-타로", "카드" 등의 단어는 절대 사용하지 마세요! (이것은 타로 서비스가 아니라 선택된 키워드 기반의 에너지 파동 스크리닝입니다). "질환", "병명" 절대 금지!
    * 권장 구조: 관찰형 표현 사용 ("에너지 방전 패턴", "에너지 충전 필요", "충만한 에너지 상태", "밸런스 회복을 위한 충전 권장"). '막혀있다'는 올드한 표현 절대 금지. '부족하다', '방전되었다', '충전이 필요하다', '충만하다' 등의 현대적 표현을 사용하세요.
    * 반드시 "데이터 → 의미 → 웰니스 개선 방향" 순서의 템플릿 구조를 따르세요. 
    * evidence 배열: 각 7코드 점수를 깎아먹은 측정 근거 또는 선택된 키워드 2~3개를 한글 배열로 추가하세요.
-3. **kwangmyungChakra (광명차크라 특별수련)**:
-   - \`reason\`: 왜 광명차크라가 필요한지 현재 회원의 상태(부정적 키워드나 자세 등)를 기반으로 깊이 공감하며 설명하세요. (예: "현재 머리가 무겁고 집중이 잘 안 되시는 상태로 보입니다. 이는 상위 차크라 에너지가 방전되었기 때문입니다...")
+3. **kwangmyungChakra (충전명상)**:
+   - \`reason\`: 왜 충전명상이 필요한지 현재 회원의 상태(부정적 키워드나 자세 등)를 기반으로 깊이 공감하며 설명하세요. (예: "현재 머리가 무겁고 집중이 잘 안 되시는 상태로 보입니다. 이는 상위 에너지가 방전되었기 때문입니다...")
    - \`expectedBenefit\`: 수련을 통해 얻게 될 변화를 삶의 질 향상 측면에서 매력적으로 묘사하세요. (예: "내면의 빛을 밝힘으로써 정신적 혼란이 사라지고, 삶의 활력과 명료한 직관을 되찾게 될 것입니다.")
 4. **programRecommendation**: 현재 상태에 가장 적합한 프로그램을 추천하세요.
 ${userInfo.memberType === 'existing' 
   ? `   **[기존 수련 회원 전용 중요 기준 - 반드시 아래 규칙을 따르세요!]**
    - 기존 회원은 21일/66일/100일 추천 대신, 7코드 중 **가장 점수가 낮거나 불균형한 코드 영역**을 찾아 아래 매핑된 프로그램 리스트 중 **적합한 2~3가지를 쉼표로 연결**하여 \`recommended\` 에 적어주세요.
-   - [하위 코드(1,2) 취약]: 광명차크라, 장생스쿨(60세 이상만 기입), 바디프리
-   - [중간 코드(3,4) 취약]: 광명차크라, 솔라시스템, 마음프리
-   - [상위 코드(5,6,7) 취약]: 광명차크라, PBM(Power Brain Method), 성인운기스쿨
+   - [하위 코드(1,2) 취약]: 충전명상, 장생스쿨(60세 이상만 기입), 바디프리
+   - [중간 코드(3,4) 취약]: 충전명상, 솔라시스템, 마음프리
+   - [상위 코드(5,6,7) 취약]: 충전명상, PBM(Power Brain Method), 성인운기스쿨
    - \`reason\`과 \`duration\`에는 해당 프로그램들이 왜 다음 단계의 의식 성장을 위해 필요한지 구체적인 기대 효과 위주로 공감되게 설명하세요. (참고: PBM은 Perfect Body가 아닌 Power Brain Method의 약자입니다.)`
   : `   **[신규 회원 전용 중요 기준 - 반드시 아래 규칙을 따르세요!]**
    - 종합 점수(overallScore) 90점 이상: 21일 (건강 유지 및 집중 관리)
    - 종합 점수(overallScore) 70점 ~ 89점: 66일 (습관 개선 및 체질 변화)
    - 종합 점수(overallScore) 70점 미만: 100일 (근본적인 회복 및 재건)
    위 기준에 맞춰서 추천 프로그램(recommended)에 "21일", "66일", "100일" 중 하나만 적고, 그 이유(reason)는 회원의 현재 상태(점수, 자세, 에너지 등)를 짚어주며 **왜 이 기간 동안 꾸준히 수련해야만 근본적인 체질 변화가 일어나는지** 깊이 공감하고 동기를 부여하는 문장으로 작성하세요. 단순히 "점수가 낮아서"가 아니라 "오랜 시간 누적된 긴장을 풀고 새로운 에너지 습관을 몸에 새기기 위해 최소 00일의 시간이 필요합니다"와 같은 형태를 권장합니다.`}
+5. **recommendations (3바디 솔루션 가이드)**: 분석 결과를 인용하며 몸·마음·뇌 각 차원의 관리법을 작성하세요.
+   - \`gymnastics\` (몸 관리법): 신체 정렬 분석과 균형 테스트 결과에서 발견된 문제를 인용하며 교정 체조·자세 개선 방법을 구체적으로 안내하세요.
+   - \`meditation\` (마음 관리법): 7코드 에너지 분석에서 방전된 코드를 인용하며, 해당 에너지를 충전하기 위한 명상·호흡법을 안내하세요.
+   - \`brainTraining\` (뇌 관리법): 두뇌 인지 반응과 기억력 테스트 결과를 인용하며, 약한 영역을 강화하기 위한 뇌 훈련법을 안내하세요.
+   - 각 항목은 "현재 회원님의 [분석 결과 인용] → 따라서 [관리 방법]" 구조로 작성하세요.
+
+■ 일관성 교차 검증 (Cross-Validation) — 모든 결과를 작성한 후 반드시 검증
+  아래 규칙을 위반하는 결과가 있으면, 점수나 설명을 수정하세요.
+  1. 신체 분석 ↔ 3바디 BODY 점수: 자세/균형이 Good 위주면 BODY 점수 75점 이상, Poor 위주면 50점 이하여야 합니다.
+  2. 7코드 에너지 ↔ 3바디 MIND 점수: 감정/에너지 관련 코드(2,3,4)가 낮으면 MIND도 낮아야 합니다.
+  3. 뇌 테스트 ↔ 3바디 BRAIN 점수: 인지 뇌 나이(${cognitiveBrainAge}세)가 실제 나이보다 젊으면 BRAIN 점수도 높아야 합니다.
+  4. recommendations ↔ 분석 결과: gymnastics는 신체 분석 문제를 다루고, meditation은 7코드 약한 코드를 다루고, brainTraining은 뇌 테스트 약한 부분을 다뤄야 합니다.
+  5. programRecommendation ↔ threeBodyAnalysis: 추천 프로그램이 3바디 분석에서 가장 약한 영역을 보완하는 방향이어야 합니다.
+  6. **[나이 및 숫자 일관성 극대화 가이드]**:
+     - 대상자의 실제 나이(${userInfo.age}세)와 신체 나이, 얼굴 나이, 뇌 나이 간의 상대적 차이를 절대 왜곡하거나 혼동하지 마세요.
+     - 실제 나이에 어긋나는 세대착오적 표현(예: 30~50대 중장년층을 "노인/어르신" 등으로 칭하는 행위 등)을 완벽히 차단하고, 대상자의 연령대에 품격 있게 공감할 수 있는 웰에이징 언어("생기 넘치는 중년을 위한 에너지 솔루션", "인생의 황금기를 채우는 의식 성장" 등)를 채택하세요.
+     - 수치가 우수한 영역에 대해서는 불필요하게 "심각한 노화 상태"로 왜곡해서 서술하지 마세요. 반드시 사실 데이터에 기반한 세련된 밸런스 점검을 보장하세요.
+ 6. **needsSolution (건강 니즈 맞춤 에너지 솔루션)**: 사용자가 선택하거나 입력한 건강 니즈(관심사)를 3바디(몸·마음·뇌), 7코드 점검 데이터와 완벽하게 매칭하여 전인적 솔루션을 제안해 주세요.
+     - **[핵심 톤앤매너]** 단순히 건조하게 정보를 전달하는 느낌이 아니라, **"마치 내 인생과 건강 고민을 깊이 꿰뚫어 보는 최고의 의식/명상 상담사"**이자 **"품격 있는 사주/타로 전문가 수준의 깊은 공감력과 확신을 담은 격조 높은 리치 멘트"**로 서술하세요. "몸, 마음, 뇌 각각의 차원에서 왜 이런 불균형이 왔는지 에너지 파동 관점(기(氣) 에너지 순환과 코드 방전 상태)"을 녹여 설명하여 고객의 공감을 극대화하고 BTC 수련에 깊은 영감을 느끼게 해야 합니다.
+     - \`physical\` (몸 차원 솔루션): 사용자의 건강 니즈를 해결하기 위해 몸의 불균형 정렬을 바로잡고, 기혈 순환과 생체 에너지를 깨울 수 있는 몸 차원의 실천법을 인생 조언처럼 깊이 있게 제안해 주세요. (한국어 3~4문장)
+     - \`emotional\` (마음 차원 솔루션): 사용자의 건강 니즈를 해결하기 위해 마음의 방전 패턴을 풀고 감정/스트레스의 파동을 조화롭게 다스리는 명상·호흡 에너지 충전 솔루션을 깊은 울림을 주며 제안해 주세요. (한국어 3~4문장)
+     - \`cognitive\` (뇌 차원 솔루션): 사용자의 건강 니즈를 해결하기 위해 뇌파를 조절하고 뇌신경 회로를 활성화하는 뇌의식 훈련법을 직관적이고 설득력 있게 제안해 주세요. (한국어 3~4문장)
   `;
 
   // --- 이전 기록 비교 분석 데이터 준비 ---
@@ -571,7 +643,7 @@ ${userInfo.memberType === 'existing'
       try {
         console.log(`[Gemini] 분석 시도 ${attempt + 1}/${MAX_RETRIES}...`);
         
-        const apiCall = callGeminiApiViaProxy(
+        const apiCall = callGeminiProxy(
           'gemini-2.5-flash',
           { parts: [...parts, { text: prompt }] },
           {
@@ -580,10 +652,10 @@ ${userInfo.memberType === 'existing'
               type: Type.OBJECT,
               properties: {
                 postureScore:     { type: Type.NUMBER, description: "자세 분석 종합 점수 (0~100)" },
-                flexibilityScore: { type: Type.NUMBER, description: "유연성 분석 종합 점수 (0~100)" },
-                armRaiseScore:    { type: Type.NUMBER, description: "팔 올리기 가동범위 종합 점수 (0~100)" },
+                ...(hasFlex ? { flexibilityScore: { type: Type.NUMBER, description: "유연성 분석 종합 점수 (0~100)" } } : {}),
+                ...(hasArmRaise ? { armRaiseScore: { type: Type.NUMBER, description: "팔 올리기 가동범위 종합 점수 (0~100)" } } : {}),
                 faceAgeEstimate:  { type: Type.NUMBER, description: "추정 안면 피부 나이" },
-                summary:          { type: Type.STRING, description: "전체적인 건강 상태 종합 평가 한국어 200자 이상" },
+                summary:          { type: Type.STRING, description: `전체적인 건강 상태 종합 평가 한국어 200자 이상.${!hasFlex ? ' 유연성이라는 단어를 절대 사용하지 마세요.' : ''}${!hasArmRaise ? ' 팔 올리기, 가동범위, 견관절이라는 단어를 절대 사용하지 마세요.' : ''}` },
                 brainHealthImplication: { type: Type.STRING, description: "신체 상태가 뇌 건강에 주는 의미 한국어" },
                 bodyTypeAnalysis: { type: Type.STRING, description: "종합 체형 특징 분석 명칭 (예: 편평등 Flat Back, 굽은등 Sway Back 등)" },
                 bodyAlignmentAnalysis: {
@@ -640,9 +712,9 @@ ${userInfo.memberType === 'existing'
             recommendations: {
               type: Type.OBJECT,
               properties: {
-                meditation:    { type: Type.STRING },
-                gymnastics:    { type: Type.STRING },
-                brainTraining: { type: Type.STRING }
+                meditation:    { type: Type.STRING, description: "마음(Mind) 관리법: 7코드 분석에서 방전된 코드를 인용하며 명상·호흡법 안내. '현재 [분석 결과 인용] → 따라서 [관리 방법]' 구조" },
+                gymnastics:    { type: Type.STRING, description: "몸(Body) 관리법: 신체 정렬 분석에서 발견된 문제를 인용하며 교정 체조·자세 개선 안내. '현재 [분석 결과 인용] → 따라서 [관리 방법]' 구조" },
+                brainTraining: { type: Type.STRING, description: "뇌(Brain) 관리법: 뇌 테스트 결과를 인용하며 약한 영역 강화 훈련법 안내. '현재 [분석 결과 인용] → 따라서 [관리 방법]' 구조" }
               }
             },
             brainTestEvaluation: { type: Type.STRING, description: "두뇌 인지 반응 및 장보기 기억/계산 테스트 결과에 대한 상세 평가 및 개선 가이드 (2~3문장)" },
@@ -681,11 +753,19 @@ ${userInfo.memberType === 'existing'
                 reason: { type: Type.STRING },
                 duration: { type: Type.STRING }
               }
+            },
+            needsSolution: {
+              type: Type.OBJECT,
+              properties: {
+                physical: { type: Type.STRING, description: "몸 관절 및 정렬, 생활습관 에너지 관리 차원의 최고 상담사급 솔루션 한국어 3~4문장" },
+                emotional: { type: Type.STRING, description: "마음 감정 및 에너지 코드 방전 복구를 위한 명상 호흡 솔루션 한국어 3~4문장" },
+                cognitive: { type: Type.STRING, description: "뇌신경망 활성 및 뇌파 조절 인지 훈련법 솔루션 한국어 3~4문장" }
+              }
             }
           }
-        }
-      }
-    );
+          }
+          }
+        );
 
         // 타임아웃 적용
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -711,23 +791,62 @@ ${userInfo.memberType === 'existing'
       throw finalError;
     }
 
-    const text = response.text;
+    let text = response.text;
     if (!text) throw new Error("AI response text is empty");
 
-    const parsed = JSON.parse(text);
+    // 혹시라도 Gemini가 마크다운(```json) 블록을 포함했을 경우를 대비해 제거
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e: any) {
+      console.error('JSON Parse Error. Raw text:', text);
+      throw new Error(`AI 응답 형식 오류(JSON Parse Error): ${e.message}`);
+    }
 
     // ─── 환각(Hallucination) 후처리 안전장치 ───────────────────────────
-    // PC 버전에서도 유연성/팔올리기가 미수행일 경우(hasFlex, hasArmRaise가 false라고 가정) 단어 원천 차단
-    // PC 버전은 항상 수행할 수도 있지만, 혹시 모를 환각을 대비해 데이터를 체크합니다.
-    const hasFlexTest = !!flexData?.handPosition;
-    const hasArmRaiseTest = !!armRaiseData?.armRaiseGrade;
-
+    // 미수행 항목 관련 키워드가 BODY description에 남아있으면 강제 치환
+    if (parsed.threeBodyAnalysis?.body?.description) {
+      let bodyDesc = parsed.threeBodyAnalysis.body.description;
+      if (!hasFlex) {
+        bodyDesc = bodyDesc.replace(/유연성[이가을를은는과와,\s]*(부족|저하|개선|필요|저조|부족하|낮|떨어|제한|측정)/g, '');
+        bodyDesc = bodyDesc.replace(/,?\s*유연성/g, '');
+      }
+      if (!hasArmRaise) {
+        bodyDesc = bodyDesc.replace(/어깨\s*가동\s*범위[이가을를은는과와에서,\s]*(부족|저하|개선|필요|저조|부족하|낮|떨어|제한|측정)/g, '');
+        bodyDesc = bodyDesc.replace(/,?\s*어깨\s*가동\s*범위/g, '');
+        bodyDesc = bodyDesc.replace(/,?\s*견관절\s*가동[범위]*/g, '');
+        bodyDesc = bodyDesc.replace(/,?\s*팔\s*올리기\s*(기동범위)?/g, '');
+        bodyDesc = bodyDesc.replace(/,?\s*기동범위/g, '');
+      }
+      // 공통: 데이터 부족/측정 불가 관련 문구 제거
+      bodyDesc = bodyDesc.replace(/[^.]*데이터\s*부족[^.]*\./g, '');
+      bodyDesc = bodyDesc.replace(/[^.]*측정\s*(데이터\s*)?불가[^.]*\./g, '');
+      bodyDesc = bodyDesc.replace(/[^.]*분석\s*불가[^.]*\./g, '');
+      bodyDesc = bodyDesc.replace(/[^.]*자세\s*평가[는가이]?\s*어려[웠운][^.]*\./g, '');
+      bodyDesc = bodyDesc.replace(/[^.]*정확한\s*자세\s*평가[는가이]?\s*어려[웠운][^.]*\./g, '');
+      // 정리: 이중 쉼표, 앞뒤 공백 제거
+      bodyDesc = bodyDesc.replace(/,\s*,/g, ',').replace(/,\s*\./g, '.').replace(/^\s*,/, '').trim();
+      parsed.threeBodyAnalysis.body.description = bodyDesc;
+    }
+    // bodyTypeAnalysis에서도 동일하게 후처리
+    if (parsed.bodyTypeAnalysis) {
+      let bta = parsed.bodyTypeAnalysis;
+      bta = bta.replace(/[^.]*데이터\s*부족[^.]*\./g, '');
+      bta = bta.replace(/[^.]*측정\s*불가[^.]*\./g, '');
+      bta = bta.replace(/[^.]*분석\s*불가[^.]*\./g, '');
+      if (!hasFlex) bta = bta.replace(/,?\s*유연성/g, '');
+      if (!hasArmRaise) bta = bta.replace(/,?\s*팔\s*올리기\s*(기동범위)?/g, '');
+      parsed.bodyTypeAnalysis = bta.replace(/,\s*,/g, ',').replace(/,\s*\./g, '.').trim();
+    }
+    // summary에서도 동일하게 후처리
     if (parsed.summary) {
       let summary = parsed.summary;
-      if (!hasFlexTest) {
+      if (!hasFlex) {
         summary = summary.replace(/유연성/g, '');
       }
-      if (!hasArmRaiseTest) {
+      if (!hasArmRaise) {
         summary = summary.replace(/어깨\s*가동\s*범위/g, '');
         summary = summary.replace(/견관절/g, '');
         summary = summary.replace(/팔\s*올리기/g, '');
@@ -735,6 +854,7 @@ ${userInfo.memberType === 'existing'
         summary = summary.replace(/가동\s*범위/g, '');
       }
       
+      // 잔여 찌꺼기 텍스트(조사, 접속사) 완벽 정리
       summary = summary.replace(/및\s*저하/g, '저하');
       summary = summary.replace(/및\s*저조/g, '저조');
       summary = summary.replace(/,\s*및/g, ',');
@@ -743,45 +863,65 @@ ${userInfo.memberType === 'existing'
       summary = summary.replace(/과\s*및/g, '과');
       summary = summary.replace(/,\s*저하/g, ' 저하');
       
+      // 데이터 부족 문구 제거
       summary = summary.replace(/[^.]*데이터\s*부족[^.]*\./g, '');
       summary = summary.replace(/[^.]*측정\s*(데이터\s*)?불가[^.]*\./g, '');
       summary = summary.replace(/[^.]*자세\s*평가[는가이]?\s*어려[웠운][^.]*\./g, '');
+      
       parsed.summary = summary.replace(/,\s*,/g, ',').replace(/,\s*\./g, '.').replace(/\s+/g, ' ').trim();
     }
-    
-    if (parsed.threeBodyAnalysis?.body?.description) {
-      let bodyDesc = parsed.threeBodyAnalysis.body.description;
-      if (!hasFlexTest) bodyDesc = bodyDesc.replace(/유연성[이가을를은는과와,\s]*(부족|저하|개선|필요|저조|부족하|낮|떨어|제한|측정)/g, '').replace(/유연성/g, '');
-      if (!hasArmRaiseTest) bodyDesc = bodyDesc.replace(/어깨\s*가동\s*범위[이가을를은는과와에서,\s]*(부족|저하|개선|필요|저조|부족하|낮|떨어|제한|측정)/g, '').replace(/가동범위/g, '').replace(/팔\s*올리기/g, '');
-      
-      bodyDesc = bodyDesc.replace(/[^.]*데이터\s*부족[^.]*\./g, '');
-      bodyDesc = bodyDesc.replace(/[^.]*측정\s*(데이터\s*)?불가[^.]*\./g, '');
-      bodyDesc = bodyDesc.replace(/[^.]*분석\s*불가[^.]*\./g, '');
-      parsed.threeBodyAnalysis.body.description = bodyDesc.replace(/,\s*,/g, ',').replace(/,\s*\./g, '.').replace(/\s+/g, ' ').trim();
+
+    // ─── agingMetrics에서 미수행 항목 강제 제거 ───────────────────────
+    if (Array.isArray(parsed.agingMetrics)) {
+      parsed.agingMetrics = parsed.agingMetrics.filter((item: any) => {
+        const name = (item.testName || '').toLowerCase();
+        if (!hasFlex && (name.includes('유연성') || name.includes('전굴') || name.includes('flexibility'))) return false;
+        if (!hasArmRaise && (name.includes('팔') || name.includes('가동') || name.includes('견관절') || name.includes('arm'))) return false;
+        if (name.includes('스쿼트') || name.includes('푸시업') || name.includes('근력') || name.includes('squat') || name.includes('pushup')) return false;
+        return true;
+      });
+      // agingMetrics 안의 description에서도 금지 키워드 제거
+      parsed.agingMetrics.forEach((item: any) => {
+        if (item.description) {
+          if (!hasFlex) item.description = item.description.replace(/유연성/g, '');
+          if (!hasArmRaise) {
+            item.description = item.description.replace(/가동범위/g, '').replace(/가동\s*범위/g, '').replace(/팔\s*올리기/g, '').replace(/견관절/g, '');
+          }
+          item.description = item.description.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim();
+        }
+      });
     }
 
-    if (parsed.bodyTypeAnalysis) {
-      let bta = parsed.bodyTypeAnalysis;
-      if (!hasFlexTest) bta = bta.replace(/유연성/g, '');
-      if (!hasArmRaiseTest) bta = bta.replace(/가동범위/g, '').replace(/팔\s*올리기/g, '');
-      bta = bta.replace(/[^.]*데이터\s*부족[^.]*\./g, '');
-      bta = bta.replace(/[^.]*측정\s*불가[^.]*\./g, '');
-      parsed.bodyTypeAnalysis = bta.replace(/,\s*,/g, ',').replace(/,\s*\./g, '.').replace(/\s+/g, ' ').trim();
+    // brainTestEvaluation에서도 금지 키워드 제거
+    if (parsed.brainTestEvaluation) {
+      if (!hasFlex) parsed.brainTestEvaluation = parsed.brainTestEvaluation.replace(/유연성/g, '');
+      if (!hasArmRaise) {
+        parsed.brainTestEvaluation = parsed.brainTestEvaluation.replace(/가동범위/g, '').replace(/팔\s*올리기/g, '').replace(/견관절/g, '');
+      }
+      parsed.brainTestEvaluation = parsed.brainTestEvaluation.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim();
     }
+
+    // AI가 미수행 항목에 점수를 넣었을 경우 강제 제거
+    if (!hasFlex) delete parsed.flexibilityScore;
+    if (!hasArmRaise) delete parsed.armRaiseScore;
 
     // ─── 종합 건강 점수 (BTC 통합 측정 기준) ──────────────────────────
     // AI가 반환한 점수(posture, flex, arm)와 시스템 확정 점수(squat, pushup, balance) 병합
     const pScore = typeof parsed.postureScore === 'number' ? parsed.postureScore : 70;
-    const fScore = typeof parsed.flexibilityScore === 'number' ? parsed.flexibilityScore : 70;
-    const aScore = typeof parsed.armRaiseScore === 'number' ? parsed.armRaiseScore : 70;
+    const fScore = hasFlex && typeof parsed.flexibilityScore === 'number' ? parsed.flexibilityScore : null;
+    const aScore = hasArmRaise && typeof parsed.armRaiseScore === 'number' ? parsed.armRaiseScore : null;
 
     const balanceScoreVal = getBalanceScoreOutput(footDrops, swayScore, eyesClosed);
     const balancePhysicalAge = getBalancePhysicalAge(footDrops, swayScore, eyesClosed);
     // 내부 연산용 상대 평가 점수 변환
     const relativeBalanceScore = Math.max(20, Math.min(100, 70 - (balancePhysicalAge - userInfo.age) * 2.5));
 
-    // 1. 신체 점수 (40%) : 4대 측정 점수 평균 (근력 제외, 균형은 연령보정 상대점수 사용)
-    const physicalScoreVal = Math.round((relativeBalanceScore + pScore + fScore + aScore) / 4);
+    // 1. 신체 점수 (40%) : 수행한 측정 점수 평균 (근력 제외, 균형은 연령보정 상대점수 사용)
+    let totalScore = relativeBalanceScore + pScore;
+    let scoreCount = 2;
+    if (fScore !== null) { totalScore += fScore; scoreCount++; }
+    if (aScore !== null) { totalScore += aScore; scoreCount++; }
+    const physicalScoreVal = Math.round(totalScore / scoreCount);
     
     // 2. 뇌 점수 (30%) : 뇌 나이와 실제 나이 비교 (내 나이보다 젊으면 80+, 늙으면 80-)
     const brainAgeDiff = userInfo.age - cognitiveBrainAge; // 양수면 젊음, 음수면 늙음
@@ -791,16 +931,39 @@ ${userInfo.memberType === 'existing'
     const mindWeightMap: Record<string, number> = {
       '우울': 3, '불면': 3, '공황': 3, '만성 두통': 3, '건망': 2,
       '피로': 1, '긴장': 1, '짜증': 1, '무기력': 1, '혼란': 1, '외로움': 1,
-      '평온': -1, '안정': -1, '기쁨': -1, '열정': -1, '설렘': -1, '사랑': -1, '회복': -1
+      // 긍정 키워드 가중치 세분화 (-3, -2, -1)
+      '평온': -3, '안정': -3,
+      '행복': -2, '감사': -2, '사랑': -2, '충만': -2, '기쁨': -2, '즐거움': -2,
+      '긍정': -1, '열정': -1, '설렘': -1, '회복': -1
     };
     
-    let sevenCodeWeightSum = 0;
+    let negativeSevenCodeSum = 0;
+    let positiveSevenCodeSum = 0;
+    
     sevenCodeKeywords.forEach(kw => {
-      let weight = 1; // 매핑되지 않은 기본 키워드 페널티
+      let weight = 0;
+      let matched = false;
+      
       for (const [key, val] of Object.entries(mindWeightMap)) {
-        if (kw.includes(key)) { weight = val; break; }
+        if (kw.includes(key)) {
+          weight = val;
+          matched = true;
+          break;
+        }
       }
-      sevenCodeWeightSum += weight;
+      
+      if (!matched) {
+        // 매핑되지 않은 키워드 중 부정 키워드(기본값)는 +1 페널티
+        if (kw !== '특이증상 없음' && kw !== '없음') {
+          weight = 1;
+        }
+      }
+      
+      if (weight > 0) {
+        negativeSevenCodeSum += weight;
+      } else {
+        positiveSevenCodeSum += weight; // 음수 값
+      }
     });
 
     let faceVitalityPenalty = 0;
@@ -810,9 +973,12 @@ ${userInfo.memberType === 'existing'
     }
 
     let cognitiveFatiguePenalty = 0;
-    if (reactionTimeMs > 1500) cognitiveFatiguePenalty = 2;
-    else if (reactionTimeMs > 1200) cognitiveFatiguePenalty = 1;
-    else if (reactionTimeMs < 800) cognitiveFatiguePenalty = -1;
+    // 라이트 버전에서는 반응속도 테스트를 하지 않으므로 penalty 적용하지 않음
+    if (hasReactionTest) {
+      if (reactionTimeMs > 1500) cognitiveFatiguePenalty = 2;
+      else if (reactionTimeMs > 1200) cognitiveFatiguePenalty = 1;
+      else if (reactionTimeMs < 800) cognitiveFatiguePenalty = -1;
+    }
 
     let bodyTensionPenalty = 0;
     if (typeof neckAngle === 'number') {
@@ -820,13 +986,36 @@ ${userInfo.memberType === 'existing'
       else if (neckAngle >= 15) bodyTensionPenalty = 1;
     }
 
-    const calculatedMindAgeRaw = userInfo.age + sevenCodeWeightSum + faceVitalityPenalty + cognitiveFatiguePenalty + bodyTensionPenalty;
+    // ─── 마음나이 다차원 융합 보정 추가 ──────────────────────────
+    // [1] 얼굴 나이 연동 보정 (얼굴의 생기/동안 정도가 마음에 미치는 영향)
+    const faceAge = typeof parsed.faceAgeEstimate === 'number' ? parsed.faceAgeEstimate : userInfo.age;
+    const faceAgeDiff = faceAge - userInfo.age; // 양수면 노안, 음수면 동안
+    let faceMindCorrection = 0;
+    if (faceAgeDiff >= 10) faceMindCorrection = 4;
+    else if (faceAgeDiff >= 5) faceMindCorrection = 2;
+    else if (faceAgeDiff <= -10) faceMindCorrection = -4;
+    else if (faceAgeDiff <= -5) faceMindCorrection = -2;
+
+    // [2] 신체 조절력(균형나이) 연동 보정 (신체 긴장 및 자율신경 조절력 반영)
+    const balanceAgeDiff = balancePhysicalAge - userInfo.age; // 양수면 조절력 저하, 음수면 우수
+    let balanceMindCorrection = 0;
+    if (balanceAgeDiff >= 8) balanceMindCorrection = 3;
+    else if (balanceAgeDiff >= 4) balanceMindCorrection = 1.5;
+    else if (balanceAgeDiff <= -6) balanceMindCorrection = -3;
+    else if (balanceAgeDiff <= -3) balanceMindCorrection = -1.5;
+
+    // 보정: 부정 키워드는 최대 +15세로 제한(요청사항), 긍정 키워드는 최대 -12세까지 차감 가능하도록 설정
+    const limitedNegative = Math.min(15, negativeSevenCodeSum);
+    const limitedPositive = Math.max(-12, positiveSevenCodeSum);
+
+    const calculatedMindAgeRaw = userInfo.age + limitedNegative + limitedPositive + 
+      faceVitalityPenalty + cognitiveFatiguePenalty + bodyTensionPenalty + 
+      faceMindCorrection + balanceMindCorrection;
+      
     const mindAge = Math.max(20, Math.min(85, Math.round(calculatedMindAgeRaw)));
     const mindScoreVal = Math.max(40, Math.min(100, Math.round(70 - (mindAge - userInfo.age) * 2)));
     // 4. 얼굴 점수 (10%) : 피부/얼굴 나이와 실제 나이 비교
-    const faceAge = typeof parsed.faceAgeEstimate === 'number' ? parsed.faceAgeEstimate : userInfo.age;
-    const faceAgeDiff = userInfo.age - faceAge;
-    const faceScoreVal = Math.max(40, Math.min(100, Math.round(80 + (faceAgeDiff * 2))));
+    const faceScoreVal = Math.max(40, Math.min(100, Math.round(80 + ((userInfo.age - faceAge) * 2))));
 
     // 최종 종합 건강 점수
     const overallScore = Math.round(
@@ -892,19 +1081,7 @@ ${userInfo.memberType === 'existing'
       };
     }
 
-    // ─── 나이 일관성 후처리: AI가 summary에 임의 기입한 나이를 코드 확정값으로 치환 ───
-    if (parsed.summary) {
-      let correctedSummary = parsed.summary;
-      // "신체 나이는 XX세", "신체 나이 XX세", "신체나이는 XX세", "신체나이 XX세" 등 패턴 치환
-      correctedSummary = correctedSummary.replace(/신체\s*나이[는은이가]?\s*\d+\s*세/g, `신체 나이는 ${physicalAge}세`);
-      // "뇌 나이는 XX세" 패턴 치환
-      correctedSummary = correctedSummary.replace(/뇌\s*나이[는은이가]?\s*\d+\s*세/g, `뇌 나이는 ${calculatedBrainAge}세`);
-      // "마음 나이는 XX세" 패턴 치환
-      correctedSummary = correctedSummary.replace(/마음\s*나이[는은이가]?\s*\d+\s*세/g, `마음 나이는 ${mindAge}세`);
-      parsed.summary = correctedSummary;
-    }
-
-    return {
+    const finalReport = {
       ...parsed,
       physicalAge: physicalAge,
       brainAge: calculatedBrainAge,
@@ -912,10 +1089,13 @@ ${userInfo.memberType === 'existing'
       comprehensiveAge: comprehensiveAge,
       overallScore: overallScore,
       comparisonAnalysis,
+      measurementVersion: buildMeasurementVersion(),
       id: generateSafeId(),
       date: new Date().toISOString(),
       userInfo
     };
+
+    return sanitizeChakra(finalReport);
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
     throw error;
@@ -926,12 +1106,6 @@ export async function analyzePhysiognomy(
   metrics: any,
   profile?: { displayName?: string; birthDate?: string; gender?: string; age?: number } | null
 ): Promise<any> {
-  const apiKey = getActiveApiKey();
-  if (!apiKey) throw new Error("API 키가 설정되지 않았습니다. 설정 화면에서 API 키를 입력해주세요.");
-
-  const ai = new GoogleGenAI({ apiKey });
-
-  // Few-Shot 예제 로드 및 문자열 빌드
   let fewShotPrompt = '';
   if (profile && (profile as UserInfo).age) {
     const age = typeof profile.age === 'number' ? profile.age : parseInt(profile.age, 10) || 40;
@@ -1072,7 +1246,7 @@ ${fewShotPrompt}
 `;
 
   try {
-    const response = await callGeminiApiViaProxy(
+    const response = await callGeminiProxy(
       "gemini-3-flash-preview",
       [{ parts: [{ text: prompt }] }],
       {
@@ -1103,12 +1277,6 @@ export const analyzeTarot = async (
   future: CheonbugyeongCharacter,
   masterId: string
 ): Promise<string> => {
-  const apiKey = getActiveApiKey();
-  if (!apiKey) {
-    throw new Error("API 키가 설정되지 않았습니다. 설정 화면에서 API 키를 입력해주세요.");
-  }
-  const ai = new GoogleGenAI({ apiKey });
-  
   const selectedMaster = MASTERS.find(m => m.id === masterId);
   const masterPersonaPrompt = selectedMaster 
     ? selectedMaster.prompt
@@ -1174,9 +1342,9 @@ export const analyzeTarot = async (
   `;
 
   try {
-    const response = await callGeminiApiViaProxy(
+    const response = await callGeminiProxy(
       'gemini-2.5-flash',
-      prompt
+      [{ parts: [{ text: prompt }] }],
     );
     const text = response.text;
     if (!text) throw new Error("타로 해석 결과를 받지 못했습니다.");
@@ -1186,79 +1354,4 @@ export const analyzeTarot = async (
     throw new Error(error.message || "타로 해석 중 오류가 발생했습니다.");
   }
 };
-
-// --- IBEL 사례보고서 초안 생성 (관리자 전용) ---
-export const generateCaseReportDraft = async (
-  record: MemberRecord,
-  complaint: string
-): Promise<{ diagnosisSummary: string; causeAnalysis: string; interventionStrategy: string }> => {
-  const apiKey = getActiveApiKey();
-  if (!apiKey) {
-    throw new Error("API Key is missing.");
-  }
-  const ai = new GoogleGenAI({ apiKey });
-
-  const r = record.report;
-  const pAge = r?.physicalAge || r?.userInfo?.age || 0;
-  const fAge = r?.faceAgeEstimate || r?.userInfo?.age || 0;
-  const postureInfo = r?.postureMetrics?.map(m => `${m.name}: ${m.status} (${m.score}점)`).join(', ') || '데이터 없음';
-  
-  const prompt = `
-당신은 브레인트레이닝센터(BTC)의 수석 브레인트레이너이자 명상/건강 전문가입니다.
-관리자가 입력한 '내담자 호소문 및 니즈'와 AI가 분석한 '3바디 측정 데이터(팩트)'를 바탕으로 "IBEL 명상지도 사례보고서"의 핵심인 3번, 4번, 5번 항목을 작성해야 합니다.
-
-[작성 원칙 - 환각 절대 금지]
-- 제공된 측정 데이터 수치만을 근거로 진단하세요. (측정되지 않은 질병이나 증상을 지어내지 마세요.)
-- 문체는 전문가가 작성한 보고서 형식을 유지하세요. (예: "~상태로 분석됨", "~할 필요가 있음")
-- 의학적 진단 용어(질환 확진 등)는 피하고, 에너지, 자세불균형, 인지반응 저하 등의 스크리닝 관점으로 작성하세요.
-
-[내담자 데이터]
-- 이름: ${record.name}
-- 성별: ${r?.userInfo?.gender === 'male' ? '남성' : '여성'}
-- 실제 나이: ${r?.userInfo?.age || 0}세
-- 2번. 내담자 호소문 및 니즈: "${complaint}"
-
-[측정 데이터 팩트 (Before)]
-- 신체 나이: ${pAge}세 / 얼굴 피부 나이: ${fAge}세
-- 종합 신체/뇌/얼굴 점수: ${r?.overallScore}점
-- 체형/자세 분석 데이터: ${postureInfo}
-- 3Body-7Code 분석 결과:
-  ${JSON.stringify(r?.sevenCodeAnalysis || {}, null, 2)}
-
-위 데이터를 바탕으로 정확히 아래 JSON 형식으로 3가지 항목을 작성하여 응답하세요.
-
-{
-  "diagnosisSummary": "3. 진단 요약 (신체 팩트와 호소문을 연관 지어 현재 상태를 구체적이고 전문적으로 3~4문장으로 요약)",
-  "causeAnalysis": "4. 핵심 원인 분석 (자세 불균형, 특정 7코드 에너지 방전 등이 호소문(증상)을 유발한 근본 원인임을 3Body 관점에서 분석)",
-  "interventionStrategy": "5. 개입 전략 (3Body 7Code 원리인 [감각깨우기 -> 유연화 -> 정화 -> 통합 -> 주인되기]의 5단계를 적용하여 이 내담자에게 맞는 구체적인 훈련/명상 전략을 4~5문장으로 제시)"
-}
-`;
-
-  try {
-    const response = await callGeminiApiViaProxy(
-      'gemini-2.5-flash',
-      prompt,
-      {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            diagnosisSummary: { type: Type.STRING },
-            causeAnalysis: { type: Type.STRING },
-            interventionStrategy: { type: Type.STRING }
-          },
-          required: ["diagnosisSummary", "causeAnalysis", "interventionStrategy"]
-        }
-      }
-    );
-
-    const text = response.text;
-    if (!text) throw new Error("AI 응답이 비어있습니다.");
-    return JSON.parse(text);
-  } catch (error: any) {
-    console.error("generateCaseReportDraft Error:", error);
-    throw new Error("사례보고서 자동 생성 중 오류가 발생했습니다.");
-  }
-};
-
 

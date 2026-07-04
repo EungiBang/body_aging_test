@@ -20,7 +20,7 @@ export const SEVEN_CODE_KEYWORDS: KeywordMap[] = [
   { keyword: "외로움", codes: [1, 2, 4] },
   { keyword: "관계 집착", codes: [1, 2, 4] },
   { keyword: "하복부 차가움", codes: [1, 2, 4] },
-  { keyword: "돈 문제", codes: [2] },
+  { keyword: "경제 문제", codes: [2] },
   { keyword: "수치심", codes: [2] },
   { keyword: "아랫배 순환 저하", codes: [2] },
   { keyword: "감정적 피로", codes: [2, 4] },

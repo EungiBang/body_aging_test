@@ -16,8 +16,15 @@ export default function CameraScanner({ onScanComplete }: CameraScannerProps) {
   const metricsBuffer = useRef<PhysiognomyMetrics[]>([]);
   const isScanning = useRef(false);
   const requestRef = useRef<number>(0);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
   const [retryCount, setRetryCount] = useState(0);
+
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+    setIsReady(false);
+    setRetryCount(prev => prev + 1);
+  };
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -25,7 +32,7 @@ export default function CameraScanner({ onScanComplete }: CameraScannerProps) {
     async function setupCamera() {
       const constraints = {
         video: { 
-          facingMode: 'user', 
+          facingMode: facingMode, 
           width: { ideal: 640 }, 
           height: { ideal: 480 } 
         }
@@ -109,6 +116,28 @@ export default function CameraScanner({ onScanComplete }: CameraScannerProps) {
           const results = faceLandmarker.detectForVideo(video, performance.now());
 
           ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Draw Face Guide Overlay (항상 표시)
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+          const radiusX = canvas.width * 0.22;
+          const radiusY = canvas.height * 0.32;
+
+          ctx.beginPath();
+          ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 8]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Guide Text (항상 표시)
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.font = 'bold 16px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText("얼굴을 타원 안에 맞추고,", centerX, centerY - radiusY - 45);
+          ctx.fillText("귀가 보이도록 머리를 넘겨주세요.", centerX, centerY - radiusY - 25);
+          ctx.fillText("카메라를 눈높이 정면에 위치시켜주세요", centerX, centerY - radiusY - 5);
 
           if (results.faceLandmarks && results.faceLandmarks.length > 0) {
             const landmarks = results.faceLandmarks[0];
@@ -359,6 +388,17 @@ export default function CameraScanner({ onScanComplete }: CameraScannerProps) {
         className="absolute inset-0 w-full h-full object-cover"
       />
       
+      {/* Camera Switch Toggle Button */}
+      {isReady && !isScanning.current && (
+        <button
+          onClick={toggleCamera}
+          className="absolute top-4 right-4 w-12 h-12 bg-black/40 backdrop-blur-md rounded-full text-white flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.3)] border border-cyan-400/30 z-[60] hover:bg-black/60 hover:scale-105 active:scale-95 transition-all"
+          title="카메라 방향 전환"
+        >
+          <i className="fas fa-sync-alt text-xl"></i>
+        </button>
+      )}
+
       {/* Overlay UI */}
       <div className="absolute inset-0 flex flex-col items-center justify-between p-6 bg-gradient-to-t from-gray-900/80 via-transparent to-gray-900/40">
         <div className="text-center mt-4">
@@ -406,7 +446,7 @@ export default function CameraScanner({ onScanComplete }: CameraScannerProps) {
                 className="flex items-center justify-center gap-2 w-full py-4 bg-cyan-500 hover:bg-cyan-400 disabled:bg-gray-700 disabled:text-gray-400 text-gray-950 font-semibold rounded-full transition-all active:scale-95 shadow-[0_0_20px_rgba(34,211,238,0.4)]"
               >
                 <i className="fas fa-camera text-lg"></i>
-                <span>관상 분석 시작</span>
+                <span>안면 노화 분석 시작</span>
               </button>
               <label className={`flex items-center justify-center gap-2 w-full py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-full transition-all cursor-pointer backdrop-blur-sm border border-white/10 ${isAnalyzingImage ? 'opacity-50 pointer-events-none' : ''}`}>
                 <i className="fas fa-image text-lg"></i>

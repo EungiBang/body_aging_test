@@ -444,7 +444,7 @@ ${report.animalMorphology.animalMorphologyBlend?.map(b => `  - ${b.type} (${b.ma
         </div>
       </div>
 
-      {/* 프리미엄 종합 진단 (Comprehensive Evaluation) */}
+      {/* 프리미엄 종합 평가 (Comprehensive Evaluation) */}
       <div className="bg-gradient-to-br from-indigo-900/50 to-purple-900/50 backdrop-blur-xl border border-indigo-500/30 text-white rounded-3xl p-8 shadow-2xl relative overflow-hidden mt-8 mb-8">
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-fuchsia-500/20 rounded-full blur-3xl" />
         
@@ -454,7 +454,7 @@ ${report.animalMorphology.animalMorphologyBlend?.map(b => `  - ${b.type} (${b.ma
               <i className="fas fa-crown text-indigo-400"></i>
             </div>
             <div>
-              <h3 className="text-2xl font-bold text-white">프리미엄 종합 진단</h3>
+              <h3 className="text-2xl font-bold text-white">프리미엄 종합 평가</h3>
               <p className="text-[11px] text-indigo-300 uppercase tracking-widest">Master's Comprehensive Evaluation</p>
             </div>
           </div>
@@ -517,7 +517,7 @@ ${report.animalMorphology.animalMorphologyBlend?.map(b => `  - ${b.type} (${b.ma
       <div className="space-y-6">
         <h3 className="text-2xl font-bold text-white flex items-center gap-2">
           <i className="fas fa-bolt text-fuchsia-400"></i>
-          에너지 정밀 진단: 3-Body & 7-Code
+          에너지 정밀 분석: 3-Body & 7-Code
         </h3>
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

@@ -7,7 +7,6 @@ interface PerformanceInfo {
   cpuCores: number;
   memoryGB: number | null;
   gpuRenderer: string;
-  isIntegratedGPU: boolean;    // 통합 그래픽(iGPU) 여부
   poseInterval: number;       // 포즈 추정 간격 (ms)
   videoWidth: number;          // 카메라 프리뷰 해상도
   videoHeight: number;
@@ -16,7 +15,7 @@ interface PerformanceInfo {
 }
 
 const CACHE_KEY = 'btc_performance_tier';
-const CACHE_VERSION = 'v1.4'; // v1.4: iGPU 감지 추가
+const CACHE_VERSION = 'v1.3';
 
 const getGPURenderer = (): string => {
   try {
@@ -30,29 +29,6 @@ const getGPURenderer = (): string => {
     }
   } catch {}
   return 'Unknown';
-};
-
-/**
- * 통합 그래픽(iGPU) 여부를 판별합니다.
- * Intel UHD, Intel HD, Intel Iris Xe, AMD Radeon Graphics(내장) 등
- */
-const checkIntegratedGPU = (gpuRenderer: string): boolean => {
-  const gpuLower = gpuRenderer.toLowerCase();
-  return (
-    gpuLower.includes('intel hd') ||
-    gpuLower.includes('intel(r) hd') ||
-    gpuLower.includes('intel uhd') ||
-    gpuLower.includes('intel(r) uhd') ||
-    gpuLower.includes('iris xe') ||
-    gpuLower.includes('iris(r) xe') ||
-    gpuLower.includes('iris plus') ||
-    gpuLower.includes('iris(r) plus') ||
-    gpuLower.includes('swiftshader') ||
-    gpuLower.includes('llvmpipe') ||
-    gpuLower.includes('mesa') ||
-    // AMD 내장 그래픽 (Radeon Graphics = 내장, Radeon RX = 외장)
-    (gpuLower.includes('radeon graphics') && !gpuLower.includes('radeon rx'))
-  );
 };
 
 /**
@@ -103,7 +79,6 @@ const determineTier = (): PerformanceInfo => {
   }
 
   const gpuRenderer = getGPURenderer();
-  const isIntegratedGPU = checkIntegratedGPU(gpuRenderer);
   
   // 벤치마크 실행
   const benchmarkMs = runBenchmark();
@@ -131,18 +106,23 @@ const determineTier = (): PerformanceInfo => {
   else if (benchmarkMs < 1000) score += 1;
   else score += 0;
   
-  // GPU (통합 그래픽이면 감점)
-  if (isIntegratedGPU) score -= 1;
+  // GPU (알려진 저성능 GPU 감지)
+  const gpuLower = gpuRenderer.toLowerCase();
+  const isLowGPU = gpuLower.includes('intel hd') || 
+                    gpuLower.includes('intel(r) hd') ||
+                    gpuLower.includes('swiftshader') ||
+                    gpuLower.includes('llvmpipe');
+  if (isLowGPU) score -= 1;
 
   let tier: PerformanceTier;
   if (score >= 7) tier = 'high';
   else if (score >= 4) tier = 'medium';
   else tier = 'low';
 
-  console.log(`[Performance] Score: ${score}, Tier: ${tier.toUpperCase()}, Benchmark: ${benchmarkMs.toFixed(0)}ms, Cores: ${cpuCores}, RAM: ${memoryGB}GB, GPU: ${gpuRenderer}, iGPU: ${isIntegratedGPU}`);
+  console.log(`[Performance] Score: ${score}, Tier: ${tier.toUpperCase()}, Benchmark: ${benchmarkMs.toFixed(0)}ms, Cores: ${cpuCores}, RAM: ${memoryGB}GB, GPU: ${gpuRenderer}`);
 
   // 티어별 설정
-  const configs: Record<PerformanceTier, Omit<PerformanceInfo, 'cpuCores' | 'memoryGB' | 'gpuRenderer' | 'isIntegratedGPU'>> = {
+  const configs: Record<PerformanceTier, Omit<PerformanceInfo, 'cpuCores' | 'memoryGB' | 'gpuRenderer'>> = {
     high: {
       tier: 'high',
       poseInterval: 1500,
@@ -174,7 +154,6 @@ const determineTier = (): PerformanceInfo => {
     cpuCores,
     memoryGB,
     gpuRenderer,
-    isIntegratedGPU,
   };
 };
 

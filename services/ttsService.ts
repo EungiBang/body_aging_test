@@ -2,6 +2,9 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { preloadedAudio } from '../assets/audio/preloadedTTS';
 import { ErrorLogger } from './ErrorLogger';
+import { getActiveApiKey } from './geminiService';
+
+const isWebMode = (): boolean => typeof window !== 'undefined' && !window.electronAPI;
 
 
 let currentAudioSource: AudioBufferSourceNode | null = null;
@@ -9,6 +12,7 @@ let currentHtmlAudio: HTMLAudioElement | null = null;
 let audioContext: AudioContext | null = null;
 const audioCache: Record<string, string> = {};
 let quotaExceededUntil = 0;
+let isPendingRequest = false;
 let currentSpeechId = 0;
 
 export const initAudio = async () => {
@@ -21,37 +25,40 @@ export const initAudio = async () => {
 };
 
 export const preloadTTS = async (texts: string[]) => {
-  const apiKey = process.env.GEMINI_API_KEY || '';
-  if (!apiKey) return;
+  const apiKey = getActiveApiKey();
+  if (!apiKey && !isWebMode()) return;
   if (Date.now() < quotaExceededUntil) return;
-
-  const ai = new GoogleGenAI({ apiKey });
 
   for (const text of texts) {
     if (audioCache[text]) continue;
     
     try {
       const koreanPrompt = `다음 텍스트를 30대 여성의 힐링이 되는 감성적이고 자연스러운 목소리로 읽어주세요. 기계음처럼 들리지 않게 최대한 사람처럼, 따뜻하고 부드러운 톤으로 말해주세요. 반드시 한국어로만 말하고 숫자도 한국어로 자연스럽게 읽어주세요:\n\n${text}`;
-      const response = await ai.models.generateContent({
+      const ttsParams = {
         model: "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text: koreanPrompt }] }],
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
         },
-      });
+      };
 
-      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (base64Audio) {
-        audioCache[text] = base64Audio;
+      let base64Audio: string | undefined;
+      if (isWebMode()) {
+        const res = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ttsParams) });
+        if (res.ok) { const data = await res.json(); base64Audio = data.inlineData?.data; }
+      } else {
+        const ai = new GoogleGenAI({ apiKey });
+        const response = await ai.models.generateContent(ttsParams);
+        base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       }
-      // Delay to avoid hitting the API rate limits (15 RPM free tier)
+      if (base64Audio) { audioCache[text] = base64Audio; }
       await new Promise(r => setTimeout(r, 2000));
     } catch (error: any) {
       const errorStr = typeof error === 'object' ? JSON.stringify(error) : String(error);
       if (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED')) {
         quotaExceededUntil = Date.now() + 5 * 60 * 1000;
-        break; // Stop preloading on rate limit
+        break;
       }
     }
   }
@@ -95,12 +102,12 @@ export const speak = async (text: string) => {
 
     // 1. Check Cache first (Instant AI Voice)
     if (audioCache[text]) {
-      playBase64Audio(audioCache[text], thisSpeechId);
+      playBase64Audio(audioCache[text]);
       return; // Success!
     }
 
     // 2. Wait for AI TTS to fetch premium voice
-    if (Date.now() >= quotaExceededUntil && process.env.GEMINI_API_KEY) {
+    if (Date.now() >= quotaExceededUntil && (isWebMode() || process.env.GEMINI_API_KEY) && !isPendingRequest) {
       const success = await fetchAndPlayText(text, thisSpeechId);
       if (success || currentSpeechId !== thisSpeechId) return; // Played successfully via AI! Or overridden!
     }
@@ -112,30 +119,36 @@ export const speak = async (text: string) => {
 };
 
 const fetchAndPlayText = async (text: string, speechId: number): Promise<boolean> => {
-  const apiKey = process.env.GEMINI_API_KEY || '';
-  if (!apiKey) return false;
+  const apiKey = getActiveApiKey();
+  if (!apiKey && !isWebMode()) return false;
   
+  isPendingRequest = true;
   try {
-    const ai = new GoogleGenAI({ apiKey });
     const koreanPrompt = `다음 텍스트를 30대 여성의 힐링이 되는 감성적이고 자연스러운 목소리로 읽어주세요. 기계음처럼 들리지 않게 최대한 사람처럼, 따뜻하고 부드러운 톤으로 말해주세요. 반드시 한국어로만 말하고 숫자도 한국어로 자연스럽게 읽어주세요:\n\n${text}`;
-
-    const response = await ai.models.generateContent({
+    const ttsParams = {
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: koreanPrompt }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
       },
-    });
+    };
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    let base64Audio: string | undefined;
+    if (isWebMode()) {
+      const res = await fetch('/api/gemini', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ttsParams) });
+      if (res.ok) { const data = await res.json(); base64Audio = data.inlineData?.data; }
+    } else {
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent(ttsParams);
+      base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    }
+
     if (base64Audio) {
       audioCache[text] = base64Audio;
-      if (currentSpeechId !== speechId) {
-        return false; // Another speak was called while we were fetching
-      }
+      if (currentSpeechId !== speechId) return false;
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-      playBase64Audio(base64Audio, speechId);
+      playBase64Audio(base64Audio);
       return true;
     }
   } catch (error: any) {
@@ -147,11 +160,13 @@ const fetchAndPlayText = async (text: string, speechId: number): Promise<boolean
       console.error("TTS Fetch Error:", error);
       ErrorLogger.logApiError('ttsService.fetchAndPlayText', 'TTS Fetch Error', error);
     }
+  } finally {
+    isPendingRequest = false;
   }
   return false;
 };
 
-const playBase64Audio = async (base64Data: string, expectedSpeechId: number) => {
+const playBase64Audio = async (base64Data: string) => {
   try {
     if (currentAudioSource) {
       currentAudioSource.stop();
@@ -166,9 +181,6 @@ const playBase64Audio = async (base64Data: string, expectedSpeechId: number) => 
     if (audioContext.state === 'suspended') {
       await audioContext.resume();
     }
-
-    // 비동기 대기 중 취소되었는지 다시 확인 (중복 재생 방지)
-    if (currentSpeechId !== expectedSpeechId) return;
 
     // Decode base64 to binary string
     const binaryString = atob(base64Data);
