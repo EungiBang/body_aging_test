@@ -1438,6 +1438,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                   const r = m.report;
                   return {
                     '이름': m.name || r?.userInfo?.name || '-',
+                    '연락처': r?.userInfo?.phone || (m as any).phone || (m as any).phoneNumber || '-',
                     '나이': r?.userInfo?.age || '-',
                     '성별': r?.userInfo?.gender === 'male' ? '남' : r?.userInfo?.gender === 'female' ? '여' : '-',
                     '출처': (m as any).sourceType === 'LITE' ? '온라인 LITE' : 'PC',
