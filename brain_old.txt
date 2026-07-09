@@ -1,0 +1,1854 @@
+﻿
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { AssessmentStep, BrainTestData, UserInfo } from '../types';
+import { speak } from '../services/ttsService';
+import * as tf from '@tensorflow/tfjs-core';
+import '@tensorflow/tfjs-backend-webgl';
+import * as poseDetection from '@tensorflow-models/pose-detection';
+
+// Reuse global detector from usePoseEstimation
+declare let globalDetector: poseDetection.PoseDetector | null;
+
+interface BrainTestModuleProps {
+  testType: AssessmentStep;
+  onComplete: (dataUrl: string, brainTestData: BrainTestData) => void;
+  preferredCameraId?: string;
+  userInfo?: UserInfo | null;
+}
+
+type GamePhase = 'intro' | 'calibration' | 'handcheck' | 'countdown' | 'playing' | 'result';
+
+// Cross-body instructions (臾대쫷 ?ы븿)
+const CROSS_INSTRUCTIONS = [
+  { text: '?ㅻⅨ?????쇱そ ?닿묠', ttsText: '?ㅻⅨ?? ?쇱そ ?닿묠', hand: 'right', target: 'left_shoulder' },
+  { text: '?쇱넀 ???ㅻⅨ履??닿묠', ttsText: '?쇱넀, ?ㅻⅨ履??닿묠', hand: 'left', target: 'right_shoulder' },
+  { text: '?ㅻⅨ?????쇱そ 臾대쫷', ttsText: '?ㅻⅨ?? ?쇱そ 臾대쫷', hand: 'right', target: 'left_knee' },
+  { text: '?쇱넀 ???ㅻⅨ履?臾대쫷', ttsText: '?쇱넀, ?ㅻⅨ履?臾대쫷', hand: 'left', target: 'right_knee' },
+  { text: '?ㅻⅨ?????쇱そ ?덈━', ttsText: '?ㅻⅨ?? ?쇱そ ?덈━', hand: 'right', target: 'left_hip' },
+  { text: '?쇱넀 ???ㅻⅨ履??덈━', ttsText: '?쇱넀, ?ㅻⅨ履??덈━', hand: 'left', target: 'right_hip' },
+  { text: '?ㅻⅨ????癒몃━ ??, ttsText: '?ㅻⅨ?? 癒몃━ ??, hand: 'right', target: 'head' },
+  { text: '?쇱넀 ??癒몃━ ??, ttsText: '?쇱넀, 癒몃━ ??, hand: 'left', target: 'head' },
+];
+
+// ============ MART SHOPPING GAME DATA v5.1 ============
+// v5.1: 24媛?臾쇨굔, ?대?吏 ?꾩슜 湲곗뼲, 泥쒖썝 ?⑥쐞 媛寃?const MART_ITEMS = [
+  { id: 'apple', emoji: '?뜋', name: '?ш낵', price: 4000 },
+  { id: 'banana', emoji: '?뜉', name: '諛붾굹??, price: 3000 },
+  { id: 'milk', emoji: '?쪢', name: '?곗쑀', price: 4000 },
+  { id: 'bread', emoji: '?뜛', name: '?앸뭇', price: 3000 },
+  { id: 'egg', emoji: '?쪡', name: '怨꾨?', price: 6000 },
+  { id: 'carrot', emoji: '?쪜', name: '?밴렐', price: 2000 },
+  { id: 'fish', emoji: '?맅', name: '?앹꽑', price: 8000 },
+  { id: 'cheese', emoji: '??', name: '移섏쫰', price: 4000 },
+  { id: 'tomato', emoji: '?뛿', name: '?좊쭏??, price: 3000 },
+  { id: 'chicken', emoji: '?뜔', name: '??퀬湲?, price: 7000 },
+  { id: 'grape', emoji: '?뜃', name: '?щ룄', price: 5000 },
+  { id: 'watermelon', emoji: '?뜆', name: '?섎컯', price: 9000 },
+  { id: 'onion', emoji: '?쭋', name: '?묓뙆', price: 2000 },
+  { id: 'corn', emoji: '?뙺', name: '?μ닔??, price: 3000 },
+  { id: 'shrimp', emoji: '?쫹', name: '?덉슦', price: 6000 },
+  { id: 'pepper', emoji: '?뙳截?, name: '怨좎텛', price: 2000 },
+  { id: 'mushroom', emoji: '?뛾', name: '踰꾩꽢', price: 4000 },
+  { id: 'peach', emoji: '?뜎', name: '蹂듭댂??, price: 5000 },
+  { id: 'strawberry', emoji: '?뜐', name: '?멸린', price: 6000 },
+  { id: 'pear', emoji: '?뜍', name: '諛?, price: 4000 },
+  { id: 'melon', emoji: '?뜄', name: '李몄쇅', price: 3000 },
+  { id: 'sweetpotato', emoji: '?뜝', name: '怨좉뎄留?, price: 3000 },
+  { id: 'broccoli', emoji: '?ⅵ', name: '釉뚮줈肄쒕━', price: 3000 },
+  { id: 'avocado', emoji: '?쪗', name: '?꾨낫移대룄', price: 5000 },
+];
+
+// v5.0 諛⑺빐 怨쇱젣: 3?먮━ 諛쏆븘?щ┝/諛쏆븘?대┝ ?곗궛 ?앹꽦湲?const generateHardMathQuiz = (isAdd: boolean): { question: string; answer: number } => {
+  if (isAdd) {
+    // ?㏃뀍: 諛쏆븘?щ┝??2???댁긽 諛쒖깮?섎룄濡??ㅺ퀎
+    let a: number, b: number;
+    do {
+      a = Math.floor(Math.random() * 400) + 200; // 200~599
+      b = Math.floor(Math.random() * 400) + 150; // 150~549
+    } while (
+      (a % 10) + (b % 10) < 10 || // ?쇱쓽?먮━ 諛쏆븘?щ┝ ?꾩닔
+      (Math.floor(a / 10) % 10) + (Math.floor(b / 10) % 10) < 9 || // ??쓽?먮━ 諛쏆븘?щ┝ ?좊룄
+      a % 5 === 0 || b % 5 === 0 || // 5,0?쇰줈 ?앸굹???レ옄 ?쒖쇅
+      a + b > 999 // 寃곌낵 3?먮━ ?좎?
+    );
+    return { question: `${a} + ${b}`, answer: a + b };
+  } else {
+    // 類꾩뀍: 諛쏆븘?대┝??2???댁긽 諛쒖깮?섎룄濡??ㅺ퀎
+    let a: number, b: number;
+    do {
+      a = Math.floor(Math.random() * 400) + 400; // 400~799
+      b = Math.floor(Math.random() * 300) + 150; // 150~449
+    } while (
+      (a % 10) >= (b % 10) || // ?쇱쓽?먮━ 諛쏆븘?대┝ ?꾩닔 (a???쇱쓽?먮━ < b???쇱쓽?먮━)
+      (Math.floor(a / 10) % 10) >= (Math.floor(b / 10) % 10) || // ??쓽?먮━??諛쏆븘?대┝ ?좊룄
+      a % 5 === 0 || b % 5 === 0 || // 5,0?쇰줈 ?앸굹???レ옄 ?쒖쇅
+      a - b < 100 // 寃곌낵 3?먮━ ?좎?
+    );
+    return { question: `${a} - ${b}`, answer: a - b };
+  }
+};
+
+const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete, preferredCameraId, userInfo }) => {
+  const [isPortraitMode, setIsPortraitMode] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [phase, setPhase] = useState<GamePhase>('intro');
+  const [countdown, setCountdown] = useState(3);
+  const [detector, setDetector] = useState<poseDetection.PoseDetector | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animFrameRef = useRef<number>(0);
+  const offCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [retryCount, setRetryCount] = useState(0);
+
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+    setCameraReady(false);
+    setRetryCount(prev => prev + 1);
+  };
+
+  useEffect(() => {
+    offCanvasRef.current = document.createElement('canvas');
+    return () => {
+      offCanvasRef.current = null;
+    };
+  }, []);
+
+  // Reaction test state - 3???쒖뒪??+ white + Stroop ?④낵
+  const [signalColor, setSignalColor] = useState<'none' | 'green' | 'blue' | 'red' | 'white'>('none');
+  const [signalDirection, setSignalDirection] = useState<'none' | 'left' | 'right' | 'both'>('none');
+  const [reactionTimes, setReactionTimes] = useState<number[]>([]);
+  const [reactionErrors, setReactionErrors] = useState(0);
+  const [reactionRound, setReactionRound] = useState(0);
+  const [reactionMessage, setReactionMessage] = useState('');
+  const [reactionFlash, setReactionFlash] = useState<'none' | 'correct' | 'wrong'>('none');
+  const [manualReactionErrors, setManualReactionErrors] = useState<string>('');
+  const [showReactionEditModal, setShowReactionEditModal] = useState(false);
+  const signalTimeRef = useRef<number>(0);
+  const waitingForResponseRef = useRef(false);
+  const handBaselineRef = useRef<number | null>(null);
+
+  // Cross-body test state
+  const [crossInstruction, setCrossInstruction] = useState('');
+  const [crossRound, setCrossRound] = useState(0);
+  const [crossCorrect, setCrossCorrect] = useState(0);
+  const [crossTimes, setCrossTimes] = useState<number[]>([]);
+  const [crossMessage, setCrossMessage] = useState('');
+  const crossTimeRef = useRef<number>(0);
+  const crossDetectedRef = useRef(false);
+
+  // Mart Shopping Game state
+  const [martItemsToRemember, setMartItemsToRemember] = useState<typeof MART_ITEMS>([]);
+  const [martShelfItems, setMartShelfItems] = useState<typeof MART_ITEMS>([]);
+  const [martShowingIndex, setMartShowingIndex] = useState(-1);
+  const [martPhase, setMartPhase] = useState<'showing' | 'distraction' | 'shopping' | 'priceQuiz' | 'done'>('showing');
+  const [cartItems, setCartItems] = useState<string[]>([]);
+  const [martMessage, setMartMessage] = useState('');
+  const cartItemsRef = useRef<string[]>([]); // ?대줈? 臾몄젣 ?닿껐??ref
+  const martItemsRef = useRef<typeof MART_ITEMS>([]); // ?대줈? 臾몄젣 ?닿껐??ref
+  const [martRound, setMartRound] = useState(0);
+  const [martTotalCorrect, setMartTotalCorrect] = useState(0);
+  const MART_ITEMS_TO_REMEMBER = 8;  // v5.0: 6??媛?  const MART_SHELF_SIZE = 24;        // v5.0: 12??4媛?  const [lastAddedItem, setLastAddedItem] = useState<string | null>(null);
+  const [martTimeLeft, setMartTimeLeft] = useState(60); // ?⑥? ?쒓컙 (珥?
+  const [martShowingCountdown, setMartShowingCountdown] = useState(20); // v5.1: 20珥?  const [martPriceVisibleIds, setMartPriceVisibleIds] = useState<string[]>([]); // v5.1: 媛寃⑹씠 蹂댁씠??4媛??꾩씠??ID
+  const [distractionQuizzes, setDistractionQuizzes] = useState<{question: string; answer: number; options: number[]}[]>([]);
+  const [distractionIndex, setDistractionIndex] = useState(0);
+  const [distractionSelected, setDistractionSelected] = useState<number | null>(null); // v5.1: 媛앷???  const [distractionCorrect, setDistractionCorrect] = useState(0);
+  const [distractionCountdown, setDistractionCountdown] = useState(15); // 15珥?
+  // 留덊듃 ??而ㅼ꽌 ?곹깭 (?ㅻⅨ???쒖넀留??ъ슜)
+  const [handCursor, setHandCursor] = useState<{ x: number; y: number } | null>(null);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [grabbedItem, setGrabbedItem] = useState<string | null>(null);
+  const hoverStartRef = useRef<number>(0);
+  const HOVER_GRAB_MS = 3000; // 3珥??몃쾭 ??諛붾줈 ?닿린
+  const shoppingContainerRef = useRef<HTMLDivElement>(null);
+
+  // 媛寃?怨꾩궛 ?댁쫰 state ??v5.0: 二쇨????낅젰
+  const [mathQuizPhase, setMathQuizPhase] = useState<'none' | 'quiz' | 'answered'>('none');
+  const [mathCorrectAnswer, setMathCorrectAnswer] = useState(0);
+  const [mathPriceItems, setMathPriceItems] = useState<typeof MART_ITEMS>([]); // v5.0: ?⑹궛 ???3媛?  const [mathInputValue, setMathInputValue] = useState(''); // v5.0: 二쇨????낅젰
+  const [mathIsCorrect, setMathIsCorrect] = useState<boolean | null>(null);
+  const [mathTimeLeft, setMathTimeLeft] = useState(30);
+
+  // Calibration state
+  const [calibrationStatus, setCalibrationStatus] = useState<Record<string, boolean>>({});
+  const [calibrationReady, setCalibrationReady] = useState(false);
+  const calibrationTimerRef = useRef<number>(0);
+  const CALIBRATION_HOLD_SEC = 2; // 2珥??좎?
+
+  // Hand check state (罹섎━釉뚮젅?댁뀡 ?????몄떇 ?뺤씤)
+  const [handCheckStep, setHandCheckStep] = useState<'right' | 'left' | 'done'>('right');
+  const [rightHandChecked, setRightHandChecked] = useState(false);
+  const [leftHandChecked, setLeftHandChecked] = useState(false);
+  const handCheckHoldRef = useRef<number>(0);
+  const HAND_CHECK_HOLD_MS = 1000; // 1珥??좎??섎㈃ ?몄떇 ?뺤씤
+
+  // Common
+  const [resultData, setResultData] = useState<BrainTestData>({});
+  const poseRef = useRef<poseDetection.Pose | null>(null);
+
+  // Initialize camera (諛섏쓳?띾룄 ?뚯뒪?몃쭔 ?ъ슜)
+  useEffect(() => {
+    if (testType === AssessmentStep.BRAIN_MEMORY) {
+      setCameraReady(true); // 留덊듃 ?뚯뒪?몃뒗 移대찓??遺덊븘??      return;
+    }
+    const initCamera = async () => {
+      try {
+        let stream: MediaStream | null = null;
+        try {
+          const constraints: MediaStreamConstraints = {
+            video: preferredCameraId 
+              ? { deviceId: { exact: preferredCameraId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+              : { facingMode: facingMode, width: { ideal: 1280 }, height: { ideal: 720 } }
+          };
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e) {
+          console.warn('Primary camera constraints failed, trying fallback 1 (no resolution)...', e);
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: preferredCameraId
+                ? { deviceId: { exact: preferredCameraId } }
+                : { facingMode: facingMode }
+            });
+          } catch (e2) {
+            console.warn("Fallback 1 failed, trying fallback 2 (basic video)...", e2);
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          }
+        }
+        
+        if (!stream) throw new Error("Failed to acquire camera stream");
+        
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadeddata = () => setCameraReady(true);
+        }
+      } catch (e) {
+        console.error('Camera init failed:', e);
+        alert(`移대찓?쇰? ?쒖옉?????놁뒿?덈떎: ${e instanceof Error ? e.message : '?????녿뒗 ?ㅻ쪟'}`);
+      }
+    };
+    initCamera();
+    return () => {
+      streamRef.current?.getTracks().forEach(t => t.stop());
+    };
+  }, [preferredCameraId, testType, facingMode, retryCount]);
+
+  // Initialize pose detector (諛섏쓳?띾룄 ?뚯뒪?몃쭔 ?ъ슜)
+  useEffect(() => {
+    if (testType === AssessmentStep.BRAIN_MEMORY) return;
+    const initDetector = async () => {
+      try {
+        if ((window as any).__poseDetector) {
+          setDetector((window as any).__poseDetector);
+          return;
+        }
+        await tf.ready();
+        
+        // ??iGPU ?명솚???뚮옒洹?(Brain Test)
+        try { tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0); } catch {}
+        try { tf.env().set('WEBGL_USE_SHAPES_UNIFORMS', false); } catch {}
+        try { tf.env().set('WEBGL_FLUSH_THRESHOLD', -1); } catch {}
+        
+        // ??WASM 寃쎈줈 留ㅽ븨 (vite-plugin-static-copy瑜??듯빐 蹂듭궗???뚯씪 ?쒖슜)
+        try {
+          const { setWasmPaths } = await import('@tensorflow/tfjs-backend-wasm');
+          setWasmPaths('./wasm/');
+        } catch (e) {}
+
+        const det = await poseDetection.createDetector(
+          poseDetection.SupportedModels.MoveNet,
+          { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+        );
+        (window as any).__poseDetector = det;
+        setDetector(det);
+      } catch (e) {
+        console.error('Detector init failed:', e);
+      }
+    };
+    initDetector();
+  }, [testType]);
+
+  // Pose detection loop - runs during calibration, handcheck, and playing phases
+  useEffect(() => {
+    if (!cameraReady || !detector || (phase !== 'playing' && phase !== 'calibration' && phase !== 'handcheck')) return;
+    let running = true;
+
+    const detect = async () => {
+      if (!running || !videoRef.current || videoRef.current.readyState < 2) {
+        if (running) animFrameRef.current = requestAnimationFrame(detect);
+        return;
+      }
+      try {
+        let currentPoses: poseDetection.Pose[] = [];
+        if (offCanvasRef.current && videoRef.current) {
+          const video = videoRef.current;
+          // 理쒕? 256 ?ш린濡??ㅼ슫?ㅼ???(GPU/WASM 怨쇰???諛⑹?)
+          const scaleFactor = 256 / Math.max(video.videoWidth, video.videoHeight);
+          const targetW = Math.round(video.videoWidth * scaleFactor);
+          const targetH = Math.round(video.videoHeight * scaleFactor);
+          
+          offCanvasRef.current.width = targetW;
+          offCanvasRef.current.height = targetH;
+          
+          const offCtx = offCanvasRef.current.getContext('2d', { willReadFrequently: true });
+          if (offCtx) {
+            offCtx.drawImage(video, 0, 0, targetW, targetH);
+          }
+          
+          currentPoses = await detector.estimatePoses(offCanvasRef.current);
+          
+          // ?먮옒 醫뚰몴怨꾨줈 蹂듦뎄
+          if (currentPoses.length > 0) {
+            currentPoses[0].keypoints.forEach(kp => {
+              kp.x = kp.x / scaleFactor;
+              kp.y = kp.y / scaleFactor;
+            });
+          }
+        }
+        
+        const poses = currentPoses;
+        
+        // ??iGPU WebGL ?ㅽ뙣 媛먯? 諛?WASM ?먮룞 ?꾪솚 (BrainTestModule)
+        const hasValidKeypoints = poses.length > 0 && poses[0].keypoints.some(kp => (kp.score || 0) > 0.3);
+        if (!hasValidKeypoints) {
+          (window as any).__brainWebglFailCount = ((window as any).__brainWebglFailCount || 0) + 1;
+          if ((window as any).__brainWebglFailCount > 10 && tf.getBackend() !== 'wasm') {
+            console.warn('[BrainTest] ?곗냽??WebGL ?몄떇 ?ㅽ뙣 媛먯?. WASM 諛깆뿏?쒕줈 ?곴뎄 ?꾪솚?⑸땲??');
+            try {
+              await tf.setBackend('wasm');
+              await tf.ready();
+            } catch (e) {
+              await tf.setBackend('cpu');
+              await tf.ready();
+            }
+            (window as any).__brainWebglFailCount = 0;
+            
+            // ??諛깆뿏?쒓? 蹂寃쎈릺?덉쑝誘濡?湲곗〈 WebGL ?먯꽌瑜?臾쇨퀬 ?덈뒗 detector ?먭린 諛??ъ깮??            try {
+              const newDet = await poseDetection.createDetector(
+                poseDetection.SupportedModels.MoveNet,
+                { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+              );
+              (window as any).__poseDetector = newDet;
+              setDetector(newDet);
+            } catch (err) {
+              console.error('Failed to recreate detector:', err);
+            }
+            // setDetector媛 ?곹깭瑜?諛붽씀硫?useEffect媛 ?ъ떎?됰릺誘濡??꾩옱 猷⑦봽??醫낅즺
+            return;
+          }
+        } else {
+          if (tf.getBackend() !== 'wasm') {
+            (window as any).__brainWebglFailCount = 0;
+          }
+        }
+
+        if (poses.length > 0) {
+          poseRef.current = poses[0];
+          
+          // 罹섎━釉뚮젅?댁뀡 以묒씠硫??ㅽ룷?명듃 ?곹깭 ?낅뜲?댄듃
+          if (phase === 'calibration') {
+            updateCalibrationStatus(poses[0]);
+          }
+          
+          // ???몄떇 ?뺤씤 以묒씠硫??ㅼ펷?덊넠 ?쒖떆
+          if (phase === 'handcheck') {
+            drawSkeleton(poses[0]);
+          }
+          
+          // 留덊듃 寃뚯엫 以???而ㅼ꽌 ?낅뜲?댄듃
+          if (phase === 'playing' && testType === AssessmentStep.BRAIN_MEMORY && martPhase === 'shopping') {
+            updateHandCursor(poses[0]);
+          }
+        }
+      } catch (e) {
+        // Ignore pose detection errors
+      }
+      await new Promise(r => setTimeout(r, 0));
+      if (running) {
+        // 諛섏쓳?띾룄 ?뚯뒪??吏꾪뻾 以묒씪 ?뚮뒗 吏?곗떆媛꾩쓣 20ms(??50FPS)濡?理쒖냼?뷀븯???뺥솗??洹밸???        const isReactionTesting = (testType === ('BRAIN_REACTION' as any) && phase === 'playing');
+        const delay = isReactionTesting ? 20 : 150;
+        
+        setTimeout(() => {
+          if (running) animFrameRef.current = requestAnimationFrame(detect);
+        }, delay);
+      }
+    };
+    
+    animFrameRef.current = requestAnimationFrame(detect);
+    return () => {
+      running = false;
+      cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [cameraReady, detector, phase, martPhase, testType]);
+
+  // Countdown handler
+  useEffect(() => {
+    if (phase !== 'countdown') return;
+    if (countdown <= 0) {
+      setPhase('playing');
+      return;
+    }
+    const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [phase, countdown]);
+
+  // Capture screenshot for result
+  const captureFrame = useCallback((): string => {
+    if (!videoRef.current) return '';
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth || 640;
+    canvas.height = videoRef.current.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(videoRef.current, 0, 0);
+    }
+    return canvas.toDataURL('image/jpeg', 0.7);
+  }, []);
+
+  // Helper: get keypoint by name
+  const getKp = (name: string) => {
+    if (!poseRef.current) return null;
+    const kp = poseRef.current.keypoints.find(k => k.name === name);
+    return kp && (kp.score || 0) > 0.3 ? kp : null;
+  };
+
+  // Helper: Check if SPECIFIC hand is raised (wrist above shoulder)
+  const isRightHandRaised = (): boolean => {
+    const rw = getKp('right_wrist');
+    const rs = getKp('right_shoulder');
+    if (!rs || !rw) return false;
+    return rw.y < rs.y - 30;
+  };
+
+  const isLeftHandRaised = (): boolean => {
+    const lw = getKp('left_wrist');
+    const ls = getKp('left_shoulder');
+    if (!ls || !lw) return false;
+    return lw.y < ls.y - 30;
+  };
+
+  const isAnyHandRaised = (): boolean => isRightHandRaised() || isLeftHandRaised();
+
+  // ============== CALIBRATION ==============
+  const REQUIRED_KEYPOINTS: Record<string, string> = {
+    'nose': '?쇨뎬',
+    'left_shoulder': '?쇱そ ?닿묠',
+    'right_shoulder': '?ㅻⅨ履??닿묠',
+    'left_wrist': '?쇱넀',
+    'right_wrist': '?ㅻⅨ??,
+  };
+
+  // 援먯감/留덊듃 ?뚯뒪?몄뿉?쒕뒗 異붽? ?ㅽ룷?명듃???뺤씤
+  const OPTIONAL_KEYPOINTS: Record<string, string> = {
+    'left_hip': '?쇱そ ?덈━',
+    'right_hip': '?ㅻⅨ履??덈━',
+    'left_knee': '?쇱そ 臾대쫷',
+    'right_knee': '?ㅻⅨ履?臾대쫷',
+  };
+
+  const updateCalibrationStatus = (pose: poseDetection.Pose) => {
+    const status: Record<string, boolean> = {};
+    const allKeypoints = { ...REQUIRED_KEYPOINTS, ...OPTIONAL_KEYPOINTS };
+    
+    for (const kpName of Object.keys(allKeypoints)) {
+      const kp = pose.keypoints.find(k => k.name === kpName);
+      status[kpName] = !!(kp && (kp.score || 0) > 0.3);
+    }
+    
+    setCalibrationStatus(status);
+    
+    // ?꾩닔 ?ㅽ룷?명듃媛 紐⑤몢 媛먯??섎㈃ 以鍮??꾨즺
+    const requiredReady = Object.keys(REQUIRED_KEYPOINTS).every(k => status[k]);
+    if (requiredReady && !calibrationReady) {
+      setCalibrationReady(true);
+    } else if (!requiredReady) {
+      setCalibrationReady(false);
+      calibrationTimerRef.current = 0;
+    }
+
+    // 罹섎━釉뚮젅?댁뀡 以묒뿉 ?ㅼ펷?덊넠 洹몃━湲?    drawSkeleton(pose);
+  };
+
+  const drawSkeleton = (pose: poseDetection.Pose) => {
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    if (!canvas || !video) return;
+    
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 蹂?bone) ?쇱씤 洹몃━湲?    const connections = [
+      ['left_shoulder', 'right_shoulder'],
+      ['left_shoulder', 'left_elbow'],
+      ['left_elbow', 'left_wrist'],
+      ['right_shoulder', 'right_elbow'],
+      ['right_elbow', 'right_wrist'],
+      ['left_shoulder', 'left_hip'],
+      ['right_shoulder', 'right_hip'],
+      ['left_hip', 'right_hip'],
+      ['left_hip', 'left_knee'],
+      ['right_hip', 'right_knee'],
+    ];
+
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(99, 102, 241, 0.6)';
+    
+    for (const [a, b] of connections) {
+      const kpA = pose.keypoints.find(k => k.name === a);
+      const kpB = pose.keypoints.find(k => k.name === b);
+      if (kpA && kpB && (kpA.score || 0) > 0.3 && (kpB.score || 0) > 0.3) {
+        ctx.beginPath();
+        ctx.moveTo(kpA.x, kpA.y);
+        ctx.lineTo(kpB.x, kpB.y);
+        ctx.stroke();
+      }
+    }
+    
+    // ?ㅽ룷?명듃 ??洹몃━湲?    for (const kp of pose.keypoints) {
+      if ((kp.score || 0) > 0.3) {
+        const isRequired = kp.name && kp.name in REQUIRED_KEYPOINTS;
+        ctx.beginPath();
+        ctx.arc(kp.x, kp.y, isRequired ? 8 : 5, 0, 2 * Math.PI);
+        ctx.fillStyle = isRequired ? 'rgba(16, 185, 129, 0.9)' : 'rgba(99, 102, 241, 0.7)';
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+  };
+
+  // 罹섎━釉뚮젅?댁뀡 - ?덉젙 ?좎? 泥댄겕
+  useEffect(() => {
+    if (phase !== 'calibration' || !calibrationReady) return;
+    
+    const startTime = performance.now();
+    calibrationTimerRef.current = 0;
+    
+    const interval = setInterval(() => {
+      if (!calibrationReady) {
+        calibrationTimerRef.current = 0;
+        return;
+      }
+      
+      calibrationTimerRef.current = (performance.now() - startTime) / 1000;
+      
+      if (calibrationTimerRef.current >= CALIBRATION_HOLD_SEC) {
+        clearInterval(interval);
+        
+        // 諛섏쓳?띾룄 ?뚯뒪?몄씤 寃쎌슦 ?????몄떇 ?뺤씤 ?④퀎濡?        if (testType === ('BRAIN_REACTION' as any)) {
+          speak('?ъ쫰 ?몄떇 ?꾨즺. ?댁젣 ???몄떇???뺤씤?⑸땲?? ?ㅻⅨ?먯쓣 ?ㅼ뼱蹂댁꽭??');
+          setHandCheckStep('right');
+          setRightHandChecked(false);
+          setLeftHandChecked(false);
+          setPhase('handcheck');
+        } else {
+          // ?ㅻⅨ ?뚯뒪?몃뒗 諛붾줈 移댁슫?몃떎??          speak('?ъ쫰 ?몄떇 ?꾨즺. 3珥????쒖옉?⑸땲??');
+          setCountdown(3);
+          setPhase('countdown');
+        }
+      }
+    }, 200);
+    
+    return () => clearInterval(interval);
+  }, [phase, calibrationReady]);
+
+  // ============== HAND CHECK (???몄떇 ?뺤씤) ==============
+  useEffect(() => {
+    if (phase !== 'handcheck') return;
+    
+    const checkInterval = setInterval(() => {
+      const now = performance.now();
+      
+      if (handCheckStep === 'right') {
+        if (isRightHandRaised()) {
+          if (handCheckHoldRef.current === 0) handCheckHoldRef.current = now;
+          if (now - handCheckHoldRef.current >= HAND_CHECK_HOLD_MS) {
+            setRightHandChecked(true);
+            handCheckHoldRef.current = 0;
+            speak('?ㅻⅨ???몄떇 ?꾨즺! ?댁젣 ?쇱넀???ㅼ뼱蹂댁꽭??');
+            setHandCheckStep('left');
+          }
+        } else {
+          handCheckHoldRef.current = 0;
+        }
+      } else if (handCheckStep === 'left') {
+        if (isLeftHandRaised()) {
+          if (handCheckHoldRef.current === 0) handCheckHoldRef.current = now;
+          if (now - handCheckHoldRef.current >= HAND_CHECK_HOLD_MS) {
+            setLeftHandChecked(true);
+            handCheckHoldRef.current = 0;
+            speak('?묒넀 ?몄떇 ?꾨즺! 3珥????쒖옉?⑸땲??');
+            setHandCheckStep('done');
+            // 1珥???移댁슫?몃떎???쒖옉
+            setTimeout(() => {
+              setCountdown(3);
+              setPhase('countdown');
+            }, 1000);
+          }
+        } else {
+          handCheckHoldRef.current = 0;
+        }
+      }
+    }, 100);
+    
+    return () => clearInterval(checkInterval);
+  }, [phase, handCheckStep]);
+
+  // ============== REACTION SPEED TEST (?먯쭊???쒖씠??12?? ==============
+  const REACTION_TOTAL = 12;
+  // 珥덈줉(?ㅻⅨ??, ?뚮?(?쇱넀), 鍮④컙(?듭젣), ?곗깋(?묒넀)
+  const REACTION_SEQUENCE: Array<'green' | 'blue' | 'red' | 'white'> = [
+    'green', 'blue', 'green', 'red', // Easy (0-3)
+    'blue', 'red', 'green', 'white',   // Medium (4-7)
+    'red', 'white', 'blue', 'red' // Hard (8-11)
+  ];
+
+  useEffect(() => {
+    if (testType !== ('BRAIN_REACTION' as any) || phase !== 'playing') return;
+    if (reactionRound >= REACTION_TOTAL) {
+      // Test complete
+      const avgTime = reactionTimes.length > 0 
+        ? Math.round(reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length)
+        : 999;
+      const data: BrainTestData = { reactionTimeMs: avgTime, reactionErrors };
+      setResultData(data);
+      setPhase('result');
+      return;
+    }
+
+    // Start next round after delay
+    const delay = 1500 + Math.random() * 2000; // 1.5-3.5s random delay
+    setSignalColor('none');
+    setSignalDirection('none');
+    waitingForResponseRef.current = false;
+
+    const timer = setTimeout(() => {
+      const color = REACTION_SEQUENCE[reactionRound];
+      setSignalColor(color);
+      
+      let dir: 'left' | 'right' | 'both' | 'none' = 'none';
+      if (reactionRound < 4) {
+        // Easy: direction matches color exactly
+        if (color === 'green') dir = 'right';
+        else if (color === 'blue') dir = 'left';
+        else if (color === 'white') dir = 'both';
+      } else if (reactionRound < 8) {
+        // Medium: random direction (Stroop) but keep it simple
+        if (color === 'red') {
+           const dirs: Array<'left'|'right'|'none'> = ['left', 'right', 'none'];
+           dir = dirs[Math.floor(Math.random() * dirs.length)];
+        } else {
+           const dirs: Array<'left'|'right'> = ['left', 'right'];
+           dir = dirs[Math.floor(Math.random() * dirs.length)];
+        }
+      } else {
+        // Hard: Stroop with 'both'
+        if (color === 'red') {
+           const dirs: Array<'left'|'right'|'none'> = ['left', 'right', 'none'];
+           dir = dirs[Math.floor(Math.random() * dirs.length)];
+        } else if (color === 'white') {
+           const dirs: Array<'left'|'right'|'both'> = ['left', 'right', 'both'];
+           dir = dirs[Math.floor(Math.random() * dirs.length)];
+        } else {
+           const dirs: Array<'left'|'right'> = ['left', 'right'];
+           dir = dirs[Math.floor(Math.random() * dirs.length)];
+        }
+      }
+      setSignalDirection(dir);
+
+      signalTimeRef.current = performance.now();
+      waitingForResponseRef.current = true;
+      
+      if (color === 'green') {
+        setReactionMessage('珥덈줉?? ?ㅻⅨ?먯쓣 ?ㅼ뼱?щ━?몄슂! ?윟');
+      } else if (color === 'blue') {
+        setReactionMessage('?뚮??? ?쇱넀???ㅼ뼱?щ━?몄슂! ?뵷');
+      } else if (color === 'white') {
+        setReactionMessage('?곗깋! ?묒넀??紐⑤몢 ?ㅼ뼱?щ━?몄슂! ??);
+      } else {
+        setReactionMessage('鍮④컙?? ?吏곸씠吏 留덉꽭?? ?뵶');
+      }
+
+      // Auto-advance red signals after 2s
+      if (color === 'red') {
+        setTimeout(() => {
+          if (waitingForResponseRef.current) {
+            waitingForResponseRef.current = false;
+            setReactionRound(r => r + 1);
+            setReactionMessage('?섑뻽?듬땲?? ??);
+          }
+        }, 2000);
+      }
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [testType, phase, reactionRound]);
+
+  // Detect hand raise for reaction test
+  useEffect(() => {
+    if (testType !== ('BRAIN_REACTION' as any) || phase !== 'playing') return;
+    
+    const checkInterval = setInterval(() => {
+      if (!waitingForResponseRef.current) return;
+      
+      const rightUp = isRightHandRaised();
+      const leftUp = isLeftHandRaised();
+      
+      const responseTime = performance.now() - signalTimeRef.current;
+
+      if (!rightUp && !leftUp) {
+        return; // ?꾨Т ?먮룄 ???ㅼ뿀?쇰㈃ ?湲?      }
+      
+      if (signalColor === 'green') {
+        waitingForResponseRef.current = false;
+        if (rightUp && !leftUp) {
+          setReactionTimes(prev => [...prev, responseTime]);
+          setReactionMessage(`${Math.round(responseTime)}ms! ?ㅻⅨ???뺥솗! ?몟`);
+          setReactionFlash('correct');
+        } else {
+          setReactionErrors(e => e + 1);
+          setReactionMessage('???ㅻ떟! 珥덈줉遺?= ?ㅻⅨ?먯엯?덈떎!');
+          setReactionFlash('wrong');
+          speak('?ㅻ떟');
+        }
+      } else if (signalColor === 'blue') {
+        waitingForResponseRef.current = false;
+        if (leftUp && !rightUp) {
+          setReactionTimes(prev => [...prev, responseTime]);
+          setReactionMessage(`${Math.round(responseTime)}ms! ?쇱넀 ?뺥솗! ?몟`);
+          setReactionFlash('correct');
+        } else {
+          setReactionErrors(e => e + 1);
+          setReactionMessage('???ㅻ떟! ?뚮?遺?= ?쇱넀?낅땲??');
+          setReactionFlash('wrong');
+          speak('?ㅻ떟');
+        }
+      } else if (signalColor === 'white') {
+        if (leftUp && rightUp) {
+          waitingForResponseRef.current = false;
+          setReactionTimes(prev => [...prev, responseTime]);
+          setReactionMessage(`${Math.round(responseTime)}ms! ?묒넀 ?뺥솗! ?솈`);
+          setReactionFlash('correct');
+        } else if (responseTime > 2000) {
+          waitingForResponseRef.current = false;
+          setReactionErrors(e => e + 1);
+          setReactionMessage('???ㅻ떟! ?곗깋遺?= ?묒넀 ?숈떆!');
+          setReactionFlash('wrong');
+          speak('?ㅻ떟');
+        } else {
+          return; // ???먮쭔 ?ㅼ뿀?쇰㈃ 2珥덇퉴吏 ?湲?        }
+      } else if (signalColor === 'red') {
+        waitingForResponseRef.current = false;
+        setReactionErrors(e => e + 1);
+        setReactionMessage('???ㅻ떟! 鍮④컙遺덉뿉 ?吏곸씠硫????쇱슂!');
+        setReactionFlash('wrong');
+        speak('?ㅻ떟');
+      }
+      
+      if (!waitingForResponseRef.current) {
+        setTimeout(() => {
+          setReactionFlash('none');
+          setReactionRound(r => r + 1);
+        }, 1200);
+      }
+    }, 20); // 100ms -> 20ms濡?蹂寃쏀븯??諛섏쓳?띾룄 ?ㅼ감 理쒖냼??
+    return () => clearInterval(checkInterval);
+  }, [testType, phase, signalColor]);
+
+  // ============== CROSS-BODY TEST (臾대쫷 ?ы븿) ==============
+  const CROSS_TOTAL = 6;
+  const shuffledCross = useRef<typeof CROSS_INSTRUCTIONS>([]);
+  const crossDetectionStartRef = useRef<number>(0); // 媛먯? ?쒖꽦???쒖젏
+  const crossHoldStartRef = useRef<number>(0); // ?좎? ?쒖옉 ?쒖젏
+  const CROSS_HOLD_MS = 300; // 300ms ?좎? ?꾩슂
+  const CROSS_DETECT_DELAY = 2000; // ?쇱슫???쒖옉 ??2珥??湲?
+  // 罹섎━釉뚮젅?댁뀡?먯꽌 媛먯????ㅽ룷?명듃 湲곕컲?쇰줈 援먯감 吏???꾪꽣留?  // 臾대쫷 ?숈옉??理쒖냼 2???ы븿?섎룄濡?蹂댁옣
+  const getFilteredCrossInstructions = () => {
+    const filtered = CROSS_INSTRUCTIONS.filter(inst => {
+      if (inst.target === 'head') return true; // 癒몃━????긽 ?ы븿
+      return calibrationStatus[inst.target] !== false;
+    });
+    return filtered;
+  };
+
+  const ensureKneeInstructions = (instructions: typeof CROSS_INSTRUCTIONS, count: number): typeof CROSS_INSTRUCTIONS => {
+    const kneeInsts = instructions.filter(i => i.target.includes('knee'));
+    const nonKneeInsts = instructions.filter(i => !i.target.includes('knee'));
+    
+    if (kneeInsts.length === 0) return instructions.slice(0, count);
+    
+    // 臾대쫷 ?숈옉 2媛?蹂댁옣 + ?섎㉧吏 ?쒕뜡
+    const selectedKnee = kneeInsts.sort(() => Math.random() - 0.5).slice(0, Math.min(2, kneeInsts.length));
+    const remainingCount = count - selectedKnee.length;
+    const selectedOther = nonKneeInsts.sort(() => Math.random() - 0.5).slice(0, remainingCount);
+    
+    return [...selectedKnee, ...selectedOther].sort(() => Math.random() - 0.5);
+  };
+
+  useEffect(() => {
+    // BRAIN_CROSS removed, do not run cross instructions in other tests
+    if (testType !== 'BRAIN_CROSS' as any || phase !== 'playing') return;
+    
+    if (shuffledCross.current.length === 0) {
+      const filtered = getFilteredCrossInstructions();
+      shuffledCross.current = ensureKneeInstructions(filtered, CROSS_TOTAL);
+    }
+
+    if (crossRound >= CROSS_TOTAL) {
+      const accuracy = Math.round((crossCorrect / CROSS_TOTAL) * 100);
+      const avgTime = crossTimes.length > 0
+        ? Math.round(crossTimes.reduce((a, b) => a + b, 0) / crossTimes.length)
+        : 999;
+      const data: BrainTestData = { crossAccuracy: accuracy, crossAvgTimeMs: avgTime };
+      setResultData(data);
+      setPhase('result');
+      return;
+    }
+
+    const instruction = shuffledCross.current[crossRound];
+    setCrossInstruction(instruction.text);
+    crossDetectedRef.current = false;
+    crossHoldStartRef.current = 0;
+    setCrossMessage('以鍮꾪븯?몄슂...');
+
+    // TTS濡?吏???덈궡 (?ㅻⅨ ?뚯뒪?몄뿉?쒕뒗 臾듭쓬 泥섎━)
+    speak(instruction.ttsText);
+
+    // 媛먯? ?쒖옉 ?쒖젏 = ?꾩옱 + 2珥?(TTS ?덈궡 ??以鍮??쒓컙)
+    const detectStart = performance.now() + CROSS_DETECT_DELAY;
+    crossDetectionStartRef.current = detectStart;
+    crossTimeRef.current = detectStart; // 諛섏쓳?쒓컙??媛먯? ?쒖옉 ?꾨???痢≪젙
+
+    // 2珥????덈궡 硫붿떆吏 蹂寃?    const readyTimer = setTimeout(() => {
+      if (!crossDetectedRef.current) {
+        setCrossMessage('吏?쒕?濡??숈옉?섏꽭??');
+      }
+    }, CROSS_DETECT_DELAY);
+
+    // Timeout after 8 seconds (媛먯? ?湲?2珥?+ ?숈옉 6珥?
+    const timer = setTimeout(() => {
+      if (!crossDetectedRef.current) {
+        setCrossMessage('?쒓컙 珥덇낵! ??);
+        setTimeout(() => setCrossRound(r => r + 1), 1500);
+      }
+    }, CROSS_DETECT_DELAY + 6000);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(readyTimer);
+    };
+  }, [testType, phase, crossRound]);
+
+  // Detect cross-body gesture
+  useEffect(() => {
+    if (testType !== 'BRAIN_CROSS' as any || phase !== 'playing') return;
+    
+    const checkInterval = setInterval(() => {
+      if (crossDetectedRef.current || crossRound >= CROSS_TOTAL) return;
+      if (!poseRef.current || shuffledCross.current.length === 0) return;
+
+      // 媛먯? ?湲??쒓컙 泥댄겕
+      const now = performance.now();
+      if (now < crossDetectionStartRef.current) return;
+
+      const instruction = shuffledCross.current[crossRound];
+      if (!instruction) return;
+
+      // ?묒そ ?닿묠濡?紐?以묒떖??怨꾩궛
+      const ls = getKp('left_shoulder');
+      const rs = getKp('right_shoulder');
+      if (!ls || !rs) return;
+      const bodyCenterX = (ls.x + rs.x) / 2;
+      const shoulderWidth = Math.abs(ls.x - rs.x);
+
+      const handKp = instruction.hand === 'right' ? getKp('right_wrist') : getKp('left_wrist');
+      if (!handKp) {
+        crossHoldStartRef.current = 0;
+        return;
+      }
+
+      // 援먯감 ?숈옉: ?먯씠 紐?以묒떖?좎쓣 ?섏뿀?붿?留?泥댄겕
+      let isCrossed = false;
+      if (instruction.target === 'head') {
+        const nose = getKp('nose');
+        if (nose && handKp.y < nose.y - shoulderWidth * 0.2) {
+          isCrossed = true;
+        }
+      } else {
+        if (instruction.hand === 'right') {
+          isCrossed = handKp.x > bodyCenterX - shoulderWidth * 0.1;
+        } else {
+          isCrossed = handKp.x < bodyCenterX + shoulderWidth * 0.1;
+        }
+      }
+
+      if (!isCrossed) {
+        crossHoldStartRef.current = 0;
+        return;
+      }
+
+      // ?寃?洹쇱젒 ?뺤씤 (嫄곕━ 湲곕컲)
+      let targetKp: ReturnType<typeof getKp> = null;
+      if (instruction.target === 'head') {
+        targetKp = getKp('nose');
+      } else {
+        targetKp = getKp(instruction.target);
+      }
+
+      // ?寃??ㅽ룷?명듃媛 ?놁뼱??援먯감留??섎㈃ ?몄젙
+      let isClose = false;
+      if (targetKp) {
+        const dist = Math.sqrt(
+          Math.pow(handKp.x - targetKp.x, 2) + Math.pow(handKp.y - targetKp.y, 2)
+        );
+        const dynamicThreshold = Math.max(shoulderWidth * 1.0, 100);
+        isClose = dist < dynamicThreshold;
+      } else {
+        if (instruction.target.includes('hip')) {
+          const shoulderY = (ls.y + rs.y) / 2;
+          isClose = handKp.y > shoulderY;
+        } else if (instruction.target.includes('knee')) {
+          const shoulderY = (ls.y + rs.y) / 2;
+          isClose = handKp.y > shoulderY + shoulderWidth * 0.5;
+        } else if (instruction.target.includes('shoulder')) {
+          const shoulderY = (ls.y + rs.y) / 2;
+          isClose = Math.abs(handKp.y - shoulderY) < shoulderWidth * 0.8;
+        } else {
+          isClose = true;
+        }
+      }
+
+      if (isClose) {
+        if (crossHoldStartRef.current === 0) {
+          crossHoldStartRef.current = now;
+        }
+        const holdDuration = now - crossHoldStartRef.current;
+        
+        if (holdDuration >= CROSS_HOLD_MS) {
+          crossDetectedRef.current = true;
+          const responseTime = now - crossTimeRef.current;
+          setCrossCorrect(c => c + 1);
+          setCrossTimes(prev => [...prev, responseTime]);
+          setCrossMessage(`?뺥솗! ${Math.round(responseTime)}ms ??);
+          speak('?뺥솗?⑸땲??');
+          setTimeout(() => setCrossRound(r => r + 1), 1500);
+        }
+      } else {
+        crossHoldStartRef.current = 0;
+      }
+    }, 150);
+
+    return () => clearInterval(checkInterval);
+  }, [testType, phase, crossRound]);
+
+  // ============== MART SHOPPING GAME (?ㅻⅨ???쒖넀 湲곕컲) ==============
+  
+  // ??醫뚰몴 ???붾㈃ 醫뚰몴 蹂??(?ㅻⅨ?먮쭔)
+  const updateHandCursor = (pose: poseDetection.Pose) => {
+    const container = shoppingContainerRef.current;
+    const video = videoRef.current;
+    if (!container || !video) return;
+    const rw = pose.keypoints.find(k => k.name === 'right_wrist');
+    const vw = video.videoWidth || 640;
+    const vh = video.videoHeight || 480;
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (rw && (rw.score || 0) > 0.3) {
+      setHandCursor({ x: (1 - rw.x / vw) * cw, y: (rw.y / vh) * ch });
+    } else {
+      setHandCursor(null);
+    }
+  };
+
+  // ??而ㅼ꽌 ?몃쾭 媛먯? ???꾩씠???↔린 ???λ컮援щ땲 ?ｊ린 (?쒖넀)
+  useEffect(() => {
+    if (testType !== AssessmentStep.BRAIN_MEMORY || phase !== 'playing' || martPhase !== 'shopping') return;
+    const container = shoppingContainerRef.current;
+    if (!container || !handCursor) {
+      setHoveredItem(null);
+      hoverStartRef.current = 0;
+      return;
+    }
+
+    // ?꾩씠???곸뿭 異⑸룎 媛먯?
+    const itemElements = container.querySelectorAll('[data-item-id]');
+    let foundHover: string | null = null;
+    const containerRect = container.getBoundingClientRect();
+    itemElements.forEach(el => {
+      const rect = el.getBoundingClientRect();
+      const relX = rect.left - containerRect.left + rect.width / 2;
+      const relY = rect.top - containerRect.top + rect.height / 2;
+      const dx = handCursor.x - relX;
+      const dy = handCursor.y - relY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      // 異⑸룎 ?먯젙 ?곸뿭 ?쎄컙 ?됰꼮?섍쾶
+      if (dist < Math.max(rect.width, rect.height) * 0.7) {
+        const itemId = el.getAttribute('data-item-id');
+        if (itemId && !cartItemsRef.current.includes(itemId)) {
+          foundHover = itemId;
+        }
+      }
+    });
+
+    if (foundHover) {
+      if (hoveredItem !== foundHover) {
+        setHoveredItem(foundHover);
+        hoverStartRef.current = performance.now();
+      } else {
+        const hoverDuration = performance.now() - hoverStartRef.current;
+        if (hoverDuration >= HOVER_GRAB_MS) {
+          // 3珥??꾨떖 ??利됱떆 ?λ컮援щ땲???닿린
+          if (!cartItemsRef.current.includes(foundHover) && cartItemsRef.current.length < MART_ITEMS_TO_REMEMBER) {
+            setCartItems(prev => prev.includes(foundHover!) ? prev : [...prev, foundHover!]);
+            const item = MART_ITEMS.find(i => i.id === foundHover);
+            speak(`${item?.name} ?λ컮援щ땲???댁븯?듬땲??`);
+            setLastAddedItem(foundHover);
+            setTimeout(() => setLastAddedItem(null), 600);
+          }
+          setHoveredItem(null);
+          hoverStartRef.current = 0;
+        }
+      }
+    } else {
+      // ?곸뿭 諛뽰쑝濡??섍?硫?利됱떆 珥덇린??(?섎せ ?≪븯???????닿린/?대룞?섍린 ?④낵)
+      setHoveredItem(null);
+      hoverStartRef.current = 0;
+    }
+  }, [handCursor, grabbedItem, hoveredItem, martPhase, testType, phase]);
+
+  // 留덊듃 寃뚯엫 珥덇린??  useEffect(() => {
+    if (testType !== AssessmentStep.BRAIN_MEMORY || phase !== 'playing') return;
+    
+    if (martPhase === 'showing' && martItemsToRemember.length === 0) {
+      startMartRound();
+    }
+  }, [testType, phase]);
+
+  const startMartRound = () => {
+    const shuffled = [...MART_ITEMS].sort(() => Math.random() - 0.5);
+    const toRemember = shuffled.slice(0, MART_ITEMS_TO_REMEMBER);
+    const shelfItems = [...shuffled].sort(() => Math.random() - 0.5); // 24媛??꾨? 吏꾩뿴
+    
+    // v5.1: 8媛?以??쒕뜡 4媛쒕쭔 媛寃??쒖떆
+    const priceVisible = [...toRemember].sort(() => Math.random() - 0.5).slice(0, 4).map(i => i.id);
+    setMartPriceVisibleIds(priceVisible);
+    
+    setMartItemsToRemember(toRemember);
+    setMartShelfItems(shelfItems);
+    setCartItems([]);
+    setMartPhase('showing');
+    setMartMessage('');
+    
+    showMartItems(toRemember);
+  };
+
+  // v5.1: ?먯옄由??ъ튃?곗궛 媛앷???臾몄젣 ?앹꽦
+  const genSimpleMathQuiz = () => {
+    const isAdd = Math.random() > 0.5;
+    const a = Math.floor(Math.random() * 60) + 20; // 20~79
+    const b = Math.floor(Math.random() * 40) + 15; // 15~54
+    const question = isAdd ? `${a} + ${b}` : `${Math.max(a,b)} - ${Math.min(a,b)}`;
+    const answer = isAdd ? a + b : Math.max(a,b) - Math.min(a,b);
+    const wrongSet = new Set<number>();
+    while (wrongSet.size < 3) {
+      const off = (Math.floor(Math.random() * 8) + 1) * (Math.random() > 0.5 ? 1 : -1);
+      const w = answer + off;
+      if (w > 0 && w !== answer) wrongSet.add(w);
+    }
+    return { question, answer, options: [answer, ...wrongSet].sort(() => Math.random() - 0.5) };
+  };
+
+  const showMartItems = (items: typeof MART_ITEMS) => {
+    setMartMessage(`?썟 20珥??숈븞 臾쇨굔 ${MART_ITEMS_TO_REMEMBER}媛쒕? 湲곗뼲?섏꽭??`);
+    speak(`吏湲덈???20珥??숈븞 ??臾쇨굔 8媛쒕? ?뺤씤?섏꽭?? 臾쇨굔???대?吏? 媛寃⑹쓣 湲곗뼲??二쇱꽭??`);
+    setMartShowingCountdown(20); // v5.1: 20珥?    const showInterval = setInterval(() => {
+      setMartShowingCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(showInterval);
+          // v5.1: ?먯옄由??ъ튃?곗궛 媛앷???2臾몄젣
+          const quizzes = [genSimpleMathQuiz(), genSimpleMathQuiz()];
+          setDistractionQuizzes(quizzes);
+          setDistractionIndex(0);
+          setDistractionSelected(null);
+          setDistractionCorrect(0);
+          setDistractionCountdown(15);
+          setMartPhase('distraction');
+          setMartMessage('?쭬 15珥??숈븞 2臾몄젣瑜???대낫?몄슂!');
+          speak('?댁젣 15珥??숈븞 ?섑븰 臾몄젣 2媛쒕? ??대낫?몄슂.');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // distraction 移댁슫?몃떎????v5.0: 15珥?  useEffect(() => {
+    if (testType !== AssessmentStep.BRAIN_MEMORY || phase !== 'playing' || martPhase !== 'distraction') return;
+    const ci = setInterval(() => {
+      setDistractionCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(ci);
+          speak(`?댁젣 ?꾧퉴 蹂?臾쇨굔 ${MART_ITEMS_TO_REMEMBER}媛쒕? 李얠븘???대┃??二쇱꽭??`);
+          setMartPhase('shopping');
+          setMartMessage(`?몘 ?꾧퉴 湲곗뼲??臾쇨굔 ${MART_ITEMS_TO_REMEMBER}媛쒕? ?대┃?댁꽌 怨⑤씪二쇱꽭??);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(ci);
+  }, [testType, phase, martPhase]);
+
+  // v5.1: 諛⑺빐 怨쇱젣 媛앷????듭븞 ?좏깮
+  const handleDistractionAnswer = (selected: number) => {
+    if (distractionSelected !== null) return;
+    setDistractionSelected(selected);
+    const quiz = distractionQuizzes[distractionIndex];
+    if (selected === quiz.answer) setDistractionCorrect(p => p + 1);
+    setTimeout(() => {
+      if (distractionIndex < distractionQuizzes.length - 1) {
+        setDistractionIndex(p => p + 1);
+        setDistractionSelected(null);
+        speak('?ㅼ쓬 臾몄젣?낅땲??');
+      }
+    }, 1200);
+  };
+
+  useEffect(() => { cartItemsRef.current = cartItems; }, [cartItems]);
+  useEffect(() => { martItemsRef.current = martItemsToRemember; }, [martItemsToRemember]);
+
+  // v5.1: ?쇳븨 ?꾨즺 ??媛寃??댁쫰 ??媛寃⑹씠 蹂댁???4媛쒖쓽 ?⑹궛 二쇨???  const moveToPriceQuiz = (cc: number) => {
+    // 湲곗뼲 ?④퀎?먯꽌 媛寃⑹씠 蹂댁???4媛??꾩씠?쒖쓽 ?⑹궛
+    const priceQuizItems = martItemsRef.current.filter(item => martPriceVisibleIds.includes(item.id));
+    const correctPrice = priceQuizItems.reduce((sum, item) => sum + item.price, 0);
+    setMathPriceItems(priceQuizItems);
+    setMathCorrectAnswer(correctPrice);
+    setMathInputValue('');
+    setMathIsCorrect(null);
+    setMathQuizPhase('quiz');
+    setMathTimeLeft(30);
+    setMartTotalCorrect(p => p + cc);
+    setResultData({ memoryCorrect: cc, memorySpan: cc });
+    setMartPhase('priceQuiz');
+    speak(`${MART_ITEMS_TO_REMEMBER}媛?以?${cc}媛쒕? 怨⑤옄?듬땲?? ?댁젣 吏?뺣맂 3媛?臾쇨굔??珥?湲덉븸???낅젰??二쇱꽭??`);
+  };
+
+  useEffect(() => {
+    if (testType !== AssessmentStep.BRAIN_MEMORY || phase !== 'playing' || martPhase !== 'shopping') return;
+    if (cartItems.length < MART_ITEMS_TO_REMEMBER) return;
+    const cc = cartItems.filter(id => martItemsToRemember.some(i => i.id === id)).length;
+    moveToPriceQuiz(cc);
+  }, [testType, phase, martPhase, cartItems, martItemsToRemember]);
+
+  // ?쇳븨 ?쒗븳?쒓컙 60珥?  useEffect(() => {
+    if (testType !== AssessmentStep.BRAIN_MEMORY || phase !== 'playing' || martPhase !== 'shopping') return;
+    setMartTimeLeft(60);
+    const ci = setInterval(() => {
+      setMartTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(ci);
+          const cc = cartItemsRef.current.filter(id => martItemsRef.current.some(i => i.id === id)).length;
+          moveToPriceQuiz(cc);
+          speak(`?쒓컙 珥덇낵! ${cc}媛쒕? 怨⑤옄?듬땲??`);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(ci);
+  }, [testType, phase, martPhase]);
+
+  useEffect(() => {
+    if (mathQuizPhase !== 'quiz') return;
+    const t = setInterval(() => {
+      setMathTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(t);
+          setMathQuizPhase('answered');
+          setMathIsCorrect(false);
+          setResultData(prev => ({ ...prev, mathCorrect: false }));
+          speak('?쒓컙 珥덇낵?낅땲??');
+          setTimeout(() => setPhase('result'), 2500);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [mathQuizPhase]);
+
+  // v5.0: 媛寃?二쇨????쒖텧
+  const handleMathSubmit = () => {
+    if (mathQuizPhase !== 'quiz' || !mathInputValue.trim()) return;
+    setMathQuizPhase('answered');
+    const userPrice = parseInt(mathInputValue);
+    // ?ㅼ감 짹500???대궡硫??뺣떟 泥섎━
+    const ok = Math.abs(userPrice - mathCorrectAnswer) <= 500;
+    setMathIsCorrect(ok);
+
+    // v5.0 諛곗젏 援ъ“: 湲곗뼲 50??+ 諛⑺빐怨쇱젣 15??+ 媛寃⑷퀎??15??+ ?띾룄 10??+ 媛먯젏
+    const shoppingTime = 60 - martTimeLeft;
+    const mathTime = 30 - mathTimeLeft;
+    
+    const memoryCorrect = resultData.memoryCorrect || 0;
+    // 湲곗뼲??50??(8媛?留뚯젏)
+    const memoryScore = (memoryCorrect / MART_ITEMS_TO_REMEMBER) * 50;
+    // 諛⑺빐怨쇱젣 15??(2臾몄젣)
+    const distractionScore = (distractionCorrect / 2) * 15;
+    // 媛寃⑷퀎??15??    const priceScore = ok ? 15 : 0;
+    // ?띾룄 蹂대꼫???⑤꼸??(理쒕? 짹10??
+    let speedAdjustment = 0;
+    if (shoppingTime <= 20) speedAdjustment += 10;
+    else if (shoppingTime <= 35) speedAdjustment += 5;
+    else if (shoppingTime >= 50) speedAdjustment -= 10;
+    if (mathTime <= 8) speedAdjustment += 5;
+    else if (mathTime >= 25) speedAdjustment -= 5;
+    // ?ㅻ떟 媛먯젏: ?섎せ 怨좊Ⅸ 臾쇨굔 ??* -3??    const wrongPicks = cartItemsRef.current.filter(id => !martItemsRef.current.some(i => i.id === id)).length;
+    const wrongPenalty = wrongPicks * -3;
+    
+    const finalScore = Math.max(0, Math.min(100, Math.round(memoryScore + distractionScore + priceScore + speedAdjustment + wrongPenalty)));
+
+    setResultData(prev => ({ 
+      ...prev, 
+      mathCorrect: ok, 
+      distractionCorrect,
+      finalScore,
+      shoppingTime,
+      mathTime
+    }));
+    
+    speak(ok ? '?뺣떟?낅땲??' : `?꾩돺?듬땲?? ?뺣떟? ${mathCorrectAnswer.toLocaleString()}?먯씠?덉뒿?덈떎.`);
+    setTimeout(() => setPhase('result'), 2500);
+  };
+
+  // Handle start
+  const handleStart = () => {
+    if (testType === AssessmentStep.BRAIN_MEMORY) {
+      // 移대찓???놁씠 諛붾줈 ?쒖옉
+      setPhase('countdown');
+      speak('留덊듃 ?λ낫湲??뚯뒪?몃? ?쒖옉?⑸땲??');
+    } else {
+      speak('?몄? ?λ젰 ?뚯뒪?몃? ?쒖옉?⑸땲?? ?붾㈃??珥덈줉遺덉씠 ?ㅼ뼱?ㅻ㈃ ?ㅻⅨ?먯쓣, ?뚮?遺덉씠 ?ㅼ뼱?ㅻ㈃ ?쇱넀?? ?곗깋遺덉씠 ?ㅼ뼱?ㅻ㈃ ?묒넀???쒖꽭?? 鍮④컙遺덉씠 ?ㅼ뼱?ㅻ㈃ 異⑸룞???듭젣?섍퀬 ?吏곸씠吏 留덉꽭?? 移대찓?쇱뿉 ?곷컲?좎씠 蹂댁씠?꾨줉 ?쒖＜?몄슂.');
+      setPhase('calibration');
+    }
+  };
+
+  // Handle completion
+  const handleComplete = () => {
+    const dataUrl = captureFrame();
+    // ?섎룞 ?ㅻ떟 ?섏젙???덉쑝硫?諛섏쁺
+    const finalData = { ...resultData };
+    if (testType === ('BRAIN_REACTION' as any) && manualReactionErrors !== '') {
+      finalData.reactionErrors = parseInt(manualReactionErrors) || 0;
+    }
+    onComplete(dataUrl, finalData);
+  };
+
+  const getTestTitle = () => {
+    switch (testType) {
+      case ('BRAIN_REACTION' as any): return { icon: '?쭬', title: '?몄? ?λ젰 ?뚯뒪??, subtitle: '?됱긽 洹쒖튃???곕씪 異⑸룞???듭젣?섏꽭?? };
+      case AssessmentStep.BRAIN_MEMORY: return { icon: '?썟', title: '留덊듃 ?λ낫湲?, subtitle: '臾쇨굔??湲곗뼲?섍퀬 ?대┃?쇰줈 怨⑤씪二쇱꽭?? };
+      default: return { icon: '?쭬', title: '???뚯뒪??, subtitle: '' };
+    }
+  };
+
+  const info = getTestTitle();
+
+  // ============ RENDER ============
+
+  const getStepLabel = () => {
+    switch (testType) {
+      case ('BRAIN_REACTION' as any): return { step: '??湲곕뒫 1?④퀎', title: '?쭬 ?몄? ?λ젰 ?뚯뒪?? };
+
+      case AssessmentStep.BRAIN_MEMORY: return { step: '??湲곕뒫 2?④퀎', title: '?썟 留덊듃 ?λ낫湲?湲곗뼲?? };
+      default: return { step: '', title: '' };
+    }
+  };
+
+  const stepLabel = getStepLabel();
+
+  return (
+    <div className={`flex-1 flex flex-col p-4 sm:p-6 ${testType === AssessmentStep.BRAIN_MEMORY ? 'overflow-hidden' : 'overflow-hidden'}`}>
+      {/* Header - 湲곗〈 ?뚯뒪?몄? ?숈씪???ㅽ???*/}
+      <div className="mb-3 flex justify-between items-center shrink-0">
+        <div>
+          <span className="text-indigo-600 font-bold text-xs uppercase tracking-widest">{stepLabel.step}</span>
+          <h3 className="text-xl sm:text-2xl font-bold text-slate-800">{stepLabel.title}</h3>
+        </div>
+        <div className="flex items-center gap-3">
+          {userInfo && (
+            <div className="bg-amber-500/20 border border-amber-500/40 text-amber-700 font-bold text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <span>?뫀</span>
+              <span>{userInfo.name}</span>
+              <span className="text-amber-400">|</span>
+              <span>{userInfo.gender === 'male' ? '?? : '??}</span>
+              <span className="text-amber-400">|</span>
+              <span>{userInfo.age}??/span>
+            </div>
+          )}
+          <button
+            onClick={() => setIsPortraitMode(!isPortraitMode)}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-colors border border-slate-700"
+          >
+            <i className={`fas fa-${isPortraitMode ? 'mobile-alt' : 'desktop'}`}></i>
+            {isPortraitMode ? '?몃줈 紐⑤뱶' : '媛濡?紐⑤뱶'}
+          </button>
+        </div>
+      </div>
+
+      {/* Camera + Game Area */}
+      <div className={`flex-1 w-full flex justify-center items-center ${testType === AssessmentStep.BRAIN_MEMORY ? 'overflow-hidden' : 'overflow-hidden min-h-0'}`}>
+        <div className={`relative w-full overflow-hidden bg-black shadow-2xl transition-all duration-500
+          ${testType === AssessmentStep.BRAIN_MEMORY
+            ? 'h-[calc(100vh-120px)] rounded-2xl'
+            : isPortraitMode ? 'rounded-[2rem] sm:rounded-[2.5rem] max-w-[calc((100vh-280px)*9/16)] aspect-[9/16]' : 'rounded-[2rem] sm:rounded-[2.5rem] max-w-5xl aspect-video mx-auto'}
+        `}>
+        {/* Camera feed - 諛섏쓳?띾룄留??쒖떆 */}
+        {testType !== AssessmentStep.BRAIN_MEMORY && (
+          <>
+            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
+            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full scale-x-[-1]" />
+            
+            {/* Camera Switch Toggle Button */}
+            {cameraReady && phase !== 'playing' && phase !== 'countdown' && (
+              <button
+                onClick={toggleCamera}
+                className="absolute top-4 right-4 w-12 h-12 bg-black/40 backdrop-blur-md rounded-full text-white flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.3)] border border-cyan-400/30 z-[60] hover:bg-black/60 hover:scale-105 active:scale-95 transition-all pointer-events-auto"
+                title="移대찓??諛⑺뼢 ?꾪솚"
+              >
+                <i className="fas fa-sync-alt text-xl"></i>
+              </button>
+            )}
+          </>
+        )}
+        {/* 留덊듃 ?뚯뒪??諛곌꼍 */}
+        {testType === AssessmentStep.BRAIN_MEMORY && (
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900" />
+        )}
+
+        {/* Game UI overlay */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center" ref={shoppingContainerRef}>
+          
+          {/* INTRO PHASE */}
+          {phase === 'intro' && (
+            <div className="text-center space-y-6 max-w-lg bg-black/60 backdrop-blur-sm rounded-3xl p-10 mx-4">
+              <h2 className="text-3xl sm:text-4xl font-black text-white">{info.title}</h2>
+              <p className="text-base sm:text-lg text-white/80 font-medium">{info.subtitle}</p>
+              
+              <div className="text-left space-y-3 text-white/70 text-sm sm:text-base">
+                {testType === ('BRAIN_REACTION' as any) && (
+                  <>
+                    <p>?윟 <strong className="text-emerald-400">珥덈줉遺?/strong> ???ㅻⅨ?먯쓣 鍮좊Ⅴ寃??ㅼ뼱?щ━?몄슂</p>
+                    <p>?뵷 <strong className="text-blue-400">?뚮?遺?/strong> ???쇱넀??鍮좊Ⅴ寃??ㅼ뼱?щ━?몄슂</p>
+                    <p>??<strong className="text-white">?곗깋遺?/strong> ???묒넀??紐⑤몢 ?ㅼ뼱?щ━?몄슂!</p>
+                    <p>?뵶 <strong className="text-rose-400">鍮④컙遺?/strong> ???吏곸씠吏 留덉꽭??</p>
+                    <p className="mt-3 text-amber-300 font-bold bg-amber-500/20 px-3 py-2 rounded-lg">?좑툘 二쇱쓽: ?섏쨷?먮뒗 ?붿궡??諛⑺뼢??臾댁옉?꾨줈 ?섏샃?덈떎. 諛⑺뼢???띿? 留먭퀬 ?됱긽?먮쭔 諛섏쓳?섏꽭??</p>
+                    <p className="mt-1">?뱤 珥?10??吏꾪뻾</p>
+                  </>
+                )}
+
+                {testType === AssessmentStep.BRAIN_MEMORY && (
+                  <>
+                    <p className="text-base sm:text-lg">?썟 20珥??숈븞 臾쇨굔 <strong className="text-amber-400">8媛?/strong>???대?吏瑜?湲곗뼲?섏꽭??/p>
+                    <p className="text-base sm:text-lg">?뮥 媛寃⑹씠 ?쒖떆??臾쇨굔??<strong className="text-rose-400">媛寃??⑷퀎</strong>瑜?湲곗뼲?섏꽭??/p>
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={handleStart}
+                className="w-full py-5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xl sm:text-2xl font-black rounded-2xl shadow-lg hover:scale-[1.02] transition-all"
+              >
+                ?쒖옉?섍린
+              </button>
+            </div>
+          )}
+
+          {/* CALIBRATION PHASE */}
+          {phase === 'calibration' && (
+            <div className="absolute inset-0 flex flex-col">
+              {/* ?곷떒 ?덈궡 */}
+              <div className="pt-6 px-4 text-center">
+                <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 mx-auto max-w-xs">
+                  <h3 className="text-white font-black text-lg mb-1">?벜 ?ъ쫰 ?뺤씤 以?/h3>
+                  <p className="text-white/70 text-xs">
+                    {'移대찓?쇱뿉 ?곷컲?좎씠 蹂댁씠?꾨줉 ?쒖＜?몄슂'}
+                  </p>
+                </div>
+              </div>
+              
+              {/* ?ㅽ룷?명듃 ?곹깭 ?쒖떆 */}
+              <div className="flex-1" />
+              <div className="pb-8 px-4">
+                <div className="bg-black/70 backdrop-blur-sm rounded-2xl p-4 mx-auto max-w-xs">
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {Object.entries(REQUIRED_KEYPOINTS).map(([key, label]) => (
+                      <div key={key} className={`flex items-center gap-2 text-xs font-bold rounded-lg px-2 py-1.5 ${
+                        calibrationStatus[key] 
+                          ? 'bg-emerald-500/20 text-emerald-400' 
+                          : 'bg-red-500/20 text-red-400'
+                      }`}>
+                        <span>{calibrationStatus[key] ? '?? : '??}</span>
+                        <span>{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* ?좏깮???ㅽ룷?명듃 (援먯감/留덊듃) */}
+                  {testType === AssessmentStep.BRAIN_MEMORY && (
+                    <div className="border-t border-white/10 pt-2 mt-2">
+                      <p className="text-white/40 text-[10px] font-bold mb-1">異붽? 媛먯? (?덈낫?щ룄 OK)</p>
+                      <div className="grid grid-cols-2 gap-1">
+                        {Object.entries(OPTIONAL_KEYPOINTS).map(([key, label]) => (
+                          <div key={key} className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 rounded ${
+                            calibrationStatus[key]
+                              ? 'text-emerald-400/70'
+                              : 'text-white/30'
+                          }`}>
+                            <span>{calibrationStatus[key] ? '?? : '燧?}</span>
+                            <span>{label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* ?곹깭 硫붿떆吏 */}
+                  <div className="mt-3 text-center">
+                    {calibrationReady ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
+                        <span className="text-emerald-400 text-sm font-black">
+                          ?ъ쫰 ?몄떇 ?꾨즺! ?좎떆 ?좎??섏꽭??..
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-amber-400 text-sm font-bold animate-pulse">
+                        ?꾩닔 ?ъ씤?몃? 移대찓?쇱뿉 蹂댁뿬二쇱꽭??                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* HAND CHECK PHASE ?????몄떇 ?뺤씤 */}
+          {phase === 'handcheck' && (
+            <div className="absolute inset-0 flex flex-col">
+              {/* ?곷떒 ?덈궡 */}
+              <div className="pt-6 px-4 text-center">
+                <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 mx-auto max-w-xs">
+                  <h3 className="text-white font-black text-lg mb-1">?????몄떇 ?뺤씤</h3>
+                  <p className="text-white/70 text-xs">
+                    {handCheckStep === 'right' && '?ㅻⅨ?먯쓣 癒몃━ ?꾨줈 ?ㅼ뼱蹂댁꽭??}
+                    {handCheckStep === 'left' && '?쇱넀??癒몃━ ?꾨줈 ?ㅼ뼱蹂댁꽭??}
+                    {handCheckStep === 'done' && '?묒넀 ?몄떇 ?꾨즺! 怨??쒖옉?⑸땲??}
+                  </p>
+                </div>
+              </div>
+              
+              {/* 以묒븰 ???꾩씠肄??쒖떆 */}
+              <div className="flex-1 flex items-center justify-center">
+                <div className="flex gap-12">
+                  {/* ?쇱넀 */}
+                  <div className={`flex flex-col items-center gap-3 transition-all duration-500 ${
+                    handCheckStep === 'left' ? 'scale-125' : 'scale-100'
+                  }`}>
+                    <div className={`w-24 h-24 rounded-3xl flex items-center justify-center text-5xl transition-all duration-500 ${
+                      leftHandChecked 
+                        ? 'bg-emerald-500/30 border-2 border-emerald-400 shadow-lg shadow-emerald-500/30' 
+                        : handCheckStep === 'left'
+                          ? 'bg-blue-500/20 border-2 border-blue-400 animate-pulse shadow-lg shadow-blue-500/20'
+                          : 'bg-white/10 border border-white/20'
+                    }`}>
+                      {leftHandChecked ? '?? : '?쩀'}
+                    </div>
+                    <span className={`text-sm font-bold ${
+                      leftHandChecked ? 'text-emerald-400' : handCheckStep === 'left' ? 'text-blue-400 animate-pulse' : 'text-white/40'
+                    }`}>
+                      ?쇱넀 {leftHandChecked ? '?뺤씤!' : handCheckStep === 'left' ? '?ㅼ뼱蹂댁꽭?? : '?湲?}
+                    </span>
+                  </div>
+
+                  {/* ?ㅻⅨ??*/}
+                  <div className={`flex flex-col items-center gap-3 transition-all duration-500 ${
+                    handCheckStep === 'right' ? 'scale-125' : 'scale-100'
+                  }`}>
+                    <div className={`w-24 h-24 rounded-3xl flex items-center justify-center text-5xl transition-all duration-500 ${
+                      rightHandChecked 
+                        ? 'bg-emerald-500/30 border-2 border-emerald-400 shadow-lg shadow-emerald-500/30' 
+                        : handCheckStep === 'right'
+                          ? 'bg-emerald-500/20 border-2 border-emerald-400 animate-pulse shadow-lg shadow-emerald-500/20'
+                          : 'bg-white/10 border border-white/20'
+                    }`}>
+                      {rightHandChecked ? '?? : '?쩀'}
+                    </div>
+                    <span className={`text-sm font-bold ${
+                      rightHandChecked ? 'text-emerald-400' : handCheckStep === 'right' ? 'text-emerald-400 animate-pulse' : 'text-white/40'
+                    }`}>
+                      ?ㅻⅨ??{rightHandChecked ? '?뺤씤!' : handCheckStep === 'right' ? '?ㅼ뼱蹂댁꽭?? : '?湲?}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* ?섎떒 ?곹깭 */}
+              <div className="pb-8 px-4">
+                <div className="bg-black/70 backdrop-blur-sm rounded-2xl p-4 mx-auto max-w-xs text-center">
+                  {handCheckStep === 'done' ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
+                      <span className="text-emerald-400 text-sm font-black">
+                        ?묒넀 ?몄떇 ?꾨즺! ?럦
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-amber-400 text-xs font-bold mb-2">
+                        {handCheckStep === 'right' ? '?윟 ?ㅻⅨ?먯쓣 ?닿묠 ?꾨줈 1珥덇컙 ?щ젮二쇱꽭?? : '?뵷 ?쇱넀???닿묠 ?꾨줈 1珥덇컙 ?щ젮二쇱꽭??}
+                      </p>
+                      <p className="text-white/40 text-[10px]">
+                        ?몄떇??????寃쎌슦 移대찓???꾩튂瑜?議곗젙??二쇱꽭??                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+
+          {/* COUNTDOWN PHASE */}
+          {phase === 'countdown' && (
+            <div className="text-center">
+              <div className="text-9xl font-black text-white drop-shadow-2xl animate-pulse">{countdown || '?쒖옉!'}</div>
+              <p className="text-xl text-white/80 mt-4 font-bold">以鍮꾪븯?몄슂...</p>
+            </div>
+          )}
+
+          {/* PLAYING - REACTION (?먯쭊???쒖씠??10?? */}
+          {phase === 'playing' && testType === ('BRAIN_REACTION' as any) && (
+            <>
+              {/* ?ㅻ떟 ???붾㈃ 踰덉꺽???④낵 */}
+              {reactionFlash === 'wrong' && (
+                <div className="absolute inset-0 bg-red-500/30 z-40 animate-pulse pointer-events-none rounded-[2.5rem]" />
+              )}
+              {reactionFlash === 'correct' && (
+                <div className="absolute inset-0 bg-emerald-500/15 z-40 pointer-events-none rounded-[2.5rem]" />
+              )}
+              <div className="text-center space-y-6">
+                <div className="flex justify-center items-center gap-4">
+                  <div className="text-sm font-bold text-white/60 uppercase tracking-wider">
+                    {reactionRound + 1} / {REACTION_TOTAL}
+                  </div>
+                  {reactionErrors > 0 && (
+                    <div className="bg-red-500/80 text-white text-xs font-black px-3 py-1 rounded-full animate-pulse">
+                      ?ㅻ떟 {reactionErrors}??                    </div>
+                  )}
+                </div>
+                
+                <div className={`w-40 h-40 rounded-full mx-auto flex items-center justify-center transition-all duration-200 ${
+                  signalColor === 'green' ? 'bg-emerald-500 shadow-[0_0_80px_rgba(16,185,129,0.8)]' :
+                  signalColor === 'blue' ? 'bg-blue-500 shadow-[0_0_80px_rgba(59,130,246,0.8)]' :
+                  signalColor === 'red' ? 'bg-rose-500 shadow-[0_0_80px_rgba(244,63,94,0.8)]' :
+                  signalColor === 'white' ? 'bg-white shadow-[0_0_80px_rgba(255,255,255,0.8)]' :
+                  'bg-white/20 border-2 border-white/30'
+                }`}>
+                  <span className="text-5xl">
+                    {signalDirection === 'right' ? '?몛' : 
+                     signalDirection === 'left' ? '?몚' : 
+                     signalDirection === 'both' ? '?솈' : 
+                     signalDirection === 'none' && signalColor === 'red' ? '?슟' : '??}
+                  </span>
+                </div>
+
+                {/* 醫뚯슦 ?덈궡 ?쒖떆 */}
+                <div className="flex justify-center gap-8 text-white/50 text-xs font-bold">
+                  <span className={signalColor === 'blue' ? 'text-blue-400 scale-125 transition-all' : ''}>?몚 ?쇱넀 (?뚮???</span>
+                  <span className={signalColor === 'green' ? 'text-emerald-400 scale-125 transition-all' : ''}>(珥덈줉?? ?ㅻⅨ???몛</span>
+                </div>
+
+                <p className={`text-xl font-bold drop-shadow-md ${
+                  reactionFlash === 'wrong' ? 'text-red-400 text-2xl' : 
+                  reactionFlash === 'correct' ? 'text-emerald-400' : 'text-white'
+                }`}>{reactionMessage || '湲곕떎由ъ꽭??..'}</p>
+              </div>
+            </>
+          )}
+
+          {/* PLAYING - CROSS */}
+
+
+          {/* PLAYING - MART SHOPPING GAME (??而ㅼ꽌 湲곕컲) */}
+          {phase === 'playing' && testType === AssessmentStep.BRAIN_MEMORY && (
+            <div className="absolute inset-0 flex flex-col z-20 overflow-auto">
+              <div className="relative w-full h-full flex flex-col overflow-visible">
+              {/* ?곷떒: 硫붿떆吏 + ??대㉧ (showing ?④퀎?먯꽌???꾩씠???곸뿭???듯빀 ?쒖떆) */}
+              <div className={`absolute top-3 inset-x-0 text-center z-50 pointer-events-none ${martPhase === 'showing' ? 'hidden' : ''}`}>
+                {martPhase === 'shopping' && (
+                  <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 mb-2 font-black text-base sm:text-lg shadow-lg ${
+                    martTimeLeft <= 10 
+                      ? 'bg-red-500/90 text-white animate-pulse' 
+                      : martTimeLeft <= 30 
+                      ? 'bg-amber-500/80 text-white' 
+                      : 'bg-black/80 text-white'
+                  } backdrop-blur-md`}>
+                    <span>?깍툘</span>
+                    <span>{martTimeLeft}珥?/span>
+                  </div>
+                )}
+                {martPhase !== 'shopping' && (
+                  <div>
+                    <div className="bg-black/80 backdrop-blur-md rounded-xl px-4 py-2 inline-block shadow-lg border border-white/10">
+                      <p className="text-white font-bold text-sm">{martMessage}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* v5.0: 湲곗뼲?섍린 ?④퀎 ???대?吏 ?꾩슜 + 媛寃??쒖떆 */}
+              {martPhase === 'showing' && (
+                <div className={`flex-1 flex flex-col items-center ${isPortraitMode ? 'justify-start pt-4' : 'justify-center'} p-3 sm:p-4 overflow-auto`}>
+                  <div className={`w-full ${isPortraitMode ? 'max-w-xl px-3' : 'max-w-4xl px-2 sm:px-4'}`}>
+                    {/* ?덈궡 + ??대㉧ */}
+                    <div className={`flex items-center justify-between bg-black/50 backdrop-blur-sm border border-white/10 mb-4 sm:mb-6 rounded-2xl sm:rounded-3xl px-4 sm:px-8 py-3 sm:py-5`}>
+                      <span className="text-white font-bold text-sm sm:text-xl">?썟 臾쇨굔 8媛쒖? ?쒖떆??媛寃⑹쓣 湲곗뼲?섏꽭??/span>
+                      <span className={`font-black ml-3 text-xl sm:text-3xl ${martShowingCountdown <= 5 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`}>
+                        ?깍툘 {martShowingCountdown}珥?                      </span>
+                    </div>
+                    {/* v5.1: 8媛??꾩씠??洹몃━?????대?吏 ?꾩슜, ?쒕뜡 4媛쒕쭔 媛寃??쒖떆 */}
+                    <div className={`grid ${isPortraitMode ? 'grid-cols-2 gap-3' : 'grid-cols-4 gap-3 sm:gap-4'}`}>
+                      {martItemsToRemember.map((item, i) => {
+                        const showPrice = martPriceVisibleIds.includes(item.id);
+                        return (
+                          <div key={item.id}
+                            className={`flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl border ${showPrice ? 'bg-amber-500/20 border-amber-500/50' : 'bg-slate-700/30 border-white/20'} ${isPortraitMode ? 'px-3 py-4' : 'px-3 sm:px-5 py-3 sm:py-5'}`}>
+                            <span className={`${isPortraitMode ? 'text-5xl' : 'text-4xl sm:text-6xl'}`}>{item.emoji}</span>
+                            {showPrice ? (
+                              <span className={`text-amber-300 font-black mt-2 ${isPortraitMode ? 'text-base' : 'text-sm sm:text-lg'}`}>{item.price.toLocaleString()}??/span>
+                            ) : (
+                              <span className={`text-white/30 font-bold mt-2 ${isPortraitMode ? 'text-sm' : 'text-xs sm:text-sm'}`}>???</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* v5.1: 諛⑺빐 怨쇱젣 15珥????먯옄由?媛앷???4吏?좊떎 2臾몄젣 */}
+              {martPhase === 'distraction' && distractionQuizzes.length > 0 && (
+                <div className="flex-1 flex flex-col items-center justify-center p-4">
+                  <div className="bg-indigo-900/80 backdrop-blur-md rounded-3xl border border-indigo-400/50 text-center shadow-[0_0_50px_rgba(79,70,229,0.5)] w-full p-6 sm:p-12 max-w-sm sm:max-w-2xl">
+                    <div className="flex justify-between items-center mb-4 sm:mb-6">
+                      <h3 className="font-bold text-indigo-200 text-lg sm:text-3xl">?쭬 ?ъ튃?곗궛 ({distractionIndex + 1}/2)</h3>
+                      <div className={`font-black px-3 sm:px-4 py-2 rounded-full text-lg sm:text-3xl ${distractionCountdown <= 3 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/10 text-white'}`}>?깍툘 {distractionCountdown}珥?/div>
+                    </div>
+                    <div className="font-black text-white tracking-wider bg-black/30 py-6 sm:py-8 rounded-2xl border border-white/10 mb-6 sm:mb-8 text-4xl sm:text-7xl">
+                      {distractionQuizzes[distractionIndex].question} = ?
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      {distractionQuizzes[distractionIndex].options.map((opt, i) => (
+                        <button key={i} onClick={() => handleDistractionAnswer(opt)}
+                          disabled={distractionSelected !== null}
+                          className={`rounded-2xl font-black transition-all py-4 sm:py-8 text-2xl sm:text-5xl ${
+                            distractionSelected !== null
+                              ? opt === distractionQuizzes[distractionIndex].answer ? 'bg-emerald-500 text-white scale-105 shadow-xl shadow-emerald-500/50' : opt === distractionSelected ? 'bg-red-500 text-white' : 'bg-white/10 text-white/40'
+                              : 'bg-white/15 text-white hover:bg-indigo-500/50 hover:scale-105 active:scale-95'
+                          }`}>{opt}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* v5.1: ?쇳븨 ?④퀎 ??24媛?以?8媛??좏깮 */}
+              {martPhase === 'shopping' && (
+                <div className={`flex-1 flex flex-col relative ${isPortraitMode ? '' : 'pt-14'}`}>
+                  {/* Grid Area */}
+                  <div className={`flex-1 flex justify-center ${isPortraitMode ? 'items-center' : 'items-start overflow-y-auto px-4 sm:px-6 pb-2 pt-2'}`}>
+                    <div className={`grid ${isPortraitMode ? 'grid-cols-4 gap-4 w-[90vw]' : 'w-full grid-cols-4 sm:grid-cols-6 gap-3 sm:gap-4 max-w-4xl'}`}>
+                      {martShelfItems.map((item) => {
+                        const inCart = cartItems.includes(item.id);
+                        return (
+                          <button key={item.id} data-item-id={item.id}
+                            disabled={cartItems.length >= MART_ITEMS_TO_REMEMBER && !inCart}
+                            onClick={() => {
+                              if (inCart) {
+                                setCartItems(prev => prev.filter(id => id !== item.id));
+                              } else if (cartItems.length < MART_ITEMS_TO_REMEMBER) {
+                                setCartItems(prev => [...prev, item.id]);
+                                setLastAddedItem(item.id);
+                                setTimeout(() => setLastAddedItem(null), 400);
+                              }
+                            }}
+                            className={`relative flex flex-col items-center justify-center rounded-2xl border-2 transition-all duration-200 select-none active:scale-95 ${isPortraitMode ? 'aspect-square' : 'py-4 sm:py-5 px-2'} ${
+                              inCart ? 'bg-emerald-500/30 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+                              : cartItems.length >= MART_ITEMS_TO_REMEMBER ? 'border-white/10 bg-white/5 opacity-30 cursor-not-allowed'
+                              : 'border-white/20 bg-slate-800/80 hover:bg-indigo-500/30 hover:border-indigo-400 active:bg-indigo-500/50 cursor-pointer shadow-lg'
+                            }`}>
+                            <span className={`transition-transform drop-shadow-xl ${isPortraitMode ? 'text-[4rem]' : 'text-4xl sm:text-5xl'} ${lastAddedItem === item.id ? 'scale-125' : ''}`}>{item.emoji}</span>
+                            {inCart && <div className={`absolute bg-emerald-500 rounded-full flex items-center justify-center text-white font-black shadow-xl border-2 border-slate-900 ${isPortraitMode ? '-top-2 -right-2 w-9 h-9 text-base' : '-top-2 -right-2 w-7 h-7 sm:w-8 sm:h-8 text-xs sm:text-sm'}`}>??/div>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Cart Area */}
+                  <div className="w-full px-4 sm:px-8 pb-3 sm:pb-4 shrink-0 flex justify-center">
+                    <div className="bg-gradient-to-br from-amber-600/40 to-orange-600/40 border-amber-400/50 backdrop-blur-xl rounded-2xl sm:rounded-3xl border-2 p-3 max-w-5xl w-full flex flex-col transition-all">
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <span className="text-xl sm:text-2xl">?썟</span>
+                        <span className="text-white font-black flex-1 text-base sm:text-lg">?λ컮援щ땲</span>
+                        <span className="text-amber-300 font-black text-lg sm:text-xl">{cartItems.length}/{MART_ITEMS_TO_REMEMBER}</span>
+                      </div>
+                      <div className="w-full h-px bg-white/20 my-2"></div>
+                      <div className="flex flex-wrap content-start gap-2 sm:gap-3 items-center justify-center min-h-[50px] sm:min-h-[60px] max-h-[80px] overflow-y-auto overflow-x-hidden">
+                        {cartItems.length === 0 ? (
+                          <div className="w-full flex flex-col items-center justify-center opacity-40 py-1 gap-1">
+                            <span className="text-xl sm:text-2xl">?몘</span>
+                            <span className="text-white font-bold text-center text-xs sm:text-sm">湲곗뼲??臾쇨굔???곗튂?댁꽌 ?댁븘二쇱꽭??/span>
+                          </div>
+                        ) : cartItems.map(id => { 
+                          const it = MART_ITEMS.find(i => i.id === id); 
+                          return (
+                            <button key={id} 
+                              onClick={() => setCartItems(prev => prev.filter(x => x !== id))}
+                              className="bg-slate-800/80 border border-white/20 rounded-xl sm:rounded-2xl hover:bg-red-500/50 hover:border-red-400 active:scale-95 transition-all cursor-pointer shadow-lg flex items-center justify-center px-2 sm:px-3 py-1 sm:py-1.5"
+                            >
+                              <span className="text-xl sm:text-2xl drop-shadow-md">{it?.emoji}</span>
+                            </button>
+                          ); 
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* v5.1: 媛寃?二쇨????댁쫰 ??媛寃?蹂댁???4媛?臾쇨굔 ?⑷퀎 ?낅젰 */}
+              {martPhase === 'priceQuiz' && mathQuizPhase !== 'none' && (
+                <div className="flex-1 flex items-center justify-center px-4">
+                  <div className="bg-black/80 backdrop-blur-sm rounded-3xl p-8 sm:p-10 max-w-lg w-full text-center">
+                    <div className="flex justify-between items-center mb-6">
+                      <span className="text-4xl sm:text-5xl">?㎜</span>
+                      <div className={`text-xl sm:text-2xl font-black px-4 py-2 rounded-full ${mathTimeLeft <= 10 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/10 text-white'}`}>?깍툘 {mathTimeLeft}珥?/div>
+                    </div>
+                    <h3 className="text-white font-black text-xl sm:text-2xl mb-5">媛寃⑹씠 蹂댁???臾쇨굔??珥?湲덉븸??</h3>
+                    <div className="flex gap-4 justify-center mb-6">
+                      {mathPriceItems.map(item => (
+                        <div key={item.id} className="bg-amber-500/20 rounded-2xl px-4 py-3 flex flex-col items-center border border-amber-500/30">
+                          <span className="text-5xl sm:text-6xl">{item.emoji}</span>
+                          <span className="text-amber-300/50 font-black text-sm mt-2">?????/span>
+                        </div>
+                      ))}
+                    </div>
+                    {mathQuizPhase === 'quiz' && (
+                      <div className="flex gap-3 items-center justify-center">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={mathInputValue}
+                          onChange={e => setMathInputValue(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleMathSubmit()}
+                          placeholder="湲덉븸 ?낅젰 (?? 12300)"
+                          className="w-48 text-center text-xl font-black bg-white/10 border-2 border-amber-400/50 rounded-2xl py-4 text-white placeholder-white/30 focus:outline-none focus:border-amber-400 focus:bg-white/15 transition-all"
+                          autoFocus
+                        />
+                        <button
+                          onClick={handleMathSubmit}
+                          disabled={!mathInputValue.trim()}
+                          className={`px-6 py-4 rounded-2xl font-black text-lg transition-all ${
+                            !mathInputValue.trim() ? 'bg-white/10 text-white/40' : 'bg-amber-500 text-white hover:bg-amber-400 active:scale-95'
+                          }`}
+                        >?뺤씤</button>
+                      </div>
+                    )}
+                    {mathQuizPhase === 'answered' && (
+                      <div className="mt-3">
+                        <p className={`text-xl font-black ${mathIsCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {mathIsCorrect ? '?럦 ?뺣떟!' : `???뺣떟: ${mathCorrectAnswer.toLocaleString()}??}
+                        </p>
+                        {!mathIsCorrect && mathInputValue && (
+                          <p className="text-white/50 text-sm mt-1">?낅젰媛? {parseInt(mathInputValue).toLocaleString()}??(?ㅼ감: {Math.abs(parseInt(mathInputValue) - mathCorrectAnswer).toLocaleString()}??</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              </div>
+            </div>
+          )}
+
+          {/* RESULT PHASE */}
+          {phase === 'result' && (
+            <div className="text-center w-full bg-black/60 backdrop-blur-sm rounded-[2rem] shadow-2xl mx-4 max-w-3xl p-5 sm:p-8 space-y-3 max-h-[90vh] overflow-y-auto">
+              <div className="text-3xl sm:text-4xl">?쭬</div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white">?뚯뒪???꾨즺!</h2>
+              
+              {testType === ('BRAIN_REACTION' as any) && (
+                <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="bg-white/10 rounded-2xl p-3">
+                    <span className="text-white/60 text-xs font-bold">?됯퇏 諛섏쓳?쒓컙</span>
+                    <div className="text-3xl sm:text-4xl font-black text-white mt-1">{resultData.reactionTimeMs}ms</div>
+                  </div>
+                  <div className="bg-white/10 rounded-2xl p-3">
+                    <span className="text-white/60 text-xs font-bold">AI 痢≪젙 ?ㅻ떟</span>
+                    <div className="text-xl sm:text-2xl font-black text-white mt-1">{resultData.reactionErrors}??/div>
+                  </div>
+                </div>
+              )}
+
+              {testType === AssessmentStep.BRAIN_MEMORY && (
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div className="bg-white/10 rounded-2xl p-3">
+                    <span className="text-white/60 text-xs font-bold">湲곗뼲???뺣떟</span>
+                    <div className="text-3xl sm:text-4xl font-black text-white mt-1">{resultData.memoryCorrect}/{MART_ITEMS_TO_REMEMBER}媛?/div>
+                    <p className="text-white/40 text-[10px] mt-1 font-bold">?由?媛쒖닔: {MART_ITEMS_TO_REMEMBER - (resultData.memoryCorrect || 0)}媛?/p>
+                  </div>
+                  <div className={`rounded-2xl p-3 ${(resultData as any).finalScore >= 80 ? 'bg-emerald-500/20 border-2 border-emerald-500/30' : (resultData as any).finalScore >= 50 ? 'bg-amber-500/20 border-2 border-amber-500/30' : 'bg-red-500/20 border-2 border-red-500/30'}`}>
+                    <span className="text-white/60 text-xs font-bold">醫낇빀 ?됯?</span>
+                    <div className="text-2xl sm:text-3xl font-black text-white mt-1">
+                      {(resultData as any).finalScore >= 80 ? '?뙚 ?곗닔' : (resultData as any).finalScore >= 50 ? '?몟 蹂댄넻' : '?뮞 ?몃젰 ?꾩슂'}
+                    </div>
+                    <p className="text-white/50 text-[10px] mt-1 font-bold">醫낇빀 ?몄? ?λ젰: {(resultData as any).finalScore || 0}??/p>
+                  </div>
+                  {(resultData as any).distractionCorrect !== undefined && (
+                    <div className="bg-white/10 rounded-2xl p-3">
+                      <span className="text-white/60 text-xs font-bold">3?먮━ ?곗궛 (諛⑺빐 ?먭레)</span>
+                      <div className="text-xl font-black text-white mt-1">{(resultData as any).distractionCorrect}/2媛??뺣떟</div>
+                    </div>
+                  )}
+                  <div className="bg-white/10 rounded-2xl p-3">
+                    <span className="text-white/60 text-xs font-bold">媛寃?怨꾩궛 (二쇨???</span>
+                    <div className="text-xl font-black text-white mt-1">{resultData.mathCorrect ? '???뺣떟' : '???ㅻ떟'}</div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleComplete}
+                className="w-full py-4 mt-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-lg sm:text-xl font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
+              >
+                ?ㅼ쓬 ?④퀎濡???              </button>
+            </div>
+          )}
+        </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default BrainTestModule;

@@ -1,6 +1,9 @@
 
 import { GoogleGenAI, Modality } from "@google/genai";
+import i18n from 'i18next';
+import { t as translateText } from '../../BT_3Body_Online_Lite/i18n';
 import { preloadedAudio } from '../assets/audio/preloadedTTS';
+import { preloadedAudioEn } from '../assets/audio/preloadedTTS_en';
 import { ErrorLogger } from './ErrorLogger';
 
 
@@ -85,13 +88,26 @@ export const speak = async (text: string) => {
   const thisSpeechId = currentSpeechId;
   
   try {
+    const isEnglish = i18n.language ? i18n.language.startsWith('en') : true;
+    const targetText = isEnglish ? translateText(text) : text;
+
     // 0. Check pre-recorded sample (MP3)
-    if (preloadedAudio[text]) {
-      console.log(`내장 MP3 샘플 음성 재생 [id=${thisSpeechId}]`);
-      const audio = new Audio(preloadedAudio[text]);
-      currentHtmlAudio = audio;
-      audio.play().catch(e => console.error('내장 MP3 재생 실패', e));
-      return;
+    if (isEnglish) {
+      if (preloadedAudioEn && preloadedAudioEn[targetText]) {
+        console.log(`[TTS] Playing preloaded EN voice [id=${thisSpeechId}]: "${targetText}"`);
+        const audio = new Audio(preloadedAudioEn[targetText]);
+        currentHtmlAudio = audio;
+        audio.play().catch(e => console.error('[TTS] Failed to play preloaded EN voice', e));
+        return;
+      }
+    } else {
+      if (preloadedAudio && preloadedAudio[targetText]) {
+        console.log(`[TTS] Playing preloaded KO voice [id=${thisSpeechId}]: "${targetText}"`);
+        const audio = new Audio(preloadedAudio[targetText]);
+        currentHtmlAudio = audio;
+        audio.play().catch(e => console.error('[TTS] Failed to play preloaded KO voice', e));
+        return;
+      }
     }
 
     // 1. Check Cache first (Instant AI Voice)

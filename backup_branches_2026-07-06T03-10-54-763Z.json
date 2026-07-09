@@ -1,0 +1,1119 @@
+[
+  {
+    "docId": "04KxeGgdKPEPohJL73KC",
+    "name": "기장",
+    "id": "04KxeGgdKPEPohJL73KC",
+    "regionId": "region_부산",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "0LXzstavuFJ4Dq9GbWlD",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_부산",
+    "allowedLicenses": 2,
+    "name": "하단",
+    "id": "0LXzstavuFJ4Dq9GbWlD"
+  },
+  {
+    "docId": "0ifeTd5ETHzEysHEfZtQ",
+    "id": "0ifeTd5ETHzEysHEfZtQ",
+    "name": "진해",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_경남"
+  },
+  {
+    "docId": "0zF3LkaoDAu4junjXCNs",
+    "id": "0zF3LkaoDAu4junjXCNs",
+    "name": "야탑",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_경기남부2"
+  },
+  {
+    "docId": "16o1gwnsJWGZQxYjDpGK",
+    "name": "영주",
+    "id": "16o1gwnsJWGZQxYjDpGK",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_경북",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "1L6ZnpgWGFjeZFMfbaZI",
+    "regionId": "region_서울강북2",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10,
+    "name": "의정부",
+    "id": "1L6ZnpgWGFjeZFMfbaZI"
+  },
+  {
+    "docId": "2G0zsfUxyCxjBHDC9dU6",
+    "allowedLicenses": 2,
+    "regionId": "region_부산",
+    "liteAllowedLicenses": 10,
+    "id": "2G0zsfUxyCxjBHDC9dU6",
+    "name": "온천장"
+  },
+  {
+    "docId": "3zTYD0ZMbQEIbfMFlrS0",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_경남",
+    "id": "3zTYD0ZMbQEIbfMFlrS0",
+    "name": "내외"
+  },
+  {
+    "docId": "5DKmjbpj6pJyxenJPpf2",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_제주",
+    "id": "5DKmjbpj6pJyxenJPpf2",
+    "name": "서귀포"
+  },
+  {
+    "docId": "5TKqg8IX8BHK2jBgVze1",
+    "allowedLicenses": 2,
+    "regionId": "region_부산",
+    "liteAllowedLicenses": 10,
+    "id": "5TKqg8IX8BHK2jBgVze1",
+    "name": "금정"
+  },
+  {
+    "docId": "5fhjclFLR4BvppzYUQeu",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_서울강남1",
+    "id": "5fhjclFLR4BvppzYUQeu",
+    "name": "서초"
+  },
+  {
+    "docId": "5yrfVggWTEkDUvJL2Slm",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_광주전남",
+    "allowedLicenses": 2,
+    "name": "여수",
+    "id": "5yrfVggWTEkDUvJL2Slm"
+  },
+  {
+    "docId": "60u7qPcW8XuOA6YpfSkU",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_경기남부2",
+    "id": "60u7qPcW8XuOA6YpfSkU",
+    "name": "이천"
+  },
+  {
+    "docId": "6GMbs34Lmc9HpF4ky4gm",
+    "allowedLicenses": 2,
+    "regionId": "region_경기남부3",
+    "liteAllowedLicenses": 10,
+    "id": "6GMbs34Lmc9HpF4ky4gm",
+    "name": "평택"
+  },
+  {
+    "docId": "8U8mGVeZjYCtgyPGuqGI",
+    "id": "8U8mGVeZjYCtgyPGuqGI",
+    "name": "사직",
+    "allowedLicenses": 2,
+    "regionId": "region_부산",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "8YtyzIUKlRzaK2faxUBL",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_경기남부3",
+    "allowedLicenses": 2,
+    "name": "영통",
+    "id": "8YtyzIUKlRzaK2faxUBL"
+  },
+  {
+    "docId": "9CVzUkKUSp0Tmbr8KxXA",
+    "allowedLicenses": 2,
+    "regionId": "region_경기남부1",
+    "liteAllowedLicenses": 10,
+    "id": "9CVzUkKUSp0Tmbr8KxXA",
+    "name": "과천"
+  },
+  {
+    "docId": "9XsakKoUlbShV3wCrAip",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_대전",
+    "allowedLicenses": 2,
+    "name": "월평",
+    "id": "9XsakKoUlbShV3wCrAip"
+  },
+  {
+    "docId": "9p60sXnoQE1okR7jdAzW",
+    "name": "불당",
+    "id": "9p60sXnoQE1okR7jdAzW",
+    "regionId": "region_충남",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "A6BBuSGklhEqsRFpjbz3",
+    "id": "A6BBuSGklhEqsRFpjbz3",
+    "name": "둔산",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_대전"
+  },
+  {
+    "docId": "A9p4pFawviJDaRz03PQp",
+    "id": "A9p4pFawviJDaRz03PQp",
+    "name": "단무도부산",
+    "liteAllowedLicenses": 3,
+    "allowedLicenses": 2,
+    "regionId": "region_단무도"
+  },
+  {
+    "docId": "AKrpFNJ80Lzqdzs2zxUi",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_울산",
+    "id": "AKrpFNJ80Lzqdzs2zxUi",
+    "name": "울산"
+  },
+  {
+    "docId": "ANmD11sF6wgRm0RYEOLk",
+    "name": "문경",
+    "id": "ANmD11sF6wgRm0RYEOLk",
+    "regionId": "region_경북",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "AWluGkEgavyDC91GXkdC",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_인천",
+    "id": "AWluGkEgavyDC91GXkdC",
+    "name": "논현"
+  },
+  {
+    "docId": "Anrub5OBpb3csUX5dFNB",
+    "id": "Anrub5OBpb3csUX5dFNB",
+    "name": "익산",
+    "allowedLicenses": 2,
+    "regionId": "region_전북",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "BkkcfaUlX7hM9UQtEFVl",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_서울강남2",
+    "allowedLicenses": 2,
+    "name": "양천구",
+    "id": "BkkcfaUlX7hM9UQtEFVl"
+  },
+  {
+    "docId": "DqK2LD3jDOIjE50WGRqr",
+    "regionId": "region_본사",
+    "name": "직무교육팀",
+    "allowedLicenses": 2,
+    "id": "DqK2LD3jDOIjE50WGRqr"
+  },
+  {
+    "docId": "EbFENiEZreTs1LNjzvlZ",
+    "id": "EbFENiEZreTs1LNjzvlZ",
+    "name": "대송",
+    "allowedLicenses": 2,
+    "regionId": "region_울산",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "EmCbTKuNgTKaGek7QOK6",
+    "id": "EmCbTKuNgTKaGek7QOK6",
+    "name": "평촌",
+    "allowedLicenses": 2,
+    "regionId": "region_경기남부1",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "EuMC6e06eFUzl9wrOTgN",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_부산",
+    "allowedLicenses": 2,
+    "name": "양산",
+    "id": "EuMC6e06eFUzl9wrOTgN"
+  },
+  {
+    "docId": "F1oerGHU9vb2o1z4SsXO",
+    "id": "F1oerGHU9vb2o1z4SsXO",
+    "name": "상인",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_대구"
+  },
+  {
+    "docId": "FCTMSSyNIvmCE5wqEuX9",
+    "name": "검단",
+    "id": "FCTMSSyNIvmCE5wqEuX9",
+    "regionId": "region_인천",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "FSXcNt6BjvKicRqGtrca",
+    "id": "FSXcNt6BjvKicRqGtrca",
+    "name": "고덕",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_서울강남1"
+  },
+  {
+    "docId": "FfdisWQOQpnRVk8R7TaA",
+    "regionId": "region_서울강남2",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10,
+    "name": "여의도",
+    "id": "FfdisWQOQpnRVk8R7TaA"
+  },
+  {
+    "docId": "G2JnkzaJgy62OvUBQovy",
+    "name": "성북",
+    "id": "G2JnkzaJgy62OvUBQovy",
+    "regionId": "region_서울강북2",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "GTpkcOXJocfbHhj3GJK8",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_경북",
+    "allowedLicenses": 2,
+    "name": "안동",
+    "id": "GTpkcOXJocfbHhj3GJK8"
+  },
+  {
+    "docId": "GvDpjUD8Yqj6ABcei8WS",
+    "regionId": "region_본사",
+    "name": "공생컨비니본사",
+    "allowedLicenses": 2,
+    "id": "GvDpjUD8Yqj6ABcei8WS"
+  },
+  {
+    "docId": "H6id1JS6tuolsjFsaAcV",
+    "allowedLicenses": 2,
+    "regionId": "region_단무도",
+    "liteAllowedLicenses": 3,
+    "id": "H6id1JS6tuolsjFsaAcV",
+    "name": "단무도평촌"
+  },
+  {
+    "docId": "HDqOzqs0O0jnxd2zw7f1",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_서울강북3",
+    "allowedLicenses": 2,
+    "name": "마들",
+    "id": "HDqOzqs0O0jnxd2zw7f1"
+  },
+  {
+    "docId": "HV2KykcNYNR5B7MV2TX5",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_경남",
+    "id": "HV2KykcNYNR5B7MV2TX5",
+    "name": "창원"
+  },
+  {
+    "docId": "HWSTyaXKMyytMP5ZX3WB",
+    "name": "송도",
+    "id": "HWSTyaXKMyytMP5ZX3WB",
+    "regionId": "region_인천",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "HuzzuFm88spdXiJZspEJ",
+    "id": "HuzzuFm88spdXiJZspEJ",
+    "name": "신도림",
+    "allowedLicenses": 2,
+    "regionId": "region_서울강남2",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "HyTKHDJfhmsnpCGlrUqM",
+    "name": "연신내",
+    "id": "HyTKHDJfhmsnpCGlrUqM",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_서울강북1",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "IaBA3EKHuionIHCr7vTu",
+    "id": "IaBA3EKHuionIHCr7vTu",
+    "name": "금천",
+    "allowedLicenses": 2,
+    "regionId": "region_충북",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "Icz5pME2TfxF5sFsnqxa",
+    "name": "강릉",
+    "id": "Icz5pME2TfxF5sFsnqxa",
+    "regionId": "region_강원",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "IgKe5bxodlXKfSQniC1a",
+    "name": "김포",
+    "id": "IgKe5bxodlXKfSQniC1a",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_경기북부",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "InaucfUwnMxjVaAkuBBE",
+    "allowedLicenses": 2,
+    "regionId": "region_단무도",
+    "liteAllowedLicenses": 3,
+    "id": "InaucfUwnMxjVaAkuBBE",
+    "name": "단무도분당"
+  },
+  {
+    "docId": "JhdLeVGYxrdp0lFgJ7dk",
+    "regionId": "region_경남",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10,
+    "name": "거제",
+    "id": "JhdLeVGYxrdp0lFgJ7dk"
+  },
+  {
+    "docId": "JkvJ2SCBZSFBQn8hkjTd",
+    "name": "단무도일산",
+    "id": "JkvJ2SCBZSFBQn8hkjTd",
+    "liteAllowedLicenses": 3,
+    "regionId": "region_단무도",
+    "allowedLicenses": 3
+  },
+  {
+    "docId": "KVW3zQRJrZGUZykJhCaM",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_부산",
+    "id": "KVW3zQRJrZGUZykJhCaM",
+    "name": "양정"
+  },
+  {
+    "docId": "KwHAVCquCYV90zoOIobu",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_서울강북2",
+    "id": "KwHAVCquCYV90zoOIobu",
+    "name": "구의"
+  },
+  {
+    "docId": "LGSRIls3WRGQVLazPKXQ",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_경기남부3",
+    "allowedLicenses": 2,
+    "name": "동탄",
+    "id": "LGSRIls3WRGQVLazPKXQ"
+  },
+  {
+    "docId": "LWyX9Kg85uADujM81m02",
+    "id": "LWyX9Kg85uADujM81m02",
+    "name": "동광주",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_광주전남"
+  },
+  {
+    "docId": "LmaLqnIwB8F5SnqOUyWt",
+    "id": "LmaLqnIwB8F5SnqOUyWt",
+    "name": "단무도부천",
+    "liteAllowedLicenses": 3,
+    "allowedLicenses": 2,
+    "regionId": "region_단무도"
+  },
+  {
+    "docId": "Lr7fgiaclx3RgcReql8L",
+    "allowedLicenses": 2,
+    "regionId": "region_충북",
+    "liteAllowedLicenses": 10,
+    "id": "Lr7fgiaclx3RgcReql8L",
+    "name": "율량"
+  },
+  {
+    "docId": "M9N5aeYYtNAUiHyYPCpU",
+    "regionId": "region_대전",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10,
+    "name": "서대전",
+    "id": "M9N5aeYYtNAUiHyYPCpU"
+  },
+  {
+    "docId": "MHlqWFWiMj0pdsZHB7dA",
+    "allowedLicenses": 2,
+    "regionId": "region_인천",
+    "liteAllowedLicenses": 10,
+    "id": "MHlqWFWiMj0pdsZHB7dA",
+    "name": "부평"
+  },
+  {
+    "docId": "MlWCJ9xXatfFcKOJXTR1",
+    "id": "MlWCJ9xXatfFcKOJXTR1",
+    "name": "고잔",
+    "allowedLicenses": 2,
+    "regionId": "region_경기남부1",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "MreofpArbkDlB2BwJUcf",
+    "regionId": "region_대구",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10,
+    "name": "수성",
+    "id": "MreofpArbkDlB2BwJUcf"
+  },
+  {
+    "docId": "NXVX0PoWp46hhxQtT6NU",
+    "regionId": "region_부산",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10,
+    "name": "다대",
+    "id": "NXVX0PoWp46hhxQtT6NU"
+  },
+  {
+    "docId": "OwQKrARsT6JSjRI8zutx",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_광주전남",
+    "allowedLicenses": 2,
+    "name": "진월",
+    "id": "OwQKrARsT6JSjRI8zutx"
+  },
+  {
+    "docId": "PqN76ftZy3wXmcZj3Exd",
+    "name": "직무교육용(임시)",
+    "regionId": "region_본사",
+    "id": "PqN76ftZy3wXmcZj3Exd",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "PyGfAGHIsay8W8ZENjpx",
+    "allowedLicenses": 2,
+    "id": "PyGfAGHIsay8W8ZENjpx",
+    "regionId": "region_본사",
+    "name": "인력관리팀"
+  },
+  {
+    "docId": "Q3tD9GKLoiMF8s0LVZxT",
+    "name": "방촌",
+    "id": "Q3tD9GKLoiMF8s0LVZxT",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_대구",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "QGEmQSk8v6wYcIxp3Khm",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_서울강북1",
+    "allowedLicenses": 2,
+    "name": "왕십리",
+    "id": "QGEmQSk8v6wYcIxp3Khm"
+  },
+  {
+    "docId": "QYIfBTQ1f5LW5TmqP9aB",
+    "regionId": "region_본사",
+    "name": "천화원",
+    "allowedLicenses": 2,
+    "id": "QYIfBTQ1f5LW5TmqP9aB"
+  },
+  {
+    "docId": "QcsUebI1hG8NqoGcdL67",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_서울강남2",
+    "id": "QcsUebI1hG8NqoGcdL67",
+    "name": "이수"
+  },
+  {
+    "docId": "QpwMj8EMqNfMP1tKnGVY",
+    "id": "QpwMj8EMqNfMP1tKnGVY",
+    "name": "충무",
+    "allowedLicenses": 2,
+    "regionId": "region_충남",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "R6vylXMV49Mf7hjIZKr6",
+    "name": "경주",
+    "id": "R6vylXMV49Mf7hjIZKr6",
+    "regionId": "region_경북",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "TStp4g54y8RObcrS38We",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_경북",
+    "id": "TStp4g54y8RObcrS38We",
+    "name": "두호"
+  },
+  {
+    "docId": "TW7bb3VLqOkd3kGX4dUt",
+    "regionId": "region_본사",
+    "name": "정보생활팀",
+    "allowedLicenses": 2,
+    "id": "TW7bb3VLqOkd3kGX4dUt"
+  },
+  {
+    "docId": "TgYdp7BfDzwXwBlhEFxH",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_경북",
+    "allowedLicenses": 2,
+    "name": "김천",
+    "id": "TgYdp7BfDzwXwBlhEFxH"
+  },
+  {
+    "docId": "UOWjmloBtouzfDxq9o7r",
+    "name": "일산",
+    "id": "UOWjmloBtouzfDxq9o7r",
+    "regionId": "region_경기북부",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "UzwJspmNhIsoDflkU6iy",
+    "regionId": "region_경기남부1",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10,
+    "name": "산본",
+    "id": "UzwJspmNhIsoDflkU6iy"
+  },
+  {
+    "docId": "VLrOSQH4mrQ7HmyK8dPO",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_서울강남2",
+    "id": "VLrOSQH4mrQ7HmyK8dPO",
+    "name": "강서"
+  },
+  {
+    "docId": "WU1ExwSYZJbOXxnKUj2Z",
+    "name": "상계",
+    "id": "WU1ExwSYZJbOXxnKUj2Z",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_서울강북3",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "XC96agPcE0lztDO1vMnf",
+    "name": "공덕",
+    "id": "XC96agPcE0lztDO1vMnf",
+    "regionId": "region_서울강북1",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "XHtdyVeoCYS90BOb8hui",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_충북",
+    "id": "XHtdyVeoCYS90BOb8hui",
+    "name": "가경"
+  },
+  {
+    "docId": "XX1N8i9EdDeixMWBseGU",
+    "id": "XX1N8i9EdDeixMWBseGU",
+    "name": "범어",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_대구"
+  },
+  {
+    "docId": "Y6p5VB9hqy8dnz2Eq6uP",
+    "regionId": "region_본사",
+    "name": "홈팀",
+    "allowedLicenses": 2,
+    "id": "Y6p5VB9hqy8dnz2Eq6uP"
+  },
+  {
+    "docId": "YZDAkzCv4bbxfhgbcxtJ",
+    "regionId": "region_충남",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10,
+    "name": "아산",
+    "id": "YZDAkzCv4bbxfhgbcxtJ"
+  },
+  {
+    "docId": "YfHHOeAIJR9VPPHoDqxj",
+    "name": "오산",
+    "id": "YfHHOeAIJR9VPPHoDqxj",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_경기남부3",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "YocrOE8I9QOLE8WiIv0d",
+    "name": "대연",
+    "id": "YocrOE8I9QOLE8WiIv0d",
+    "regionId": "region_부산",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "YupkBXxSEBaHMJI2uLkn",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_경북",
+    "id": "YupkBXxSEBaHMJI2uLkn",
+    "name": "경산"
+  },
+  {
+    "docId": "Z7Pii5NuUo4z8ya2Qamg",
+    "allowedLicenses": 2,
+    "regionId": "region_경기남부3",
+    "liteAllowedLicenses": 10,
+    "id": "Z7Pii5NuUo4z8ya2Qamg",
+    "name": "천천동"
+  },
+  {
+    "docId": "ZFfmlQhcgskvycSmcBWM",
+    "id": "ZFfmlQhcgskvycSmcBWM",
+    "name": "강남",
+    "liteAllowedLicenses": 20,
+    "allowedLicenses": 2,
+    "regionId": "region_서울강남1"
+  },
+  {
+    "docId": "ZRiPCXYIkjmWt3M8R3Ts",
+    "name": "성서",
+    "id": "ZRiPCXYIkjmWt3M8R3Ts",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_대구",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "aPKgRhaEArDvVt1kfPXH",
+    "name": "서구",
+    "id": "aPKgRhaEArDvVt1kfPXH",
+    "regionId": "region_광주전남",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "aqQLk8NKw6MZ7fpRiuOS",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_서울강북2",
+    "allowedLicenses": 2,
+    "name": "수유",
+    "id": "aqQLk8NKw6MZ7fpRiuOS"
+  },
+  {
+    "docId": "atmiql41TKGNoPrJmgMr",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_울산",
+    "id": "atmiql41TKGNoPrJmgMr",
+    "name": "중구"
+  },
+  {
+    "docId": "bB1NgzuNeXwTLuiPzj1E",
+    "name": "청년단체팀",
+    "regionId": "region_본사",
+    "id": "bB1NgzuNeXwTLuiPzj1E",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "bXawo5SC9Clm8eXUBjO3",
+    "id": "bXawo5SC9Clm8eXUBjO3",
+    "name": "춘천",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_강원"
+  },
+  {
+    "docId": "cigNyxmgGq0naJK106XE",
+    "name": "단무도대구",
+    "id": "cigNyxmgGq0naJK106XE",
+    "regionId": "region_단무도",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 3
+  },
+  {
+    "docId": "csEYuc36up1bXYfFFvli",
+    "allowedLicenses": 2,
+    "regionId": "region_경북",
+    "liteAllowedLicenses": 10,
+    "id": "csEYuc36up1bXYfFFvli",
+    "name": "대이"
+  },
+  {
+    "docId": "dlON9ZtJxb00HZRXK8Tt",
+    "regionId": "region_강원",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10,
+    "name": "동해",
+    "id": "dlON9ZtJxb00HZRXK8Tt"
+  },
+  {
+    "docId": "dnALs4lRMoto9tkokGcP",
+    "allowedLicenses": 2,
+    "regionId": "region_대구",
+    "liteAllowedLicenses": 10,
+    "id": "dnALs4lRMoto9tkokGcP",
+    "name": "월배"
+  },
+  {
+    "docId": "docHnHvHkTvkVK2aenxk",
+    "allowedLicenses": 2,
+    "id": "docHnHvHkTvkVK2aenxk",
+    "regionId": "region_본사",
+    "name": "신입경영홍보실"
+  },
+  {
+    "docId": "e5T6toziwU9w0BAFS1nb",
+    "id": "e5T6toziwU9w0BAFS1nb",
+    "name": "인후",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_전북"
+  },
+  {
+    "docId": "e6H4XbKHm0uhSm27h4iu",
+    "id": "e6H4XbKHm0uhSm27h4iu",
+    "name": "제천",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_충북"
+  },
+  {
+    "docId": "eGjpekTPoUss8pqpakIf",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_대구",
+    "id": "eGjpekTPoUss8pqpakIf",
+    "name": "시지"
+  },
+  {
+    "docId": "eht8PaYVtAucKy2G05bu",
+    "regionId": "region_단무도",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 3,
+    "name": "단무도서울",
+    "id": "eht8PaYVtAucKy2G05bu"
+  },
+  {
+    "docId": "fEgGQb8w5NUDSBKPvtiX",
+    "name": "둔촌",
+    "id": "fEgGQb8w5NUDSBKPvtiX",
+    "regionId": "region_서울강남1",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 20
+  },
+  {
+    "docId": "fqXuyZvemJMX5rhECCtA",
+    "id": "fqXuyZvemJMX5rhECCtA",
+    "name": "광화문",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_서울강북1"
+  },
+  {
+    "docId": "ftMS8EEA6cXHQYun8PS1",
+    "name": "일도",
+    "id": "ftMS8EEA6cXHQYun8PS1",
+    "regionId": "region_제주",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "gFATGG3uFcn0Y6Bd5Sxj",
+    "id": "gFATGG3uFcn0Y6Bd5Sxj",
+    "name": "안양1번가",
+    "allowedLicenses": 2,
+    "regionId": "region_경기남부1",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "gdOaiJi2YXuh3JYkmeHs",
+    "name": "순천",
+    "id": "gdOaiJi2YXuh3JYkmeHs",
+    "regionId": "region_광주전남",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "geT9EM5eUncMnQX94p5s",
+    "regionId": "region_부산",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10,
+    "name": "영도",
+    "id": "geT9EM5eUncMnQX94p5s"
+  },
+  {
+    "docId": "iJ8QNJEfF9MV3Pvw2e23",
+    "name": "상동",
+    "id": "iJ8QNJEfF9MV3Pvw2e23",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_인천",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "iQ35QNRR8cOOqdPSxLJa",
+    "allowedLicenses": 2,
+    "id": "iQ35QNRR8cOOqdPSxLJa",
+    "regionId": "region_본사",
+    "name": "광홍팀"
+  },
+  {
+    "docId": "iXvAgXupJJUgvrCyV27F",
+    "allowedLicenses": 2,
+    "regionId": "region_서울강북3",
+    "liteAllowedLicenses": 10,
+    "id": "iXvAgXupJJUgvrCyV27F",
+    "name": "공릉"
+  },
+  {
+    "docId": "itTRF0ZJjXPoxNABVopC",
+    "name": "첨단",
+    "id": "itTRF0ZJjXPoxNABVopC",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_광주전남",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "iya4cDZoydmsy39H9Bps",
+    "id": "iya4cDZoydmsy39H9Bps",
+    "name": "동래",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_부산"
+  },
+  {
+    "docId": "jAj3glOvYnVAHUj4QBcl",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_경기북부",
+    "id": "jAj3glOvYnVAHUj4QBcl",
+    "name": "마두"
+  },
+  {
+    "docId": "l35Q8ZFYvHUQM8GN43k9",
+    "allowedLicenses": 2,
+    "regionId": "region_경남",
+    "liteAllowedLicenses": 10,
+    "id": "l35Q8ZFYvHUQM8GN43k9",
+    "name": "진주"
+  },
+  {
+    "docId": "lvW6pIHlautYUYe1t1mL",
+    "allowedLicenses": 2,
+    "regionId": "region_경남",
+    "liteAllowedLicenses": 10,
+    "id": "lvW6pIHlautYUYe1t1mL",
+    "name": "마산"
+  },
+  {
+    "docId": "mSqz9WFJ01vhKPJPa9LU",
+    "regionId": "region_강원",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10,
+    "name": "원주",
+    "id": "mSqz9WFJ01vhKPJPa9LU"
+  },
+  {
+    "docId": "pn6JhYA1MSK0PwZxFKuk",
+    "name": "주안",
+    "id": "pn6JhYA1MSK0PwZxFKuk",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_인천",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "qR8RXYNL8bUwk5xr8zzg",
+    "id": "qR8RXYNL8bUwk5xr8zzg",
+    "name": "구리",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_서울강북2"
+  },
+  {
+    "docId": "quTLiYsVLUeLClvUjMqa",
+    "name": "미금",
+    "id": "quTLiYsVLUeLClvUjMqa",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_경기남부2",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "rmGyjiLvZlbAeeyfGwEW",
+    "name": "서현",
+    "id": "rmGyjiLvZlbAeeyfGwEW",
+    "regionId": "region_경기남부2",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "rqhecqmesbpfdeMLYYih",
+    "name": "군산",
+    "id": "rqhecqmesbpfdeMLYYih",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_전북",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "sFTnvFbD7ggs7SQ08dzG",
+    "allowedLicenses": 2,
+    "regionId": "region_대구",
+    "liteAllowedLicenses": 10,
+    "id": "sFTnvFbD7ggs7SQ08dzG",
+    "name": "침산"
+  },
+  {
+    "docId": "sWnTCTim5x5A2iAlclMO",
+    "id": "sWnTCTim5x5A2iAlclMO",
+    "name": "효자",
+    "allowedLicenses": 2,
+    "regionId": "region_전북",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "scBlVG2Cbcc9f2U0SxoI",
+    "name": "세종아름",
+    "id": "scBlVG2Cbcc9f2U0SxoI",
+    "regionId": "region_충남",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "sqwrH4GuMysHYOl9eSIZ",
+    "name": "송촌",
+    "id": "sqwrH4GuMysHYOl9eSIZ",
+    "regionId": "region_대전",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "tosVlBUSx5qZL8FNinP7",
+    "name": "잠실",
+    "id": "tosVlBUSx5qZL8FNinP7",
+    "regionId": "region_서울강남1",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "u6sMR7D4pGqmynEeErzc",
+    "name": "노형",
+    "id": "u6sMR7D4pGqmynEeErzc",
+    "regionId": "region_제주",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "uFHB89gAQZj6FY2RKBVy",
+    "id": "uFHB89gAQZj6FY2RKBVy",
+    "name": "화정",
+    "allowedLicenses": 2,
+    "regionId": "region_경기북부",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "utRkhCH7TaASD8cxiRuW",
+    "name": "단무도창원",
+    "id": "utRkhCH7TaASD8cxiRuW",
+    "regionId": "region_단무도",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 3
+  },
+  {
+    "docId": "vTn58bnE97jOp6KItDl8",
+    "name": "창동",
+    "id": "vTn58bnE97jOp6KItDl8",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_서울강북2",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "wXt1ksWemJNGAAF2iZMb",
+    "id": "wXt1ksWemJNGAAF2iZMb",
+    "name": "북구",
+    "allowedLicenses": 2,
+    "regionId": "region_울산",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "xFG4apuqeGWUPkbvFOrV",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_경기북부",
+    "allowedLicenses": 2,
+    "name": "파주",
+    "id": "xFG4apuqeGWUPkbvFOrV"
+  },
+  {
+    "docId": "xU7MWV9xhVr8AzNaZYZc",
+    "name": "서산",
+    "id": "xU7MWV9xhVr8AzNaZYZc",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_충남",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "xcXppkK8anskry5C5Exq",
+    "allowedLicenses": 2,
+    "regionId": "region_전북",
+    "liteAllowedLicenses": 10,
+    "id": "xcXppkK8anskry5C5Exq",
+    "name": "정읍"
+  },
+  {
+    "docId": "xiCrhZf9ppGj1SUB0p5R",
+    "id": "xiCrhZf9ppGj1SUB0p5R",
+    "name": "홍제",
+    "allowedLicenses": 2,
+    "regionId": "region_서울강북1",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "yCfe4CTZyC1SlsYVwMz6",
+    "regionId": "region_단무도",
+    "allowedLicenses": 2,
+    "liteAllowedLicenses": 3,
+    "name": "단무도천안",
+    "id": "yCfe4CTZyC1SlsYVwMz6"
+  },
+  {
+    "docId": "yWBetqgc6vEDv77OgOxo",
+    "name": "경영팀",
+    "regionId": "region_본사",
+    "id": "yWBetqgc6vEDv77OgOxo",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "yWv8VIN6sr6MS0XL7kBR",
+    "name": "명곡",
+    "id": "yWv8VIN6sr6MS0XL7kBR",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_경남",
+    "allowedLicenses": 2
+  },
+  {
+    "docId": "ywxbrLMeoZ9WizPNEw5T",
+    "id": "ywxbrLMeoZ9WizPNEw5T",
+    "name": "구미",
+    "allowedLicenses": 2,
+    "regionId": "region_경북",
+    "liteAllowedLicenses": 10
+  },
+  {
+    "docId": "zFNYLyvuHnHg16Y88bvE",
+    "liteAllowedLicenses": 10,
+    "regionId": "region_경북",
+    "allowedLicenses": 2,
+    "name": "상주",
+    "id": "zFNYLyvuHnHg16Y88bvE"
+  },
+  {
+    "docId": "zNrHOVVW3DOgZKsaR5Yj",
+    "id": "zNrHOVVW3DOgZKsaR5Yj",
+    "name": "수지",
+    "liteAllowedLicenses": 10,
+    "allowedLicenses": 2,
+    "regionId": "region_경기남부2"
+  }
+]

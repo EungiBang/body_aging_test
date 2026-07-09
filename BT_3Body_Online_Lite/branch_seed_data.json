@@ -1,650 +1,174 @@
 [
   {
-    "region": "본사",
+    "region": "Headquarters",
     "branches": [
-      {
-        "name": "신입경영홍보실",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "천화원",
-        "allowedLicenses": 2
-      }
+      { "name": "HQ", "allowedLicenses": 5 }
     ]
   },
   {
-    "region": "서울강북1",
+    "region": "Arizona",
     "branches": [
-      {
-        "name": "공덕",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "광화문",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "연신내",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "왕십리",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "홍제",
-        "allowedLicenses": 2
-      }
+      { "name": "Glendale", "allowedLicenses": 2 },
+      { "name": "Scottsdale", "allowedLicenses": 2 },
+      { "name": "Tempe", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "서울강북2",
+    "region": "Colorado",
     "branches": [
-      {
-        "name": "구리",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "구의",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "성북",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "수유",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "의정부",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "창동",
-        "allowedLicenses": 2
-      }
+      { "name": "Lakewood", "allowedLicenses": 2 },
+      { "name": "Littleton", "allowedLicenses": 2 },
+      { "name": "Golden", "allowedLicenses": 2 },
+      { "name": "Westminster", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "서울강북3",
+    "region": "Washington, D.C.",
     "branches": [
-      {
-        "name": "공릉",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "마들",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "상계",
-        "allowedLicenses": 2
-      }
+      { "name": "North Potomac", "allowedLicenses": 2 },
+      { "name": "Springfield", "allowedLicenses": 2 },
+      { "name": "Centreville", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "서울강남1",
+    "region": "Florida",
     "branches": [
-      {
-        "name": "고덕",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "둔촌",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "서초",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "잠실",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "강남",
-        "allowedLicenses": 2
-      }
+      { "name": "Birdroad", "allowedLicenses": 2 },
+      { "name": "Miami", "allowedLicenses": 2 },
+      { "name": "Pinecrest", "allowedLicenses": 2 },
+      { "name": "Raleigh", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "서울강남2",
+    "region": "Georgia",
     "branches": [
-      {
-        "name": "강서",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "신도림",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "양천구",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "여의도",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "이수",
-        "allowedLicenses": 2
-      }
+      { "name": "Buckhead", "allowedLicenses": 2 },
+      { "name": "Decatur", "allowedLicenses": 2 },
+      { "name": "Marietta", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "경기북부",
+    "region": "Hawaii",
     "branches": [
-      {
-        "name": "김포",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "마두",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "일산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "파주",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "화정",
-        "allowedLicenses": 2
-      }
+      { "name": "Aiea", "allowedLicenses": 2 },
+      { "name": "Kaimuki", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "경기남부1",
+    "region": "Illinois",
     "branches": [
-      {
-        "name": "고잔",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "과천",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "산본",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "안양1번가",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "평촌",
-        "allowedLicenses": 2
-      }
+      { "name": "Mt. Prospect", "allowedLicenses": 2 },
+      { "name": "Skokie", "allowedLicenses": 2 },
+      { "name": "Westmont", "allowedLicenses": 2 },
+      { "name": "Minnetonka", "allowedLicenses": 2 },
+      { "name": "Norridge", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "경기남부2",
+    "region": "Los Angeles",
     "branches": [
-      {
-        "name": "미금",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "서현",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "수지",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "야탑",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "이천",
-        "allowedLicenses": 2
-      }
+      { "name": "Burbank", "allowedLicenses": 2 },
+      { "name": "Ktown", "allowedLicenses": 2 },
+      { "name": "Pasadena", "allowedLicenses": 2 },
+      { "name": "Valley", "allowedLicenses": 2 },
+      { "name": "Rolling Hills", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "경기남부3",
+    "region": "Massachusetts",
     "branches": [
-      {
-        "name": "동탄",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "영통",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "오산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "천천동",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "평택",
-        "allowedLicenses": 2
-      }
+      { "name": "Arlington", "allowedLicenses": 2 },
+      { "name": "Brookline", "allowedLicenses": 2 },
+      { "name": "Riverwalk", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "인천",
+    "region": "Manhattan",
     "branches": [
-      {
-        "name": "검단",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "논현",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "부평",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "상동",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "송도",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "주안",
-        "allowedLicenses": 2
-      }
+      { "name": "Bayside", "allowedLicenses": 2 },
+      { "name": "Manhattan", "allowedLicenses": 2 },
+      { "name": "Kew Gardens Hills", "allowedLicenses": 2 },
+      { "name": "Lynbrook", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "강원",
+    "region": "New Mexico",
     "branches": [
-      {
-        "name": "강릉",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "동해",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "원주",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "춘천",
-        "allowedLicenses": 2
-      }
+      { "name": "Albuquerque", "allowedLicenses": 2 },
+      { "name": "Cottonwood", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "대전",
+    "region": "Nevada",
     "branches": [
-      {
-        "name": "둔산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "서대전",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "송촌",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "월평",
-        "allowedLicenses": 2
-      }
+      { "name": "Flamingo", "allowedLicenses": 2 },
+      { "name": "Henderson", "allowedLicenses": 2 },
+      { "name": "Montecito", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "충북",
+    "region": "New York East",
     "branches": [
-      {
-        "name": "가경",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "금천",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "율량",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "제천",
-        "allowedLicenses": 2
-      }
+      { "name": "Forest Hills", "allowedLicenses": 2 },
+      { "name": "North Merrick", "allowedLicenses": 2 },
+      { "name": "Rockville Centre", "allowedLicenses": 2 },
+      { "name": "Mineola", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "충남",
+    "region": "New York West",
     "branches": [
-      {
-        "name": "서산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "세종아름",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "아산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "불당",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "충무",
-        "allowedLicenses": 2
-      }
+      { "name": "Bay Ridge", "allowedLicenses": 2 },
+      { "name": "Bronx", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "광주전남",
+    "region": "Orange County",
     "branches": [
-      {
-        "name": "동광주",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "서구",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "순천",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "여수",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "진월",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "첨단",
-        "allowedLicenses": 2
-      }
+      { "name": "Brea", "allowedLicenses": 2 },
+      { "name": "Cerritos", "allowedLicenses": 2 },
+      { "name": "Torrance", "allowedLicenses": 2 },
+      { "name": "Garden Grove", "allowedLicenses": 2 },
+      { "name": "Irvine", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "전북",
+    "region": "San Francisco",
     "branches": [
-      {
-        "name": "군산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "익산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "인후",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "정읍",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "효자",
-        "allowedLicenses": 2
-      }
+      { "name": "Fremont", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "대구",
+    "region": "Texas North",
     "branches": [
-      {
-        "name": "방촌",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "범어",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "상인",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "성서",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "수성",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "시지",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "월배",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "침산",
-        "allowedLicenses": 2
-      }
+      { "name": "Belt Line", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "경북",
+    "region": "Texas South",
     "branches": [
-      {
-        "name": "경산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "경주",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "구미",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "김천",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "대이",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "두호",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "문경",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "상주",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "안동",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "영주",
-        "allowedLicenses": 2
-      }
+      { "name": "Houston", "allowedLicenses": 2 },
+      { "name": "Katy", "allowedLicenses": 2 },
+      { "name": "Missouri City", "allowedLicenses": 2 },
+      { "name": "Magnolia", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "경남",
+    "region": "Washington",
     "branches": [
-      {
-        "name": "거제",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "내외",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "마산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "명곡",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "진주",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "진해",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "창원",
-        "allowedLicenses": 2
-      }
+      { "name": "Kirkland", "allowedLicenses": 2 },
+      { "name": "Wedgwood", "allowedLicenses": 2 },
+      { "name": "West Linn", "allowedLicenses": 2 }
     ]
   },
   {
-    "region": "울산",
+    "region": "BR/CGI",
     "branches": [
-      {
-        "name": "대송",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "북구",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "울산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "중구",
-        "allowedLicenses": 2
-      }
-    ]
-  },
-  {
-    "region": "부산",
-    "branches": [
-      {
-        "name": "금정",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "기장",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "다대",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "대연",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "동래",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "사직",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "양산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "양정",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "영도",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "온천장",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "하단",
-        "allowedLicenses": 2
-      }
-    ]
-  },
-  {
-    "region": "제주",
-    "branches": [
-      {
-        "name": "노형",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "서귀포",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "일도",
-        "allowedLicenses": 2
-      }
-    ]
-  },
-  {
-    "region": "단무도",
-    "branches": [
-      {
-        "name": "단무도대구",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "단무도부산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "단무도부천",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "단무도분당",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "단무도서울",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "단무도일산",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "단무도창원",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "단무도천안",
-        "allowedLicenses": 2
-      },
-      {
-        "name": "단무도평촌",
-        "allowedLicenses": 2
-      }
+      { "name": "New City", "allowedLicenses": 2 },
+      { "name": "Westchester", "allowedLicenses": 2 },
+      { "name": "CGI", "allowedLicenses": 2 },
+      { "name": "Wyckoff", "allowedLicenses": 2 },
+      { "name": "Secaucus", "allowedLicenses": 2 }
     ]
   }
 ]

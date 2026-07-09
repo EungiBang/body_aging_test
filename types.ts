@@ -1,13 +1,19 @@
 export enum AssessmentStep {
   INTRO = 'INTRO',
   USER_INFO = 'USER_INFO',
-  SEVEN_CODE_CHECK = 'SEVEN_CODE_CHECK',
 
   POSTURE_FRONT = 'POSTURE_FRONT',
   POSTURE_SIDE = 'POSTURE_SIDE',
   BALANCE_TEST = 'BALANCE_TEST',
+  ARM_RAISE_TEST = 'ARM_RAISE_TEST',
+  FLEXIBILITY_TEST = 'FLEXIBILITY_TEST',
+  STRENGTH_SQUAT = 'STRENGTH_SQUAT',
+  STRENGTH_PUSHUP = 'STRENGTH_PUSHUP',
+  BRAIN_REACTION = 'BRAIN_REACTION',
+
   BRAIN_MEMORY = 'BRAIN_MEMORY',
   FACE_ANALYSIS = 'FACE_ANALYSIS',
+  SEVEN_CODE_CHECK = 'SEVEN_CODE_CHECK',
   READY_FOR_ANALYSIS = 'READY_FOR_ANALYSIS',
   ANALYZING = 'ANALYZING',
   REPORT = 'REPORT',
@@ -143,6 +149,14 @@ export interface BodyReport {
   comprehensiveAge: number;  // 종합 건강 나이
   overallScore: number;
   bodyTypeAnalysis: string; // 추가: 전체 체형 형태학적 분석 (예: Sway Back 등)
+  bodyAlignmentAnalysis?: {
+    issue: string;
+    severity: string;
+    measuredValue: string;
+    normalRange: string;
+    impact: string;
+    recommendation?: string;
+  }[];
   postureMetrics: PostureMetric[];
   strengthMetrics: StrengthMetric[];
   agingMetrics: AgingMetric[];

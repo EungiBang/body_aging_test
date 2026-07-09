@@ -1,4 +1,6 @@
+// 7코드 점검의 키워드를 페이지별로 나열하고 선택을 처리하는 설문 컴포넌트
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SEVEN_CODE_KEYWORDS, KeywordMap } from '../constants/sevenCodeKeywords';
 
 interface Props {
@@ -17,6 +19,7 @@ const shuffleArray = (array: KeywordMap[]) => {
 };
 
 export const SevenCodeChecklist: React.FC<Props> = ({ onNext, onPrev }) => {
+  const { t, i18n } = useTranslation();
   const [shuffledKeywords, setShuffledKeywords] = useState<KeywordMap[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
@@ -102,12 +105,12 @@ export const SevenCodeChecklist: React.FC<Props> = ({ onNext, onPrev }) => {
   return (
     <div className={`flex flex-col items-center justify-center min-h-[60vh] p-6 mx-auto transition-all ${layoutMode === 'horizontal' ? 'max-w-5xl' : 'max-w-2xl'}`}>
       <div className="text-center mb-6">
-        <h2 className="text-3xl font-bold text-white mb-4">7-CODE 건강 점검</h2>
+        <h2 className="text-3xl font-bold text-white mb-4">{t('sevenCode.title')}</h2>
         <p className="text-gray-300 text-lg">
-          다음 중 현재 나에게 해당되거나 평소 자주 겪는 증상을 모두 선택해주세요.
+          {t('sevenCode.desc')}
         </p>
         <p className="text-gray-400 text-base mt-2">
-          직관적으로 와닿는 단어를 편하게 고르시면 됩니다. (현재 {currentPage + 1} / {totalPages} 페이지)
+          {t('sevenCode.notice', { current: currentPage + 1, total: totalPages })}
         </p>
       </div>
 
@@ -125,13 +128,13 @@ export const SevenCodeChecklist: React.FC<Props> = ({ onNext, onPrev }) => {
              onClick={() => setLayoutMode('vertical')}
              className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center ${layoutMode === 'vertical' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
            >
-             <i className="fas fa-mobile-alt mr-2 text-lg"></i>세로 모드
+             <i className="fas fa-mobile-alt mr-2 text-lg"></i>{t('sevenCode.verticalMode')}
            </button>
            <button 
              onClick={() => setLayoutMode('horizontal')}
              className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center ${layoutMode === 'horizontal' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
            >
-             <i className="fas fa-tablet-alt mr-2 text-lg"></i>가로 모드
+             <i className="fas fa-tablet-alt mr-2 text-lg"></i>{t('sevenCode.horizontalMode')}
            </button>
          </div>
       </div>
@@ -139,6 +142,7 @@ export const SevenCodeChecklist: React.FC<Props> = ({ onNext, onPrev }) => {
       <div className={`grid gap-4 w-full mb-10 ${layoutMode === 'vertical' ? 'grid-cols-2' : 'grid-cols-3 md:grid-cols-4'}`}>
         {currentItems.map((item) => {
           const isSelected = selectedKeywords.has(item.keyword);
+          const isEnglish = i18n.language?.startsWith('en') || false;
           return (
             <button
               key={item.keyword}
@@ -149,7 +153,7 @@ export const SevenCodeChecklist: React.FC<Props> = ({ onNext, onPrev }) => {
                   : 'bg-gray-800 text-gray-200 hover:bg-gray-700 border-2 border-gray-700 hover:border-gray-500'
               }`}
             >
-              {item.keyword}
+              {isEnglish ? item.keywordEn : item.keyword}
             </button>
           );
         })}
@@ -160,13 +164,13 @@ export const SevenCodeChecklist: React.FC<Props> = ({ onNext, onPrev }) => {
           onClick={currentPage === 0 ? onPrev : () => setCurrentPage(prev => prev - 1)}
           className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-colors"
         >
-          {currentPage === 0 ? '이전 단계' : '이전 페이지'}
+          {currentPage === 0 ? t('sevenCode.prevStage') : t('sevenCode.prevPage')}
         </button>
         <button
           onClick={handleNext}
           className="px-8 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-blue-500/25"
         >
-          {currentPage === totalPages - 1 ? '점검 완료' : '다음 페이지'}
+          {currentPage === totalPages - 1 ? t('sevenCode.complete') : t('sevenCode.nextPage')}
         </button>
       </div>
     </div>

@@ -118,10 +118,10 @@ const App: React.FC = () => {
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-600">
               <i className="fas fa-hourglass-half text-2xl"></i>
             </div>
-            <h2 className="text-2xl font-black text-slate-800 mb-2">승인 대기 중</h2>
-            <p className="text-slate-500 mb-6">중앙 관리자의 기기 승인을 기다리고 있습니다.<br/>승인이 완료되면 앱을 다시 실행해주세요.</p>
+            <h2 className="text-2xl font-black text-slate-800 mb-2">Pending Approval</h2>
+            <p className="text-slate-500 mb-6">Waiting for administrator approval.<br/>Please restart the app once approved.</p>
             <button onClick={() => window.location.reload()} className="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors">
-              새로고침
+              Refresh
             </button>
           </div>
         </div>
@@ -133,10 +133,10 @@ const App: React.FC = () => {
             <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-600">
               <i className="fas fa-ban text-4xl"></i>
             </div>
-            <h2 className="text-3xl font-black text-slate-800 mb-2">사용 중지됨</h2>
+            <h2 className="text-3xl font-black text-slate-800 mb-2">Access Revoked</h2>
             <p className="text-slate-600 font-medium leading-relaxed">
-              관리자에 의해 이 기기의 라이센스가 해지되었습니다.<br/>
-              프로그램을 더 이상 사용할 수 없습니다.
+              The license for this device has been revoked by the administrator.<br/>
+              This program can no longer be used.
             </p>
           </div>
         </div>

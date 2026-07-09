@@ -1,0 +1,146 @@
+[
+  {
+    "docId": "region_강원",
+    "order": 11,
+    "id": "region_강원",
+    "name": "강원"
+  },
+  {
+    "docId": "region_경기남부1",
+    "id": "region_경기남부1",
+    "name": "경기남부1",
+    "order": 7
+  },
+  {
+    "docId": "region_경기남부2",
+    "order": 8,
+    "id": "region_경기남부2",
+    "name": "경기남부2"
+  },
+  {
+    "docId": "region_경기남부3",
+    "id": "region_경기남부3",
+    "name": "경기남부3",
+    "order": 9
+  },
+  {
+    "docId": "region_경기북부",
+    "name": "경기북부",
+    "id": "region_경기북부",
+    "order": 6
+  },
+  {
+    "docId": "region_경남",
+    "id": "region_경남",
+    "name": "경남",
+    "order": 19
+  },
+  {
+    "docId": "region_경북",
+    "id": "region_경북",
+    "name": "경북",
+    "order": 18
+  },
+  {
+    "docId": "region_광주전남",
+    "id": "region_광주전남",
+    "name": "광주전남",
+    "order": 15
+  },
+  {
+    "docId": "region_단무도",
+    "id": "region_단무도",
+    "name": "단무도",
+    "order": 23
+  },
+  {
+    "docId": "region_대구",
+    "name": "대구",
+    "id": "region_대구",
+    "order": 17
+  },
+  {
+    "docId": "region_대전",
+    "order": 12,
+    "name": "대전",
+    "id": "region_대전"
+  },
+  {
+    "docId": "region_본사",
+    "order": 0,
+    "name": "본사",
+    "id": "region_본사"
+  },
+  {
+    "docId": "region_부산",
+    "id": "region_부산",
+    "name": "부산",
+    "order": 21
+  },
+  {
+    "docId": "region_서울강남1",
+    "id": "region_서울강남1",
+    "name": "서울강남1",
+    "order": 4
+  },
+  {
+    "docId": "region_서울강남2",
+    "id": "region_서울강남2",
+    "name": "서울강남2",
+    "order": 5
+  },
+  {
+    "docId": "region_서울강북1",
+    "name": "서울강북1",
+    "id": "region_서울강북1",
+    "order": 1
+  },
+  {
+    "docId": "region_서울강북2",
+    "name": "서울강북2",
+    "id": "region_서울강북2",
+    "order": 2
+  },
+  {
+    "docId": "region_서울강북3",
+    "id": "region_서울강북3",
+    "name": "서울강북3",
+    "order": 3
+  },
+  {
+    "docId": "region_울산",
+    "id": "region_울산",
+    "name": "울산",
+    "order": 20
+  },
+  {
+    "docId": "region_인천",
+    "id": "region_인천",
+    "name": "인천",
+    "order": 10
+  },
+  {
+    "docId": "region_전북",
+    "id": "region_전북",
+    "name": "전북",
+    "order": 16
+  },
+  {
+    "docId": "region_제주",
+    "id": "region_제주",
+    "name": "제주",
+    "order": 22
+  },
+  {
+    "docId": "region_충남",
+    "name": "충남",
+    "id": "region_충남",
+    "order": 14
+  },
+  {
+    "docId": "region_충북",
+    "id": "region_충북",
+    "name": "충북",
+    "order": 13
+  }
+]

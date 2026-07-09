@@ -19,6 +19,8 @@ const toKoreanNumber = (n: number): string => {
   return n <= 10 ? nums[n] : n.toString();
 };
 
+const DEFAULT_PERF_INFO = { poseInterval: 500, poseInputSize: 256, drawSkeleton: true, videoWidth: 640, videoHeight: 480 };
+
 const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, autoCapture, timerDuration, preferredDeviceId, onDeviceChange, perfInfo }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -44,8 +46,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
   const [activeDeviceId, setActiveDeviceId] = useState<string>('');
 
   // perfInfo가 전달되지 않았을 때 기본값 생성 (포즈 감지 루프가 항상 동작하도록)
-  const defaultPerfInfo = { poseInterval: 500, poseInputSize: 256, drawSkeleton: true, videoWidth: 640, videoHeight: 480 };
-  const activePerfInfo = perfInfo || defaultPerfInfo;
+  const activePerfInfo = perfInfo || DEFAULT_PERF_INFO;
 
   const { reps: autoReps, feedback: poseFeedback, isModelLoaded: isPoseLoaded, footDrops, swayScore, formScore, postureData, validation } = usePoseEstimation(
     videoRef, 
@@ -796,6 +797,37 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
             <div className="w-14 h-14 rounded-full border-4 border-indigo-600 flex items-center justify-center">
                <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
             </div>
+          </button>
+        )}
+        {!isCameraReady && (
+          <button 
+            type="button"
+            onClick={() => {
+              const mockCanvas = document.createElement('canvas');
+              mockCanvas.width = 640;
+              mockCanvas.height = 480;
+              const ctx = mockCanvas.getContext('2d');
+              if (ctx) {
+                ctx.fillStyle = '#1e1b4b';
+                ctx.fillRect(0, 0, 640, 480);
+                ctx.font = '24px sans-serif';
+                ctx.fillStyle = '#38bdf8';
+                ctx.textAlign = 'center';
+                ctx.fillText('MOCK SCAN CAPTURE', 320, 240);
+              }
+              onCapture(mockCanvas.toDataURL('image/jpeg', 0.8), 0, {
+                reps: 0,
+                footDrops: 0,
+                swayScore: 0,
+                formScore: 100,
+                postureData: { mock: true }
+              });
+            }}
+            className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl transition-all flex justify-center items-center gap-2 border border-red-500 shadow-lg active:scale-95"
+            style={{ zIndex: 100 }}
+            id="mock-camera-capture-btn"
+          >
+            [Dev Only] Mock Camera Scan Capture
           </button>
         )}
       </div>

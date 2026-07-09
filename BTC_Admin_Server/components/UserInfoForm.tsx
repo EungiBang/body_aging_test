@@ -269,8 +269,8 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 신규모드: 회원 유형 선택 */}
-          {mode === 'new' && (
+          {/* memberType selection tab is removed to prevent double tab layout confusion */}
+          {false && mode === 'new' && (
             <div className="flex gap-2 p-1.5 bg-slate-800/80 rounded-xl border border-slate-700/50 shadow-inner">
               <button 
                 type="button"

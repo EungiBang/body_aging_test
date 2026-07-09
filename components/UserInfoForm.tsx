@@ -1,5 +1,6 @@
-
+// 사용자 개인정보 및 측정 목적 설정을 입력받는 폼 컴포넌트
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UserInfo, MemberRecord } from '../types';
 import { getRecordsLocally } from '../services/localDb';
 
@@ -8,6 +9,7 @@ interface UserInfoFormProps {
 }
 
 const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<UserInfo>({
     name: '',
     gender: 'male',
@@ -116,9 +118,9 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name) { setError('이름을 입력해 주세요.'); return; }
-    if (mode === 'new' && (!birth.year || !birth.month)) { setError('생년월일을 입력해 주세요.'); return; }
-    if (!privacyConsent) { setError('개인정보 수집·이용에 동의해 주세요.'); return; }
+    if (!formData.name) { setError(t('userInfo.errorName', '이름을 입력해 주세요.')); return; }
+    if (mode === 'new' && (!birth.year || !birth.month)) { setError(t('userInfo.errorBirth', '생년월일을 입력해 주세요.')); return; }
+    if (!privacyConsent) { setError(t('userInfo.errorConsent', '개인정보 수집·이용에 동의해 주세요.')); return; }
     setError(null);
 
     // 제출 시 전화번호 및 수신 방식 로컬 스토리지에 저장
@@ -154,7 +156,7 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
              boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
            }}>
         
-        <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 via-white to-indigo-200 mb-6 text-center tracking-tight">측정 대상자 등록</h3>
+        <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 via-white to-indigo-200 mb-6 text-center tracking-tight">{t('userInfo.title', '측정 대상자 등록')}</h3>
         
         {/* 모드 선택: 신규 vs 재측정 */}
         <div className="mb-6 flex gap-2 p-1.5 bg-slate-800/80 rounded-xl border border-slate-700/50 shadow-inner">
@@ -163,14 +165,14 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
             className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${mode === 'new' ? 'bg-indigo-600/90 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}`}
             onClick={() => { setMode('new'); setSelectedRecord(null); setFormData(prev => ({ ...prev, previousRecordId: undefined })); }}
           >
-            🆕 신규 측정
+            {t('userInfo.newTest', '🆕 신규 측정')}
           </button>
           <button 
             type="button"
             className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${mode === 'retest' ? 'bg-amber-500/90 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}`}
             onClick={() => setMode('retest')}
           >
-            🔄 재측정
+            {t('userInfo.retest', '🔄 재측정')}
           </button>
         </div>
 
@@ -178,14 +180,14 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
         {mode === 'retest' && !selectedRecord && (
           <div className="mb-6">
             <label className="block text-xs font-bold tracking-widest uppercase text-amber-300/80 mb-2">
-              기존 회원 검색
+              {t('userInfo.searchExisting', '기존 회원 검색')}
             </label>
             <div className="relative">
               <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
               <input 
                 type="text"
                 className="w-full pl-10 pr-4 py-3.5 bg-slate-800/60 rounded-xl border border-amber-500/30 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                placeholder="이름으로 검색..."
+                placeholder={t('userInfo.searchPlaceholder', '이름으로 검색...')}
                 value={searchTerm}
                 onChange={e => { setSearchTerm(e.target.value); setShowDropdown(true); }}
                 onFocus={() => setShowDropdown(true)}
@@ -208,8 +210,8 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
                       <div className="text-white font-bold text-sm">{record.name}</div>
                       <div className="text-slate-400 text-[10px]">
                         {new Date(record.lastTestDate).toLocaleDateString()} · 
-                        신체{record.report.physicalAge}세 · 
-                        종합{record.report.overallScore}점
+                        {t('userInfo.physicalAgeShort', '신체')}{record.report.physicalAge}{t('userInfo.yearsOldShort', '세')} · 
+                        {t('userInfo.overallScoreShort', '종합')}{record.report.overallScore}{t('userInfo.pointsShort', '점')}
                       </div>
                     </div>
                     <i className="fas fa-chevron-right text-slate-500 text-xs"></i>
@@ -217,8 +219,8 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
                 )) : (
                   <div className="px-4 py-6 text-center text-slate-400 text-sm">
                     {existingRecords.length === 0 
-                      ? '저장된 회원 기록이 없습니다.' 
-                      : '검색 결과가 없습니다.'}
+                      ? t('userInfo.noHistory', '저장된 회원 기록이 없습니다.') 
+                      : t('userInfo.noSearchResults', '검색 결과가 없습니다.')}
                   </div>
                 )}
               </div>
@@ -230,13 +232,13 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
         {mode === 'retest' && selectedRecord && (
           <div className="mb-6 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-amber-300 text-xs font-bold">📋 이전 측정 기록 불러옴</span>
+              <span className="text-amber-300 text-xs font-bold">{t('userInfo.loadedRecord', '📋 이전 측정 기록 불러옴')}</span>
               <button 
                 type="button"
                 onClick={() => { setSelectedRecord(null); setFormData(prev => ({ ...prev, name: '', previousRecordId: undefined })); }}
                 className="text-slate-400 text-xs hover:text-white transition-all"
               >
-                ✕ 다시 선택
+                {t('common.cancel', '✕ 다시 선택')}
               </button>
             </div>
             <div className="flex items-center gap-3">
@@ -246,55 +248,37 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
               <div>
                 <div className="text-white font-bold">{selectedRecord.name}</div>
                 <div className="text-slate-400 text-[10px]">
-                  이전 측정: {new Date(selectedRecord.lastTestDate).toLocaleDateString()} · 
-                  신체나이 {selectedRecord.report.physicalAge}세 · 종합 {selectedRecord.report.overallScore}점
+                  {t('userInfo.prevTestDate', '이전 측정:')} {new Date(selectedRecord.lastTestDate).toLocaleDateString()} · 
+                  {t('userInfo.physicalAge', '신체나이')} {selectedRecord.report.physicalAge}{t('userInfo.yearsOldShort', '세')} · {t('userInfo.overallScore', '종합점수')} {selectedRecord.report.overallScore}{t('userInfo.pointsShort', '점')}
                 </div>
               </div>
             </div>
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
               <div className="bg-slate-800/60 rounded-lg p-2">
-                <div className="text-[10px] text-slate-400">신체나이</div>
-                <div className="text-indigo-400 font-black text-lg">{selectedRecord.report.physicalAge}세</div>
+                <div className="text-[10px] text-slate-400">{t('userInfo.physicalAge', '신체나이')}</div>
+                <div className="text-indigo-400 font-black text-lg">{selectedRecord.report.physicalAge}{t('userInfo.yearsOldShort', '세')}</div>
               </div>
               <div className="bg-slate-800/60 rounded-lg p-2">
-                <div className="text-[10px] text-slate-400">뇌나이</div>
-                <div className="text-purple-400 font-black text-lg">{selectedRecord.report.brainAge}세</div>
+                <div className="text-[10px] text-slate-400">{t('userInfo.brainAge', '뇌나이')}</div>
+                <div className="text-purple-400 font-black text-lg">{selectedRecord.report.brainAge}{t('userInfo.yearsOldShort', '세')}</div>
               </div>
               <div className="bg-slate-800/60 rounded-lg p-2">
-                <div className="text-[10px] text-slate-400">종합점수</div>
-                <div className="text-emerald-400 font-black text-lg">{selectedRecord.report.overallScore}점</div>
+                <div className="text-[10px] text-slate-400">{t('userInfo.overallScore', '종합점수')}</div>
+                <div className="text-emerald-400 font-black text-lg">{selectedRecord.report.overallScore}{t('userInfo.pointsShort', '점')}</div>
               </div>
             </div>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 신규모드: 회원 유형 선택 */}
-          {mode === 'new' && (
-            <div className="flex gap-2 p-1.5 bg-slate-800/80 rounded-xl border border-slate-700/50 shadow-inner">
-              <button 
-                type="button"
-                className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${formData.memberType === 'new' ? 'bg-indigo-600/90 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}`}
-                onClick={() => setFormData({...formData, memberType: 'new'})}
-              >
-                신규 회원 대상
-              </button>
-              <button 
-                type="button"
-                className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${formData.memberType === 'existing' ? 'bg-indigo-600/90 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}`}
-                onClick={() => setFormData({...formData, memberType: 'existing'})}
-              >
-                기존 수련 회원
-              </button>
-            </div>
-          )}
+          {/* memberType selection tab is removed to prevent double tab layout confusion */}
 
           <div>
-            <label className="block text-xs font-bold tracking-widest uppercase text-indigo-300/80 mb-2">이름 NAME</label>
+            <label className="block text-xs font-bold tracking-widest uppercase text-indigo-300/80 mb-2">{t('userInfo.name', '이름')} NAME</label>
             <input 
               type="text" 
               className={`w-full px-4 py-3.5 bg-slate-800/60 rounded-xl border ${error?.includes('이름') ? 'border-rose-500/50 focus:ring-rose-500/50' : 'border-slate-700/50 focus:ring-indigo-500/50'} text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all shadow-inner`}
-              placeholder="홍길동"
+              placeholder={t('userInfo.name', '이름')}
               value={formData.name}
               onChange={e => {
                 setFormData({...formData, name: e.target.value});
@@ -305,7 +289,7 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
           </div>
           
           <div>
-            <label className="block text-xs font-bold tracking-widest uppercase text-indigo-300/80 mb-2">성별 GENDER</label>
+            <label className="block text-xs font-bold tracking-widest uppercase text-indigo-300/80 mb-2">{t('userInfo.gender', '성별')} GENDER</label>
             <div className="grid grid-cols-2 gap-3">
               {(['male', 'female'] as const).map(g => (
                 <button
@@ -314,7 +298,7 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
                   onClick={() => setFormData({...formData, gender: g})}
                   className={`py-3.5 rounded-xl border font-bold transition-all ${formData.gender === g ? 'bg-indigo-600/90 border-indigo-400/50 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:bg-slate-700/50'}`}
                 >
-                  {g === 'male' ? <><i className="fas fa-mars mr-1 opacity-70"></i> 남성</> : <><i className="fas fa-venus mr-1 opacity-70"></i> 여성</>}
+                  {g === 'male' ? <><i className="fas fa-mars mr-1 opacity-70"></i> {t('userInfo.male', '남성')}</> : <><i className="fas fa-venus mr-1 opacity-70"></i> {t('userInfo.female', '여성')}</>}
                 </button>
               ))}
             </div>
@@ -324,9 +308,9 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
           {mode === 'new' && (
             <div>
               <label className="block text-xs font-bold tracking-widest uppercase text-indigo-300/80 mb-2 flex justify-between items-center">
-                <span>출생연월 및 나이 BIRTH & AGE</span>
+                <span>{t('userInfo.birthDate', '생년월일')} & {t('userInfo.age', '나이')} BIRTH & AGE</span>
                 {(birth.year && birth.month) && (
-                   <span className="text-white font-mono bg-indigo-600 px-2 py-0.5 rounded text-[11px] shadow-lg animate-pulse-once">만 {formData.age}세</span>
+                   <span className="text-white font-mono bg-indigo-600 px-2 py-0.5 rounded text-[11px] shadow-lg animate-pulse-once">{formData.age} {t('userInfo.yearsOld', '세')}</span>
                 )}
               </label>
               <div className="flex gap-3">
@@ -335,22 +319,22 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
                      type="text" 
                      maxLength={4}
                      className={`w-full px-4 py-3.5 bg-slate-800/60 rounded-xl border ${error?.includes('생년월일') ? 'border-rose-500/50' : 'border-slate-700/50'} text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-mono`}
-                     placeholder="태어난 해 (예: 1980)"
+                     placeholder="Year (e.g. 1980)"
                      value={birth.year}
                      onChange={e => handleBirthChange('year', e.target.value)}
                    />
-                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">년</span>
+                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Year</span>
                  </div>
                  <div className="relative w-1/3">
                    <input 
                      type="text" 
                      maxLength={2}
                      className={`w-full px-4 py-3.5 bg-slate-800/60 rounded-xl border ${error?.includes('생년월일') ? 'border-rose-500/50' : 'border-slate-700/50'} text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-mono`}
-                     placeholder="월"
+                     placeholder="Month"
                      value={birth.month}
                      onChange={e => handleBirthChange('month', e.target.value)}
                    />
-                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">월</span>
+                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Month</span>
                  </div>
               </div>
             </div>
@@ -359,22 +343,22 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
           {/* 재측정 모드: 만나이 표시 */}
           {mode === 'retest' && selectedRecord && (
             <div className="bg-slate-800/60 rounded-xl border border-slate-700/50 px-4 py-3 flex items-center justify-between">
-              <span className="text-indigo-300/80 text-xs font-bold uppercase tracking-widest">나이 AGE</span>
-              <span className="text-white font-mono bg-indigo-600 px-3 py-1 rounded-lg text-sm font-bold shadow-lg">만 {formData.age}세</span>
+              <span className="text-indigo-300/80 text-xs font-bold uppercase tracking-widest">{t('userInfo.age', '나이')} AGE</span>
+              <span className="text-white font-mono bg-indigo-600 px-3 py-1 rounded-lg text-sm font-bold shadow-lg">{formData.age} {t('userInfo.yearsOld', '세')}</span>
             </div>
           )}
 
           <div>
             <label className="block text-xs font-bold tracking-widest uppercase text-indigo-300/80 mb-1">
-              연락처 CONTACT <span className="text-slate-500 font-normal ml-1">(선택)</span>
+              {t('userInfo.phone', '연락처')} CONTACT <span className="text-slate-500 font-normal ml-1">(Optional)</span>
             </label>
             <p className="text-[10px] text-indigo-400/90 mb-3 bg-indigo-500/10 py-1.5 px-2 rounded-lg border border-indigo-500/20 inline-block font-medium">
-              <i className="fas fa-gift mr-1.5 mt-0.5 text-amber-400"></i> 연락처 기입 시 AI 분석 리포트를 모바일로 즉시 전송해 드립니다!
+              <i className="fas fa-gift mr-1.5 mt-0.5 text-amber-400"></i> {t('userInfo.agreeNotice')}
             </p>
             <input 
               type="tel" 
               className="w-full px-4 py-3.5 bg-slate-800/60 rounded-xl border border-slate-700/50 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all shadow-inner font-mono"
-              placeholder="010-0000-0000"
+              placeholder={t('userInfo.phonePlaceholder', '010-0000-0000')}
               value={formData.phone || ''}
               onChange={e => {
                 const formatted = formatPhone(e.target.value);
@@ -386,13 +370,13 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
             {formData.phone && formData.phone.replace(/[^0-9]/g, '').length >= 10 && (
               <div className="mt-4 p-4 bg-slate-800/80 rounded-xl border border-indigo-500/20 backdrop-blur-sm space-y-3 shadow-inner">
                 <p className="text-[11px] font-bold text-indigo-300/90 tracking-wide flex items-center">
-                  <i className="fas fa-satellite-dish mr-2 animate-pulse text-indigo-400"></i> AI 리포트 수신 방식
+                  <i className="fas fa-satellite-dish mr-2 animate-pulse text-indigo-400"></i> {t('userInfo.deliveryMethod', 'AI 리포트 수신 방식')}
                 </p>
                 <div className="flex gap-2">
                   {([
-                    { value: 'kakao' as const, label: '카카오톡', icon: 'fa-comment' },
-                    { value: 'sms' as const, label: 'SMS', icon: 'fa-sms' },
-                    { value: 'none' as const, label: '미수신', icon: 'fa-times' },
+                    { value: 'kakao' as const, label: t('userInfo.deliveryKakao', '카카오톡'), icon: 'fa-comment' },
+                    { value: 'sms' as const, label: t('userInfo.deliverySms', 'SMS'), icon: 'fa-sms' },
+                    { value: 'none' as const, label: t('userInfo.deliveryNone', '미수신'), icon: 'fa-times' },
                   ]).map(option => (
                     <button
                       key={option.value}
@@ -427,7 +411,7 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
                 className="mt-0.5 w-5 h-5 rounded border-2 border-indigo-500/50 bg-slate-900/50 text-indigo-500 focus:ring-indigo-500/50 focus:ring-offset-0 cursor-pointer shrink-0"
               />
               <span className="text-sm text-slate-300 leading-relaxed">
-                <span className="font-bold text-indigo-300">[필수]</span> 개인정보 수집·이용에 동의합니다.
+                {t('userInfo.agreeRequire')}
               </span>
             </label>
             <button
@@ -436,40 +420,37 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
               className="mt-2 ml-8 text-[11px] text-indigo-400/80 hover:text-indigo-300 transition-colors flex items-center gap-1"
             >
               <i className={`fas fa-chevron-${showPrivacyDetail ? 'up' : 'down'} text-[8px]`}></i>
-              개인정보 수집·이용 상세 내용 보기
+              {t('userInfo.viewPrivacyDetail')}
             </button>
             {showPrivacyDetail && (
               <div className="mt-3 ml-8 p-4 bg-slate-900/60 rounded-xl border border-slate-700/30 text-[11px] text-slate-400 leading-relaxed space-y-2 max-h-60 overflow-y-auto">
-                <p className="font-bold text-slate-300 text-xs mb-2">📋 개인정보 수집·이용 동의서</p>
+                <p className="font-bold text-slate-300 text-xs mb-2">{t('userInfo.privacyTitle')}</p>
                 <table className="w-full text-left border-collapse">
                   <tbody>
                     <tr className="border-b border-slate-700/30">
-                      <td className="py-1.5 pr-3 font-bold text-indigo-300/80 whitespace-nowrap align-top">수집 항목</td>
-                      <td className="py-1.5">성명, 성별, 생년월, 연락처(선택), 전신·얼굴 사진, 두뇌 인지 반응 데이터, 7코드 선택 결과</td>
+                      <td className="py-1.5 pr-3 font-bold text-indigo-300/80 whitespace-nowrap align-top">{t('userInfo.privacyItems')}</td>
+                      <td className="py-1.5">{t('userInfo.privacyItemsDetail')}</td>
                     </tr>
                     <tr className="border-b border-slate-700/30">
-                      <td className="py-1.5 pr-3 font-bold text-indigo-300/80 whitespace-nowrap align-top">수집 목적</td>
-                      <td className="py-1.5">3바디 통합 밸런스 측정 및 웰니스 상태 분석, 이전 측정 기록과의 비교 분석</td>
+                      <td className="py-1.5 pr-3 font-bold text-indigo-300/80 whitespace-nowrap align-top">{t('userInfo.privacyPurpose')}</td>
+                      <td className="py-1.5">{t('userInfo.privacyPurposeDetail')}</td>
                     </tr>
                     <tr className="border-b border-slate-700/30">
-                      <td className="py-1.5 pr-3 font-bold text-indigo-300/80 whitespace-nowrap align-top">보관 기간</td>
-                      <td className="py-1.5">
-                        • 정규 회원: 회원 자격 유지 기간 동안 보관 (탈퇴 시 3개월 내 파기)<br/>
-                        • 체험 방문자: 측정일로부터 6개월 후 자동 파기
-                      </td>
+                      <td className="py-1.5 pr-3 font-bold text-indigo-300/80 whitespace-nowrap align-top">{t('userInfo.privacyRetention')}</td>
+                      <td className="py-1.5 whitespace-pre-line">{t('userInfo.privacyRetentionDetail')}</td>
                     </tr>
                     <tr className="border-b border-slate-700/30">
-                      <td className="py-1.5 pr-3 font-bold text-indigo-300/80 whitespace-nowrap align-top">제3자 제공</td>
-                      <td className="py-1.5">AI 분석을 위해 Google LLC 서버(미국)에 사진이 일시적으로 전송되며, 분석 완료 즉시 삭제됩니다. 그 외 제3자 제공은 없습니다.</td>
+                      <td className="py-1.5 pr-3 font-bold text-indigo-300/80 whitespace-nowrap align-top">{t('userInfo.privacyThirdParty')}</td>
+                      <td className="py-1.5">{t('userInfo.privacyThirdPartyDetail')}</td>
                     </tr>
                     <tr>
-                      <td className="py-1.5 pr-3 font-bold text-indigo-300/80 whitespace-nowrap align-top">거부 권리</td>
-                      <td className="py-1.5">동의를 거부하실 수 있으나, 거부 시 3바디 웰니스 측정 서비스를 이용하실 수 없습니다.</td>
+                      <td className="py-1.5 pr-3 font-bold text-indigo-300/80 whitespace-nowrap align-top">{t('userInfo.privacyRights')}</td>
+                      <td className="py-1.5">{t('userInfo.privacyRightsDetail')}</td>
                     </tr>
                   </tbody>
                 </table>
                 <p className="text-[10px] text-slate-500 mt-2 pt-2 border-t border-slate-700/30">
-                  ※ 본 시스템은 건강관리에 도움을 주고자 자세·동작·기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다.
+                  {t('userInfo.wellnessNotice')}
                 </p>
               </div>
             )}
@@ -482,6 +463,7 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
           )}
 
           <button 
+            id="user-info-submit-btn"
             type="submit"
             disabled={mode === 'retest' && !selectedRecord}
             className={`relative overflow-hidden w-full group text-white font-bold py-4 rounded-xl transition-all duration-300 border mt-6 ${
@@ -495,8 +477,8 @@ const UserInfoForm: React.FC<UserInfoFormProps> = ({ onSubmit }) => {
             <span className="relative z-10 flex items-center justify-center gap-2 tracking-widest text-sm">
               <i className="fas fa-fingerprint opacity-70"></i>
               {mode === 'retest' 
-                ? (selectedRecord ? '재측정 시작 준비 완료' : '위에서 기존 회원을 선택해 주세요')
-                : '측정 대상자 등록 및 준비 완료'
+                ? (selectedRecord ? t('userInfo.retestReady') : t('userInfo.selectMemberAlert'))
+                : t('userInfo.scanReady')
               }
             </span>
           </button>

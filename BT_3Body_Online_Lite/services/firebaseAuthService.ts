@@ -178,7 +178,7 @@ export const checkDeviceStatus = async (hardwareId: string, appVersion?: string)
       const branchSnap = await getDoc(branchRef);
       if (!branchSnap.exists()) {
         // 지점이 삭제됨 → 기기 등록 무효화 (재인증 유도)
-        console.warn(`[Auth] 기기 ${hardwareId}의 지점(${deviceData.branchId})이 삭제됨. 재인증 필요.`);
+        console.warn(`[Auth] Branch ${deviceData.branchId} for device ${hardwareId} has been deleted. Re-authentication required.`);
         await deleteDoc(docRef);
         return null;
       }
@@ -217,13 +217,13 @@ export const requestDeviceRegistration = async (
   const isCodeValid = liteCode && liteCode === inputCode;
   
   if (!isCodeValid) {
-    return { success: false, status: 'pending', error: '유효하지 않은 배포 코드입니다.' };
+    return { success: false, status: 'pending', error: 'Invalid authorization code.' };
   }
 
   // 2. 지점 정보 및 할당량(Quota) 확인
   const branchDoc = await getDoc(doc(db, 'branches', branchId));
   if (!branchDoc.exists()) {
-    return { success: false, status: 'pending', error: '존재하지 않는 지점입니다.' };
+    return { success: false, status: 'pending', error: 'Center not found.' };
   }
   
   const branchData = branchDoc.data() as Branch;
@@ -236,7 +236,7 @@ export const requestDeviceRegistration = async (
     return { 
       success: false, 
       status: 'pending', 
-      error: `허용된 라이센스 개수(${allowedLicenses}대)를 초과했습니다. 본사에 문의하여 추가 승인을 받으세요.` 
+      error: `License limit exceeded (${allowedLicenses} devices allowed). Please contact headquarters for additional authorization.` 
     };
   }
 

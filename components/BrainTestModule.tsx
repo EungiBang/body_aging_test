@@ -1,5 +1,6 @@
-
+// 뇌 인지 반응 및 기억력 테스트 진행을 처리하는 게임형 측정 컴포넌트
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AssessmentStep, BrainTestData, UserInfo } from '../types';
 import { speak } from '../services/ttsService';
 import * as tf from '@tensorflow/tfjs-core';
@@ -20,43 +21,43 @@ type GamePhase = 'intro' | 'calibration' | 'handcheck' | 'countdown' | 'playing'
 
 // Cross-body instructions (무릎 포함)
 const CROSS_INSTRUCTIONS = [
-  { text: '오른손 → 왼쪽 어깨', ttsText: '오른손, 왼쪽 어깨', hand: 'right', target: 'left_shoulder' },
-  { text: '왼손 → 오른쪽 어깨', ttsText: '왼손, 오른쪽 어깨', hand: 'left', target: 'right_shoulder' },
-  { text: '오른손 → 왼쪽 무릎', ttsText: '오른손, 왼쪽 무릎', hand: 'right', target: 'left_knee' },
-  { text: '왼손 → 오른쪽 무릎', ttsText: '왼손, 오른쪽 무릎', hand: 'left', target: 'right_knee' },
-  { text: '오른손 → 왼쪽 허리', ttsText: '오른손, 왼쪽 허리', hand: 'right', target: 'left_hip' },
-  { text: '왼손 → 오른쪽 허리', ttsText: '왼손, 오른쪽 허리', hand: 'left', target: 'right_hip' },
-  { text: '오른손 → 머리 위', ttsText: '오른손, 머리 위', hand: 'right', target: 'head' },
-  { text: '왼손 → 머리 위', ttsText: '왼손, 머리 위', hand: 'left', target: 'head' },
+  { text: '오른손 → 왼쪽 어깨', textEn: 'Right Hand → Left Shoulder', ttsText: '오른손, 왼쪽 어깨', ttsTextEn: 'Right hand, left shoulder', hand: 'right', target: 'left_shoulder' },
+  { text: '왼손 → 오른쪽 어깨', textEn: 'Left Hand → Right Shoulder', ttsText: '왼손, 오른쪽 어깨', ttsTextEn: 'Left hand, right shoulder', hand: 'left', target: 'right_shoulder' },
+  { text: '오른손 → 왼쪽 무릎', textEn: 'Right Hand → Left Knee', ttsText: '오른손, 왼쪽 무릎', ttsTextEn: 'Right hand, left knee', hand: 'right', target: 'left_knee' },
+  { text: '왼손 → 오른쪽 무릎', textEn: 'Left Hand → Right Knee', ttsText: '왼손, 오른쪽 무릎', ttsTextEn: 'Left hand, right knee', hand: 'left', target: 'right_knee' },
+  { text: '오른손 → 왼쪽 허리', textEn: 'Right Hand → Left Hip', ttsText: '오른손, 왼쪽 허리', ttsTextEn: 'Right hand, left hip', hand: 'right', target: 'left_hip' },
+  { text: '왼손 → 오른쪽 허리', textEn: 'Left Hand → Right Hip', ttsText: '왼손, 오른쪽 허리', ttsTextEn: 'Left hand, right hip', hand: 'left', target: 'right_hip' },
+  { text: '오른손 → 머리 위', textEn: 'Right Hand → Above Head', ttsText: '오른손, 머리 위', ttsTextEn: 'Right hand, above head', hand: 'right', target: 'head' },
+  { text: '왼손 → 머리 위', textEn: 'Left Hand → Above Head', ttsText: '왼손, 머리 위', ttsTextEn: 'Left hand, above head', hand: 'left', target: 'head' },
 ];
 
 // ============ MART SHOPPING GAME DATA v5.1 ============
 // v5.1: 24개 물건, 이미지 전용 기억, 천원 단위 가격
 const MART_ITEMS = [
-  { id: 'apple', emoji: '🍎', name: '사과', price: 4000 },
-  { id: 'banana', emoji: '🍌', name: '바나나', price: 3000 },
-  { id: 'milk', emoji: '🥛', name: '우유', price: 4000 },
-  { id: 'bread', emoji: '🍞', name: '식빵', price: 3000 },
-  { id: 'egg', emoji: '🥚', name: '계란', price: 6000 },
-  { id: 'carrot', emoji: '🥕', name: '당근', price: 2000 },
-  { id: 'fish', emoji: '🐟', name: '생선', price: 8000 },
-  { id: 'cheese', emoji: '🧀', name: '치즈', price: 4000 },
-  { id: 'tomato', emoji: '🍅', name: '토마토', price: 3000 },
-  { id: 'chicken', emoji: '🍗', name: '닭고기', price: 7000 },
-  { id: 'grape', emoji: '🍇', name: '포도', price: 5000 },
-  { id: 'watermelon', emoji: '🍉', name: '수박', price: 9000 },
-  { id: 'onion', emoji: '🧅', name: '양파', price: 2000 },
-  { id: 'corn', emoji: '🌽', name: '옥수수', price: 3000 },
-  { id: 'shrimp', emoji: '🦐', name: '새우', price: 6000 },
-  { id: 'pepper', emoji: '🌶️', name: '고추', price: 2000 },
-  { id: 'mushroom', emoji: '🍄', name: '버섯', price: 4000 },
-  { id: 'peach', emoji: '🍑', name: '복숭아', price: 5000 },
-  { id: 'strawberry', emoji: '🍓', name: '딸기', price: 6000 },
-  { id: 'pear', emoji: '🍐', name: '배', price: 4000 },
-  { id: 'melon', emoji: '🍈', name: '참외', price: 3000 },
-  { id: 'sweetpotato', emoji: '🍠', name: '고구마', price: 3000 },
-  { id: 'broccoli', emoji: '🥦', name: '브로콜리', price: 3000 },
-  { id: 'avocado', emoji: '🥑', name: '아보카도', price: 5000 },
+  { id: 'apple', emoji: '🍎', name: '사과', nameEn: 'Apple', price: 4000 },
+  { id: 'banana', emoji: '🍌', name: '바나나', nameEn: 'Banana', price: 3000 },
+  { id: 'milk', emoji: '🥛', name: '우유', nameEn: 'Milk', price: 4000 },
+  { id: 'bread', emoji: '🍞', name: '식빵', nameEn: 'Bread', price: 3000 },
+  { id: 'egg', emoji: '🥚', name: '계란', nameEn: 'Eggs', price: 6000 },
+  { id: 'carrot', emoji: '🥕', name: '당근', nameEn: 'Carrot', price: 2000 },
+  { id: 'fish', emoji: '🐟', name: '생선', nameEn: 'Fish', price: 8000 },
+  { id: 'cheese', emoji: '🧀', name: '치즈', nameEn: 'Cheese', price: 4000 },
+  { id: 'tomato', emoji: '🍅', name: '토마토', nameEn: 'Tomato', price: 3000 },
+  { id: 'chicken', emoji: '🍗', name: '닭고기', nameEn: 'Chicken', price: 7000 },
+  { id: 'grape', emoji: '🍇', name: '포도', nameEn: 'Grapes', price: 5000 },
+  { id: 'watermelon', emoji: '🍉', name: '수박', nameEn: 'Watermelon', price: 9000 },
+  { id: 'onion', emoji: '🧅', name: '양파', nameEn: 'Onion', price: 2000 },
+  { id: 'corn', emoji: '🌽', name: '옥수수', nameEn: 'Corn', price: 3000 },
+  { id: 'shrimp', emoji: '🦐', name: '새우', nameEn: 'Shrimp', price: 6000 },
+  { id: 'pepper', emoji: '🌶️', name: '고추', nameEn: 'Pepper', price: 2000 },
+  { id: 'mushroom', emoji: '🍄', name: '버섯', nameEn: 'Mushroom', price: 4000 },
+  { id: 'peach', emoji: '🍑', name: '복숭아', nameEn: 'Peach', price: 5000 },
+  { id: 'strawberry', emoji: '🍓', name: '딸기', nameEn: 'Strawberry', price: 6000 },
+  { id: 'pear', emoji: '🍐', name: '배', nameEn: 'Pear', price: 4000 },
+  { id: 'melon', emoji: '🍈', name: '참외', nameEn: 'Melon', price: 3000 },
+  { id: 'sweetpotato', emoji: '🍠', name: '고구마', nameEn: 'Sweet Potato', price: 3000 },
+  { id: 'broccoli', emoji: '🥦', name: '브로콜리', nameEn: 'Broccoli', price: 3000 },
+  { id: 'avocado', emoji: '🥑', name: '아보카도', nameEn: 'Avocado', price: 5000 },
 ];
 
 // v5.0 방해 과제: 3자리 받아올림/받아내림 연산 생성기
@@ -91,6 +92,7 @@ const generateHardMathQuiz = (isAdd: boolean): { question: string; answer: numbe
 };
 
 const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete, preferredCameraId, userInfo }) => {
+  const { t, i18n } = useTranslation();
   const [isPortraitMode, setIsPortraitMode] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1105,8 +1107,8 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
           setDistractionCorrect(0);
           setDistractionCountdown(15);
           setMartPhase('distraction');
-          setMartMessage('🧠 15초 동안 2문제를 풀어보세요!');
-          speak('이제 15초 동안 수학 문제 2개를 풀어보세요.');
+          setMartMessage(t('brainTest.distractionMessage', '🧠 15초 동안 2문제를 풀어보세요!'));
+          speak(t('speech.distractionStart', '이제 15초 동안 수학 문제 2개를 풀어보세요.'));
           return 0;
         }
         return prev - 1;
@@ -1121,9 +1123,9 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
       setDistractionCountdown(prev => {
         if (prev <= 1) {
           clearInterval(ci);
-          speak(`이제 아까 본 물건 ${MART_ITEMS_TO_REMEMBER}개를 찾아서 클릭해 주세요.`);
+          speak(t('speech.shoppingStart', { count: MART_ITEMS_TO_REMEMBER }));
           setMartPhase('shopping');
-          setMartMessage(`👆 아까 기억한 물건 ${MART_ITEMS_TO_REMEMBER}개를 클릭해서 골라주세요`);
+          setMartMessage(t('brainTest.shoppingInstructions', { count: MART_ITEMS_TO_REMEMBER }));
           return 0;
         }
         return prev - 1;
@@ -1142,7 +1144,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
       if (distractionIndex < distractionQuizzes.length - 1) {
         setDistractionIndex(p => p + 1);
         setDistractionSelected(null);
-        speak('다음 문제입니다.');
+        speak(t('speech.nextQuiz', '다음 문제입니다.'));
       }
     }, 1200);
   };
@@ -1164,7 +1166,16 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
     setMartTotalCorrect(p => p + cc);
     setResultData({ memoryCorrect: cc, memorySpan: cc });
     setMartPhase('priceQuiz');
-    speak(`${MART_ITEMS_TO_REMEMBER}개 중 ${cc}개를 골랐습니다. 이제 지정된 3개 물건의 총 금액을 입력해 주세요!`);
+    
+    const isEnglish = i18n.language ? i18n.language.startsWith('en') : true;
+    const formattedCorrect = isEnglish 
+      ? `$${(correctPrice / 1000).toLocaleString()}` 
+      : `${correctPrice.toLocaleString()}원`;
+    
+    speak(t('speech.priceQuizStart', { 
+      total: MART_ITEMS_TO_REMEMBER, 
+      correct: cc 
+    }));
   };
 
   useEffect(() => {
@@ -1184,7 +1195,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
           clearInterval(ci);
           const cc = cartItemsRef.current.filter(id => martItemsRef.current.some(i => i.id === id)).length;
           moveToPriceQuiz(cc);
-          speak(`시간 초과! ${cc}개를 골랐습니다.`);
+          speak(t('speech.timeOutShopping', { cc }));
           return 0;
         }
         return prev - 1;
@@ -1195,28 +1206,32 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
   useEffect(() => {
     if (mathQuizPhase !== 'quiz') return;
-    const t = setInterval(() => {
+    const mathTimer = setInterval(() => {
       setMathTimeLeft(prev => {
         if (prev <= 1) {
-          clearInterval(t);
+          clearInterval(mathTimer);
           setMathQuizPhase('answered');
           setMathIsCorrect(false);
           setResultData(prev => ({ ...prev, mathCorrect: false }));
-          speak('시간 초과입니다.');
+          speak(t('speech.timeOut'));
           setTimeout(() => setPhase('result'), 2500);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(mathTimer);
   }, [mathQuizPhase]);
 
   // v5.0: 가격 주관식 제출
   const handleMathSubmit = () => {
     if (mathQuizPhase !== 'quiz' || !mathInputValue.trim()) return;
     setMathQuizPhase('answered');
-    const userPrice = parseInt(mathInputValue);
+    
+    const isEnglish = i18n.language ? i18n.language.startsWith('en') : true;
+    const userPriceRaw = parseInt(mathInputValue);
+    const userPrice = isEnglish ? userPriceRaw * 1000 : userPriceRaw;
+    
     // 오차 ±500원 이내면 정답 처리
     const ok = Math.abs(userPrice - mathCorrectAnswer) <= 500;
     setMathIsCorrect(ok);
@@ -1254,7 +1269,13 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
       mathTime
     }));
     
-    speak(ok ? '정답입니다!' : `아쉽습니다. 정답은 ${mathCorrectAnswer.toLocaleString()}원이었습니다.`);
+    const formattedAnswer = isEnglish 
+      ? `$${(mathCorrectAnswer / 1000).toLocaleString()}` 
+      : `${mathCorrectAnswer.toLocaleString()}원`;
+      
+    speak(ok 
+      ? t('speech.correct') 
+      : t('speech.incorrect', { answer: formattedAnswer }));
     setTimeout(() => setPhase('result'), 2500);
   };
 
@@ -1263,9 +1284,9 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
     if (testType === AssessmentStep.BRAIN_MEMORY) {
       // 카메라 없이 바로 시작
       setPhase('countdown');
-      speak('마트 장보기 테스트를 시작합니다.');
+      speak(t('speech.startMemoryTest'));
     } else {
-      speak('인지 능력 테스트를 시작합니다. 화면에 초록불이 들어오면 오른손을, 파란불이 들어오면 왼손을, 흰색불이 들어오면 양손을 드세요. 빨간불이 들어오면 충동을 억제하고 움직이지 마세요. 카메라에 상반신이 보이도록 서주세요.');
+      speak(t('speech.startReactionTest'));
       setPhase('calibration');
     }
   };
@@ -1283,9 +1304,9 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
   const getTestTitle = () => {
     switch (testType) {
-      case ('BRAIN_REACTION' as any): return { icon: '🧠', title: '인지 능력 테스트', subtitle: '색상 규칙에 따라 충동을 통제하세요' };
-      case AssessmentStep.BRAIN_MEMORY: return { icon: '🛒', title: '마트 장보기', subtitle: '물건을 기억하고 클릭으로 골라주세요' };
-      default: return { icon: '🧠', title: '뇌 테스트', subtitle: '' };
+      case ('BRAIN_REACTION' as any): return { icon: '🧠', title: t('brainTest.reactionTitle'), subtitle: t('brainTest.reactionSubtitle') };
+      case AssessmentStep.BRAIN_MEMORY: return { icon: '🛒', title: t('brainTest.memoryTitle'), subtitle: t('brainTest.memorySubtitle') };
+      default: return { icon: '🧠', title: t('brainTest.defaultTitle'), subtitle: '' };
     }
   };
 
@@ -1295,9 +1316,9 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
   const getStepLabel = () => {
     switch (testType) {
-      case ('BRAIN_REACTION' as any): return { step: '뇌 기능 1단계', title: '🧠 인지 능력 테스트' };
+      case ('BRAIN_REACTION' as any): return { step: t('brainTest.step1'), title: `🧠 ${t('brainTest.reactionTitle')}` };
 
-      case AssessmentStep.BRAIN_MEMORY: return { step: '뇌 기능 2단계', title: '🛒 마트 장보기 기억력' };
+      case AssessmentStep.BRAIN_MEMORY: return { step: t('brainTest.step2'), title: t('brainTest.memoryTitleLabel') };
       default: return { step: '', title: '' };
     }
   };
@@ -1318,9 +1339,9 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
               <span>👤</span>
               <span>{userInfo.name}</span>
               <span className="text-amber-400">|</span>
-              <span>{userInfo.gender === 'male' ? '남' : '여'}</span>
+              <span>{userInfo.gender === 'male' ? t('userInfo.male') : t('userInfo.female')}</span>
               <span className="text-amber-400">|</span>
-              <span>{userInfo.age}세</span>
+              <span>{userInfo.age}{t('userInfo.yearsOld')}</span>
             </div>
           )}
           <button
@@ -1328,7 +1349,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-colors border border-slate-700"
           >
             <i className={`fas fa-${isPortraitMode ? 'mobile-alt' : 'desktop'}`}></i>
-            {isPortraitMode ? '세로 모드' : '가로 모드'}
+            {isPortraitMode ? t('common.portrait') : t('common.landscape')}
           </button>
         </div>
       </div>
@@ -1351,7 +1372,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
               <button
                 onClick={toggleCamera}
                 className="absolute top-4 right-4 w-12 h-12 bg-black/40 backdrop-blur-md rounded-full text-white flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.3)] border border-cyan-400/30 z-[60] hover:bg-black/60 hover:scale-105 active:scale-95 transition-all pointer-events-auto"
-                title="카메라 방향 전환"
+                title={t('camera.switchCamera')}
               >
                 <i className="fas fa-sync-alt text-xl"></i>
               </button>
@@ -1375,19 +1396,19 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
               <div className="text-left space-y-3 text-white/70 text-sm sm:text-base">
                 {testType === ('BRAIN_REACTION' as any) && (
                   <>
-                    <p>🟢 <strong className="text-emerald-400">초록불</strong> → 오른손을 빠르게 들어올리세요</p>
-                    <p>🔵 <strong className="text-blue-400">파란불</strong> → 왼손을 빠르게 들어올리세요</p>
-                    <p>⚪ <strong className="text-white">흰색불</strong> → 양손을 모두 들어올리세요!</p>
-                    <p>🔴 <strong className="text-rose-400">빨간불</strong> → 움직이지 마세요!</p>
-                    <p className="mt-3 text-amber-300 font-bold bg-amber-500/20 px-3 py-2 rounded-lg">⚠️ 주의: 나중에는 화살표 방향이 무작위로 나옵니다. 방향에 속지 말고 색상에만 반응하세요!</p>
-                    <p className="mt-1">📊 총 10회 진행</p>
+                    <p>{t('brainTest.greenRule')}</p>
+                    <p>{t('brainTest.blueRule')}</p>
+                    <p>{t('brainTest.whiteRule')}</p>
+                    <p>{t('brainTest.redRule')}</p>
+                    <p className="mt-3 text-amber-300 font-bold bg-amber-500/20 px-3 py-2 rounded-lg">{t('brainTest.warningRule')}</p>
+                    <p className="mt-1">{t('brainTest.totalTurns')}</p>
                   </>
                 )}
 
                 {testType === AssessmentStep.BRAIN_MEMORY && (
                   <>
-                    <p className="text-base sm:text-lg">🛒 20초 동안 물건 <strong className="text-amber-400">8개</strong>의 이미지를 기억하세요</p>
-                    <p className="text-base sm:text-lg">💰 가격이 표시된 물건의 <strong className="text-rose-400">가격 합계</strong>를 기억하세요</p>
+                    <p className="text-base sm:text-lg">{t('brainTest.memoryRule1')}</p>
+                    <p className="text-base sm:text-lg">{t('brainTest.memoryRule2')}</p>
                   </>
                 )}
               </div>
@@ -1396,7 +1417,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                 onClick={handleStart}
                 className="w-full py-5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xl sm:text-2xl font-black rounded-2xl shadow-lg hover:scale-[1.02] transition-all"
               >
-                시작하기
+                {t('common.start')}
               </button>
             </div>
           )}
@@ -1407,9 +1428,9 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
               {/* 상단 안내 */}
               <div className="pt-6 px-4 text-center">
                 <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 mx-auto max-w-xs">
-                  <h3 className="text-white font-black text-lg mb-1">📷 포즈 확인 중</h3>
+                  <h3 className="text-white font-black text-lg mb-1">{t('brainTest.poseCheck')}</h3>
                   <p className="text-white/70 text-xs">
-                    {'카메라에 상반신이 보이도록 서주세요'}
+                    {t('brainTest.upperBodyNotice')}
                   </p>
                 </div>
               </div>
@@ -1434,7 +1455,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                   {/* 선택적 키포인트 (교차/마트) */}
                   {testType === AssessmentStep.BRAIN_MEMORY && (
                     <div className="border-t border-white/10 pt-2 mt-2">
-                      <p className="text-white/40 text-[10px] font-bold mb-1">추가 감지 (안보여도 OK)</p>
+                      <p className="text-white/40 text-[10px] font-bold mb-1">{t('brainTest.extraDetect')}</p>
                       <div className="grid grid-cols-2 gap-1">
                         {Object.entries(OPTIONAL_KEYPOINTS).map(([key, label]) => (
                           <div key={key} className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 rounded ${
@@ -1456,12 +1477,12 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                       <div className="flex items-center justify-center gap-2">
                         <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
                         <span className="text-emerald-400 text-sm font-black">
-                          포즈 인식 완료! 잠시 유지하세요...
+                          {t('brainTest.poseDone')}
                         </span>
                       </div>
                     ) : (
                       <span className="text-amber-400 text-sm font-bold animate-pulse">
-                        필수 포인트를 카메라에 보여주세요
+                        {t('brainTest.showRequiredPoints')}
                       </span>
                     )}
                   </div>
@@ -1476,11 +1497,11 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
               {/* 상단 안내 */}
               <div className="pt-6 px-4 text-center">
                 <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 mx-auto max-w-xs">
-                  <h3 className="text-white font-black text-lg mb-1">✋ 손 인식 확인</h3>
+                  <h3 className="text-white font-black text-lg mb-1">{t('brainTest.handCheckTitle')}</h3>
                   <p className="text-white/70 text-xs">
-                    {handCheckStep === 'right' && '오른손을 머리 위로 들어보세요'}
-                    {handCheckStep === 'left' && '왼손을 머리 위로 들어보세요'}
-                    {handCheckStep === 'done' && '양손 인식 완료! 곧 시작합니다'}
+                    {handCheckStep === 'right' && t('brainTest.raiseRightHand')}
+                    {handCheckStep === 'left' && t('brainTest.raiseLeftHand')}
+                    {handCheckStep === 'done' && t('brainTest.handsDone')}
                   </p>
                 </div>
               </div>
@@ -1504,7 +1525,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                     <span className={`text-sm font-bold ${
                       leftHandChecked ? 'text-emerald-400' : handCheckStep === 'left' ? 'text-blue-400 animate-pulse' : 'text-white/40'
                     }`}>
-                      왼손 {leftHandChecked ? '확인!' : handCheckStep === 'left' ? '들어보세요' : '대기'}
+                      {t('brainTest.handLeftLabel')} {leftHandChecked ? t('brainTest.checked') : handCheckStep === 'left' ? t('brainTest.pleaseRaise') : t('brainTest.waiting')}
                     </span>
                   </div>
 
@@ -1524,7 +1545,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                     <span className={`text-sm font-bold ${
                       rightHandChecked ? 'text-emerald-400' : handCheckStep === 'right' ? 'text-emerald-400 animate-pulse' : 'text-white/40'
                     }`}>
-                      오른손 {rightHandChecked ? '확인!' : handCheckStep === 'right' ? '들어보세요' : '대기'}
+                      {t('brainTest.handRightLabel')} {rightHandChecked ? t('brainTest.checked') : handCheckStep === 'right' ? t('brainTest.pleaseRaise') : t('brainTest.waiting')}
                     </span>
                   </div>
                 </div>
@@ -1537,16 +1558,16 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
                       <span className="text-emerald-400 text-sm font-black">
-                        양손 인식 완료! 🎉
+                        {t('brainTest.handsSuccess')}
                       </span>
                     </div>
                   ) : (
                     <>
                       <p className="text-amber-400 text-xs font-bold mb-2">
-                        {handCheckStep === 'right' ? '🟢 오른손을 어깨 위로 1초간 올려주세요' : '🔵 왼손을 어깨 위로 1초간 올려주세요'}
+                        {handCheckStep === 'right' ? t('brainTest.raiseRightSec') : t('brainTest.raiseLeftSec')}
                       </p>
                       <p className="text-white/40 text-[10px]">
-                        인식이 안 될 경우 카메라 위치를 조정해 주세요
+                        {t('brainTest.handsAdjustCamera')}
                       </p>
                     </>
                   )}
@@ -1559,8 +1580,8 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
           {/* COUNTDOWN PHASE */}
           {phase === 'countdown' && (
             <div className="text-center">
-              <div className="text-9xl font-black text-white drop-shadow-2xl animate-pulse">{countdown || '시작!'}</div>
-              <p className="text-xl text-white/80 mt-4 font-bold">준비하세요...</p>
+              <div className="text-9xl font-black text-white drop-shadow-2xl animate-pulse">{countdown || t('common.start')}</div>
+              <p className="text-xl text-white/80 mt-4 font-bold">{t('brainTest.getReady')}</p>
             </div>
           )}
 
@@ -1581,7 +1602,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                   </div>
                   {reactionErrors > 0 && (
                     <div className="bg-red-500/80 text-white text-xs font-black px-3 py-1 rounded-full animate-pulse">
-                      오답 {reactionErrors}회
+                      {t('brainTest.wrongCount', { count: reactionErrors })}
                     </div>
                   )}
                 </div>
@@ -1603,14 +1624,14 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
                 {/* 좌우 안내 표시 */}
                 <div className="flex justify-center gap-8 text-white/50 text-xs font-bold">
-                  <span className={signalColor === 'blue' ? 'text-blue-400 scale-125 transition-all' : ''}>👈 왼손 (파란색)</span>
-                  <span className={signalColor === 'green' ? 'text-emerald-400 scale-125 transition-all' : ''}>(초록색) 오른손 👉</span>
+                  <span className={signalColor === 'blue' ? 'text-blue-400 scale-125 transition-all' : ''}>{t('brainTest.guideLeftHandBlue', '👈 왼손 (파란색)')}</span>
+                  <span className={signalColor === 'green' ? 'text-emerald-400 scale-125 transition-all' : ''}>{t('brainTest.guideRightHandGreen', '(초록색) 오른손 👉')}</span>
                 </div>
 
                 <p className={`text-xl font-bold drop-shadow-md ${
                   reactionFlash === 'wrong' ? 'text-red-400 text-2xl' : 
                   reactionFlash === 'correct' ? 'text-emerald-400' : 'text-white'
-                }`}>{reactionMessage || '기다리세요...'}</p>
+                }`}>{reactionMessage || t('brainTest.waiting')}</p>
               </div>
             </>
           )}
@@ -1633,7 +1654,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                       : 'bg-black/80 text-white'
                   } backdrop-blur-md`}>
                     <span>⏱️</span>
-                    <span>{martTimeLeft}초</span>
+                    <span>{martTimeLeft}{t('common.seconds', '초')}</span>
                   </div>
                 )}
                 {martPhase !== 'shopping' && (
@@ -1651,21 +1672,24 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                   <div className={`w-full ${isPortraitMode ? 'max-w-xl px-3' : 'max-w-4xl px-2 sm:px-4'}`}>
                     {/* 안내 + 타이머 */}
                     <div className={`flex items-center justify-between bg-black/50 backdrop-blur-sm border border-white/10 mb-4 sm:mb-6 rounded-2xl sm:rounded-3xl px-4 sm:px-8 py-3 sm:py-5`}>
-                      <span className="text-white font-bold text-sm sm:text-xl">🛒 물건 8개와 표시된 가격을 기억하세요</span>
+                      <span className="text-white font-bold text-sm sm:text-xl">{t('brainTest.memorizeItemsAndPrices', '🛒 물건 8개와 표시된 가격을 기억하세요')}</span>
                       <span className={`font-black ml-3 text-xl sm:text-3xl ${martShowingCountdown <= 5 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`}>
-                        ⏱️ {martShowingCountdown}초
+                        ⏱️ {martShowingCountdown}{t('common.seconds', '초')}
                       </span>
                     </div>
                     {/* v5.1: 8개 아이템 그리드 — 이미지 전용, 랜덤 4개만 가격 표시 */}
                     <div className={`grid ${isPortraitMode ? 'grid-cols-2 gap-3' : 'grid-cols-4 gap-3 sm:gap-4'}`}>
                       {martItemsToRemember.map((item, i) => {
                         const showPrice = martPriceVisibleIds.includes(item.id);
+                        const isEnglish = i18n.language ? i18n.language.startsWith('en') : true;
                         return (
                           <div key={item.id}
                             className={`flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl border ${showPrice ? 'bg-amber-500/20 border-amber-500/50' : 'bg-slate-700/30 border-white/20'} ${isPortraitMode ? 'px-3 py-4' : 'px-3 sm:px-5 py-3 sm:py-5'}`}>
                             <span className={`${isPortraitMode ? 'text-5xl' : 'text-4xl sm:text-6xl'}`}>{item.emoji}</span>
                             {showPrice ? (
-                              <span className={`text-amber-300 font-black mt-2 ${isPortraitMode ? 'text-base' : 'text-sm sm:text-lg'}`}>{item.price.toLocaleString()}원</span>
+                              <span className={`text-amber-300 font-black mt-2 ${isPortraitMode ? 'text-base' : 'text-sm sm:text-lg'}`}>
+                                {isEnglish ? `$${(item.price / 1000).toLocaleString()}` : `${item.price.toLocaleString()}${t('common.currencyWon', '원')}`}
+                              </span>
                             ) : (
                               <span className={`text-white/30 font-bold mt-2 ${isPortraitMode ? 'text-sm' : 'text-xs sm:text-sm'}`}>???</span>
                             )}
@@ -1682,8 +1706,8 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                 <div className="flex-1 flex flex-col items-center justify-center p-4">
                   <div className="bg-indigo-900/80 backdrop-blur-md rounded-3xl border border-indigo-400/50 text-center shadow-[0_0_50px_rgba(79,70,229,0.5)] w-full p-6 sm:p-12 max-w-sm sm:max-w-2xl">
                     <div className="flex justify-between items-center mb-4 sm:mb-6">
-                      <h3 className="font-bold text-indigo-200 text-lg sm:text-3xl">🧠 사칙연산 ({distractionIndex + 1}/2)</h3>
-                      <div className={`font-black px-3 sm:px-4 py-2 rounded-full text-lg sm:text-3xl ${distractionCountdown <= 3 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/10 text-white'}`}>⏱️ {distractionCountdown}초</div>
+                      <h3 className="font-bold text-indigo-200 text-lg sm:text-3xl">🧠 {t('brainTest.mathDistraction', '사칙연산')} ({distractionIndex + 1}/2)</h3>
+                      <div className={`font-black px-3 sm:px-4 py-2 rounded-full text-lg sm:text-3xl ${distractionCountdown <= 3 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/10 text-white'}`}>⏱️ {distractionCountdown}{t('common.seconds', '초')}</div>
                     </div>
                     <div className="font-black text-white tracking-wider bg-black/30 py-6 sm:py-8 rounded-2xl border border-white/10 mb-6 sm:mb-8 text-4xl sm:text-7xl">
                       {distractionQuizzes[distractionIndex].question} = ?
@@ -1716,11 +1740,11 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                             disabled={cartItems.length >= MART_ITEMS_TO_REMEMBER && !inCart}
                             onClick={() => {
                               if (inCart) {
-                                setCartItems(prev => prev.filter(id => id !== item.id));
+                                  setCartItems(prev => prev.filter(id => id !== item.id));
                               } else if (cartItems.length < MART_ITEMS_TO_REMEMBER) {
-                                setCartItems(prev => [...prev, item.id]);
-                                setLastAddedItem(item.id);
-                                setTimeout(() => setLastAddedItem(null), 400);
+                                  setCartItems(prev => [...prev, item.id]);
+                                  setLastAddedItem(item.id);
+                                  setTimeout(() => setLastAddedItem(null), 400);
                               }
                             }}
                             className={`relative flex flex-col items-center justify-center rounded-2xl border-2 transition-all duration-200 select-none active:scale-95 ${isPortraitMode ? 'aspect-square' : 'py-4 sm:py-5 px-2'} ${
@@ -1741,7 +1765,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                     <div className="bg-gradient-to-br from-amber-600/40 to-orange-600/40 border-amber-400/50 backdrop-blur-xl rounded-2xl sm:rounded-3xl border-2 p-3 max-w-5xl w-full flex flex-col transition-all">
                       <div className="flex items-center gap-3 sm:gap-4">
                         <span className="text-xl sm:text-2xl">🛒</span>
-                        <span className="text-white font-black flex-1 text-base sm:text-lg">장바구니</span>
+                        <span className="text-white font-black flex-1 text-base sm:text-lg">{t('brainTest.cartTitle', '장바구니')}</span>
                         <span className="text-amber-300 font-black text-lg sm:text-xl">{cartItems.length}/{MART_ITEMS_TO_REMEMBER}</span>
                       </div>
                       <div className="w-full h-px bg-white/20 my-2"></div>
@@ -1749,7 +1773,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                         {cartItems.length === 0 ? (
                           <div className="w-full flex flex-col items-center justify-center opacity-40 py-1 gap-1">
                             <span className="text-xl sm:text-2xl">👆</span>
-                            <span className="text-white font-bold text-center text-xs sm:text-sm">기억한 물건을 터치해서 담아주세요</span>
+                            <span className="text-white font-bold text-center text-xs sm:text-sm">{t('brainTest.cartEmptyGuide', '기억한 물건을 터치해서 담아주세요')}</span>
                           </div>
                         ) : cartItems.map(id => { 
                           const it = MART_ITEMS.find(i => i.id === id); 
@@ -1774,16 +1798,21 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                   <div className="bg-black/80 backdrop-blur-sm rounded-3xl p-8 sm:p-10 max-w-lg w-full text-center">
                     <div className="flex justify-between items-center mb-6">
                       <span className="text-4xl sm:text-5xl">🧮</span>
-                      <div className={`text-xl sm:text-2xl font-black px-4 py-2 rounded-full ${mathTimeLeft <= 10 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/10 text-white'}`}>⏱️ {mathTimeLeft}초</div>
+                      <div className={`text-xl sm:text-2xl font-black px-4 py-2 rounded-full ${mathTimeLeft <= 10 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/10 text-white'}`}>⏱️ {mathTimeLeft}{t('common.seconds', '초')}</div>
                     </div>
-                    <h3 className="text-white font-black text-xl sm:text-2xl mb-5">가격이 보였던 물건의 총 금액은?</h3>
+                    <h3 className="text-white font-black text-xl sm:text-2xl mb-5">{t('brainTest.priceQuizTitle', '가격이 보였던 물건의 총 금액은?')}</h3>
                     <div className="flex gap-4 justify-center mb-6">
-                      {mathPriceItems.map(item => (
-                        <div key={item.id} className="bg-amber-500/20 rounded-2xl px-4 py-3 flex flex-col items-center border border-amber-500/30">
-                          <span className="text-5xl sm:text-6xl">{item.emoji}</span>
-                          <span className="text-amber-300/50 font-black text-sm mt-2">???원</span>
-                        </div>
-                      ))}
+                      {mathPriceItems.map(item => {
+                        const isEnglish = i18n.language ? i18n.language.startsWith('en') : true;
+                        return (
+                          <div key={item.id} className="bg-amber-500/20 rounded-2xl px-4 py-3 flex flex-col items-center border border-amber-500/30">
+                            <span className="text-5xl sm:text-6xl">{item.emoji}</span>
+                            <span className="text-amber-300/50 font-black text-sm mt-2">
+                              {isEnglish ? '???' : `???${t('common.currencyWon', '원')}`}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                     {mathQuizPhase === 'quiz' && (
                       <div className="flex gap-3 items-center justify-center">
@@ -1793,7 +1822,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                           value={mathInputValue}
                           onChange={e => setMathInputValue(e.target.value)}
                           onKeyDown={e => e.key === 'Enter' && handleMathSubmit()}
-                          placeholder="금액 입력 (예: 12300)"
+                          placeholder={i18n.language?.startsWith('en') ? "Enter total price (ex: 12)" : t('brainTest.pricePlaceholder', '금액 입력 (예: 12300)')}
                           className="w-48 text-center text-xl font-black bg-white/10 border-2 border-amber-400/50 rounded-2xl py-4 text-white placeholder-white/30 focus:outline-none focus:border-amber-400 focus:bg-white/15 transition-all"
                           autoFocus
                         />
@@ -1803,17 +1832,30 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                           className={`px-6 py-4 rounded-2xl font-black text-lg transition-all ${
                             !mathInputValue.trim() ? 'bg-white/10 text-white/40' : 'bg-amber-500 text-white hover:bg-amber-400 active:scale-95'
                           }`}
-                        >확인</button>
+                        >{t('common.confirm', '확인')}</button>
                       </div>
                     )}
                     {mathQuizPhase === 'answered' && (
                       <div className="mt-3">
                         <p className={`text-xl font-black ${mathIsCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {mathIsCorrect ? '🎉 정답!' : `❌ 정답: ${mathCorrectAnswer.toLocaleString()}원`}
+                          {mathIsCorrect 
+                            ? `🎉 ${t('speech.correct')}` 
+                            : `❌ ${t('brainTest.correctPriceLabel', '정답')}: ${i18n.language?.startsWith('en') ? `$${(mathCorrectAnswer / 1000).toLocaleString()}` : `${mathCorrectAnswer.toLocaleString()}원`}`
+                          }
                         </p>
-                        {!mathIsCorrect && mathInputValue && (
-                          <p className="text-white/50 text-sm mt-1">입력값: {parseInt(mathInputValue).toLocaleString()}원 (오차: {Math.abs(parseInt(mathInputValue) - mathCorrectAnswer).toLocaleString()}원)</p>
-                        )}
+                        {!mathIsCorrect && mathInputValue && (() => {
+                          const isEnglish = i18n.language ? i18n.language.startsWith('en') : true;
+                          const inputValueParsed = parseInt(mathInputValue) || 0;
+                          const inputFormatted = isEnglish ? `$${inputValueParsed.toLocaleString()}` : `${inputValueParsed.toLocaleString()}원`;
+                          const diffFormatted = isEnglish 
+                            ? `$${(Math.abs(inputValueParsed * 1000 - mathCorrectAnswer) / 1000).toLocaleString()}` 
+                            : `${Math.abs(inputValueParsed - mathCorrectAnswer).toLocaleString()}원`;
+                          return (
+                            <p className="text-white/50 text-sm mt-1">
+                              {t('brainTest.yourInputLabel', '입력값')}: {inputFormatted} ({t('brainTest.priceDifference', '오차')}: {diffFormatted})
+                            </p>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
@@ -1828,17 +1870,17 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
           {phase === 'result' && (
             <div className="text-center w-full bg-black/60 backdrop-blur-sm rounded-[2rem] shadow-2xl mx-4 max-w-3xl p-5 sm:p-8 space-y-3 max-h-[90vh] overflow-y-auto">
               <div className="text-3xl sm:text-4xl">🧠</div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white">테스트 완료!</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-white">{t('brainTest.testComplete', '테스트 완료!')}</h2>
               
               {testType === ('BRAIN_REACTION' as any) && (
                 <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div className="bg-white/10 rounded-2xl p-3">
-                    <span className="text-white/60 text-xs font-bold">평균 반응시간</span>
+                    <span className="text-white/60 text-xs font-bold">{t('brainTest.averageReactionTime', '평균 반응시간')}</span>
                     <div className="text-3xl sm:text-4xl font-black text-white mt-1">{resultData.reactionTimeMs}ms</div>
                   </div>
                   <div className="bg-white/10 rounded-2xl p-3">
-                    <span className="text-white/60 text-xs font-bold">AI 측정 오답</span>
-                    <div className="text-xl sm:text-2xl font-black text-white mt-1">{resultData.reactionErrors}회</div>
+                    <span className="text-white/60 text-xs font-bold">{t('brainTest.aiWrongCount', 'AI 측정 오답')}</span>
+                    <div className="text-xl sm:text-2xl font-black text-white mt-1">{resultData.reactionErrors}{t('common.times', '회')}</div>
                   </div>
                 </div>
               )}
@@ -1846,26 +1888,36 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
               {testType === AssessmentStep.BRAIN_MEMORY && (
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div className="bg-white/10 rounded-2xl p-3">
-                    <span className="text-white/60 text-xs font-bold">기억력 정답</span>
-                    <div className="text-3xl sm:text-4xl font-black text-white mt-1">{resultData.memoryCorrect}/{MART_ITEMS_TO_REMEMBER}개</div>
-                    <p className="text-white/40 text-[10px] mt-1 font-bold">틀린 개수: {MART_ITEMS_TO_REMEMBER - (resultData.memoryCorrect || 0)}개</p>
+                    <span className="text-white/60 text-xs font-bold">{t('brainTest.memoryResultLabel', '기억력 정답')}</span>
+                    <div className="text-3xl sm:text-4xl font-black text-white mt-1">{resultData.memoryCorrect}/{MART_ITEMS_TO_REMEMBER}{t('common.itemsCount', '개')}</div>
+                    <p className="text-white/40 text-[10px] mt-1 font-bold">{t('brainTest.wrongCountLabel', '틀린 개수')}: {MART_ITEMS_TO_REMEMBER - (resultData.memoryCorrect || 0)}{t('common.itemsCount', '개')}</p>
                   </div>
                   <div className={`rounded-2xl p-3 ${(resultData as any).finalScore >= 80 ? 'bg-emerald-500/20 border-2 border-emerald-500/30' : (resultData as any).finalScore >= 50 ? 'bg-amber-500/20 border-2 border-amber-500/30' : 'bg-red-500/20 border-2 border-red-500/30'}`}>
-                    <span className="text-white/60 text-xs font-bold">종합 평가</span>
+                    <span className="text-white/60 text-xs font-bold">{t('brainTest.comprehensiveEvaluation', '종합 평가')}</span>
                     <div className="text-2xl sm:text-3xl font-black text-white mt-1">
-                      {(resultData as any).finalScore >= 80 ? '🌟 우수' : (resultData as any).finalScore >= 50 ? '👍 보통' : '💪 노력 필요'}
+                      {(resultData as any).finalScore >= 80 
+                        ? `🌟 ${t('brainTest.scoreExcellent', '우수')}` 
+                        : (resultData as any).finalScore >= 50 
+                        ? `👍 ${t('brainTest.scoreNormal', '보통')}` 
+                        : `💪 ${t('brainTest.scorePoor', '노력 필요')}`
+                      }
                     </div>
-                    <p className="text-white/50 text-[10px] mt-1 font-bold">종합 인지 능력: {(resultData as any).finalScore || 0}점</p>
+                    <p className="text-white/50 text-[10px] mt-1 font-bold">{t('brainTest.totalCognitiveScore', '종합 인지 능력')}: {(resultData as any).finalScore || 0}{t('common.pointsShort', '점')}</p>
                   </div>
                   {(resultData as any).distractionCorrect !== undefined && (
                     <div className="bg-white/10 rounded-2xl p-3">
-                      <span className="text-white/60 text-xs font-bold">3자리 연산 (방해 자극)</span>
-                      <div className="text-xl font-black text-white mt-1">{(resultData as any).distractionCorrect}/2개 정답</div>
+                      <span className="text-white/60 text-xs font-bold">{t('brainTest.distractionQuizResult', '3자리 연산 (방해 자극)')}</span>
+                      <div className="text-xl font-black text-white mt-1">{t('brainTest.distractionQuizCorrect', { count: (resultData as any).distractionCorrect })}</div>
                     </div>
                   )}
                   <div className="bg-white/10 rounded-2xl p-3">
-                    <span className="text-white/60 text-xs font-bold">가격 계산 (주관식)</span>
-                    <div className="text-xl font-black text-white mt-1">{resultData.mathCorrect ? '✅ 정답' : '❌ 오답'}</div>
+                    <span className="text-white/60 text-xs font-bold">{t('brainTest.priceQuizResultLabel', '가격 계산 (주관식)')}</span>
+                    <div className="text-xl font-black text-white mt-1">
+                      {resultData.mathCorrect 
+                        ? `✅ ${t('speech.correct', '정답')}` 
+                        : `❌ ${t('brainTest.scoreIncorrect', '오답')}`
+                      }
+                    </div>
                   </div>
                 </div>
               )}
@@ -1874,7 +1926,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                 onClick={handleComplete}
                 className="w-full py-4 mt-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-lg sm:text-xl font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
               >
-                다음 단계로 →
+                {t('common.nextStep', '다음 단계로')} →
               </button>
             </div>
           )}

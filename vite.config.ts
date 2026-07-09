@@ -17,17 +17,21 @@ export default defineConfig(({ mode }) => {
         {
           name: 'local-gemini-proxy',
           configureServer(server) {
-            server.middlewares.use('/api/gemini', async (req, res, next) => {
-              if (req.method === 'POST') {
+            server.middlewares.use(async (req, res, next) => {
+              const url = req.url || '';
+              const isUS = url === '/api/gemini-us';
+              const isKR = url === '/api/gemini';
+              
+              if ((isUS || isKR) && req.method === 'POST') {
                 let body = '';
                 req.on('data', chunk => { body += chunk.toString(); });
                 req.on('end', async () => {
                   try {
                     const parsedBody = JSON.parse(body);
-                    const apiKey = env.GEMINI_API_KEY;
+                    const apiKey = isUS ? (env.GEMINI_API_KEY_US || env.GEMINI_API_KEY) : env.GEMINI_API_KEY;
                     if (!apiKey) {
                       res.statusCode = 500;
-                      res.end(JSON.stringify({ error: 'Local GEMINI_API_KEY is not set in .env' }));
+                      res.end(JSON.stringify({ error: isUS ? 'Local GEMINI_API_KEY_US is not set in .env' : 'Local GEMINI_API_KEY is not set in .env' }));
                       return;
                     }
                     
@@ -79,7 +83,8 @@ export default defineConfig(({ mode }) => {
       define: {
         // 클라이언트 빌드 시에는 환경 변수가 빈 문자열로 교체되므로 소스코드에 키가 노출되지 않음
         'process.env.API_KEY': JSON.stringify(''),
-        'process.env.GEMINI_API_KEY': JSON.stringify('')
+        'process.env.GEMINI_API_KEY': JSON.stringify(''),
+        'process.env.GEMINI_API_KEY_US': JSON.stringify('')
       },
       resolve: {
         alias: {

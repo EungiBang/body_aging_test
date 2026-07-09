@@ -1,6 +1,9 @@
 
 import { GoogleGenAI, Modality } from "@google/genai";
+import i18n from 'i18next';
+import { t as translateText } from '../i18n';
 import { preloadedAudio } from '../assets/audio/preloadedTTS';
+import { preloadedAudioEn } from '../assets/audio/preloadedTTS_en';
 import { ErrorLogger } from './ErrorLogger';
 
 
@@ -85,24 +88,37 @@ export const speak = async (text: string) => {
   const thisSpeechId = currentSpeechId;
   
   try {
+    const isEnglish = true; // 라이트 버전은 항상 영어 고정
+    const targetText = isEnglish ? (translateText(text) || text) : text;
+
     // 0. Check pre-recorded sample (MP3)
-    if (preloadedAudio[text]) {
-      console.log(`내장 MP3 샘플 음성 재생 [id=${thisSpeechId}]`);
-      const audio = new Audio(preloadedAudio[text]);
-      currentHtmlAudio = audio;
-      audio.play().catch(e => console.error('내장 MP3 재생 실패', e));
-      return;
+    if (isEnglish) {
+      if (preloadedAudioEn && preloadedAudioEn[targetText]) {
+        console.log(`[TTS] Playing preloaded EN voice [id=${thisSpeechId}]: "${targetText}"`);
+        const audio = new Audio(preloadedAudioEn[targetText]);
+        currentHtmlAudio = audio;
+        audio.play().catch(e => console.error('[TTS] Failed to play preloaded EN voice', e));
+        return;
+      }
+    } else {
+      if (preloadedAudio && preloadedAudio[targetText]) {
+        console.log(`[TTS] Playing preloaded KO voice [id=${thisSpeechId}]: "${targetText}"`);
+        const audio = new Audio(preloadedAudio[targetText]);
+        currentHtmlAudio = audio;
+        audio.play().catch(e => console.error('[TTS] Failed to play preloaded KO voice', e));
+        return;
+      }
     }
 
     // 1. Check Cache first (Instant AI Voice)
-    if (audioCache[text]) {
-      playBase64Audio(audioCache[text]);
+    if (audioCache[targetText]) {
+      playBase64Audio(audioCache[targetText]);
       return; // Success!
     }
 
     // 2. Wait for AI TTS to fetch premium voice
     if (Date.now() >= quotaExceededUntil && process.env.GEMINI_API_KEY && !isPendingRequest) {
-      const success = await fetchAndPlayText(text, thisSpeechId);
+      const success = await fetchAndPlayText(targetText, thisSpeechId);
       if (success || currentSpeechId !== thisSpeechId) return; // Played successfully via AI! Or overridden!
     }
     
@@ -119,14 +135,18 @@ const fetchAndPlayText = async (text: string, speechId: number): Promise<boolean
   isPendingRequest = true;
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const koreanPrompt = `다음 텍스트를 30대 여성의 힐링이 되는 감성적이고 자연스러운 목소리로 읽어주세요. 기계음처럼 들리지 않게 최대한 사람처럼, 따뜻하고 부드러운 톤으로 말해주세요. 반드시 한국어로만 말하고 숫자도 한국어로 자연스럽게 읽어주세요:\n\n${text}`;
+    const isEnglish = true;
+    
+    const prompt = isEnglish 
+      ? `Please read the following text in a warm, friendly, and natural 30s female voice. Ensure it sounds natural and not robotic:\n\n${text}`
+      : `다음 텍스트를 30대 여성의 힐링이 되는 감성적이고 자연스러운 목소리로 읽어주세요. 기계음처럼 들리지 않게 최대한 사람처럼, 따뜻하고 부드러운 톤으로 말해주세요. 반드시 한국어로만 말하고 숫자도 한국어로 자연스럽게 읽어주세요:\n\n${text}`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: koreanPrompt }] }],
+      contents: [{ parts: [{ text: prompt }] }],
       config: {
         responseModalities: [Modality.AUDIO],
-        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: isEnglish ? 'en-US' : 'Kore' } } },
       },
     });
 

@@ -280,13 +280,13 @@ export const requestDeviceRegistration = async (
   const isCodeValid = settings.liteAutoApproveCode && settings.liteAutoApproveCode === inputCode;
   
   if (!isCodeValid) {
-    return { success: false, status: 'pending', error: '유효하지 않은 LITE 전용 배포 코드입니다.' };
+    return { success: false, status: 'pending', error: 'Invalid LITE authorization code.' };
   }
 
   // 2. 지점 정보 확인 및 라이트 버전 할당량 체크
   const branchDoc = await getDoc(doc(db, 'branches', branchId));
   if (!branchDoc.exists()) {
-    return { success: false, status: 'pending', error: '존재하지 않는 지점입니다.' };
+    return { success: false, status: 'pending', error: 'Center not found.' };
   }
   
   const branchData = branchDoc.data() as Branch;
@@ -300,7 +300,7 @@ export const requestDeviceRegistration = async (
     return { 
       success: false, 
       status: 'pending', 
-      error: `온라인 라이트 버전 허용 기기 수(${liteAllowedLicenses}대)를 초과했습니다. 본사에 문의하여 라이트 버전 추가 승인을 받으세요.` 
+      error: `Online Lite license limit exceeded (${liteAllowedLicenses} devices allowed). Please contact headquarters for additional authorization.` 
     };
   }
 

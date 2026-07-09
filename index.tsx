@@ -1,5 +1,6 @@
-
+// 애플리케이션의 메인 엔트리 포인트 및 i18n 초기화 로드 파일
 import React from 'react';
+import './i18n';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 

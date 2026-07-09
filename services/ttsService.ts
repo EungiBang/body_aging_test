@@ -1,6 +1,9 @@
-
+// 텍스트를 음성(TTS)으로 합성하여 재생하는 서비스 파일
 import { GoogleGenAI, Modality } from "@google/genai";
+import i18n from 'i18next';
+import { t as translateText } from '../BT_3Body_Online_Lite/i18n';
 import { preloadedAudio } from '../assets/audio/preloadedTTS';
+import { preloadedAudioEn } from '../assets/audio/preloadedTTS_en';
 import { ErrorLogger } from './ErrorLogger';
 import { getActiveApiKey } from './geminiService';
 
@@ -29,17 +32,29 @@ export const preloadTTS = async (texts: string[]) => {
   if (!apiKey && !isWebMode()) return;
   if (Date.now() < quotaExceededUntil) return;
 
+  const isEnglish = true;
+
   for (const text of texts) {
-    if (audioCache[text]) continue;
+    const translatedText = translateText(text);
+    if (audioCache[translatedText]) continue;
     
     try {
-      const koreanPrompt = `다음 텍스트를 30대 여성의 힐링이 되는 감성적이고 자연스러운 목소리로 읽어주세요. 기계음처럼 들리지 않게 최대한 사람처럼, 따뜻하고 부드러운 톤으로 말해주세요. 반드시 한국어로만 말하고 숫자도 한국어로 자연스럽게 읽어주세요:\n\n${text}`;
+      const ttsPrompt = isEnglish
+        ? `Please read the following text in a natural, warm, and healing voice of a female in her 30s. Make it sound as natural and human-like as possible, with a warm and gentle tone:\n\n${translatedText}`
+        : `다음 텍스트를 30대 여성의 힐링이 되는 감성적이고 자연스러운 목소리로 읽어주세요. 기계음처럼 들리지 않게 최대한 사람처럼, 따뜻하고 부드러운 톤으로 말해주세요. 반드시 한국어로만 말하고 숫자도 한국어로 자연스럽게 읽어주세요:\n\n${translatedText}`;
+      
       const ttsParams = {
         model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: koreanPrompt }] }],
+        contents: [{ parts: [{ text: ttsPrompt }] }],
         config: {
           responseModalities: [Modality.AUDIO],
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
+          speechConfig: { 
+            voiceConfig: { 
+              prebuiltVoiceConfig: { 
+                voiceName: isEnglish ? 'Aoede' : 'Kore' 
+              } 
+            } 
+          },
         },
       };
 
@@ -90,25 +105,39 @@ export const speak = async (text: string) => {
   stopSpeaking();
   const thisSpeechId = currentSpeechId;
   
+  const translatedText = translateText(text);
+  
   try {
+    const isEnglish = i18n.language ? i18n.language.startsWith('en') : true;
+    
     // 0. Check pre-recorded sample (MP3)
-    if (preloadedAudio[text]) {
-      console.log(`내장 MP3 샘플 음성 재생 [id=${thisSpeechId}]`);
-      const audio = new Audio(preloadedAudio[text]);
-      currentHtmlAudio = audio;
-      audio.play().catch(e => console.error('내장 MP3 재생 실패', e));
-      return;
+    if (isEnglish) {
+      if (preloadedAudioEn && preloadedAudioEn[translatedText]) {
+        console.log(`[TTS] Playing preloaded EN voice [id=${thisSpeechId}]: "${translatedText}"`);
+        const audio = new Audio(preloadedAudioEn[translatedText]);
+        currentHtmlAudio = audio;
+        audio.play().catch(e => console.error('[TTS] Failed to play preloaded EN voice', e));
+        return;
+      }
+    } else {
+      if (preloadedAudio && preloadedAudio[translatedText]) {
+        console.log(`[TTS] Playing preloaded KO voice [id=${thisSpeechId}]: "${translatedText}"`);
+        const audio = new Audio(preloadedAudio[translatedText]);
+        currentHtmlAudio = audio;
+        audio.play().catch(e => console.error('[TTS] Failed to play preloaded KO voice', e));
+        return;
+      }
     }
 
     // 1. Check Cache first (Instant AI Voice)
-    if (audioCache[text]) {
-      playBase64Audio(audioCache[text]);
+    if (audioCache[translatedText]) {
+      playBase64Audio(audioCache[translatedText]);
       return; // Success!
     }
 
     // 2. Wait for AI TTS to fetch premium voice
     if (Date.now() >= quotaExceededUntil && (isWebMode() || process.env.GEMINI_API_KEY) && !isPendingRequest) {
-      const success = await fetchAndPlayText(text, thisSpeechId);
+      const success = await fetchAndPlayText(translatedText, thisSpeechId);
       if (success || currentSpeechId !== thisSpeechId) return; // Played successfully via AI! Or overridden!
     }
     
@@ -124,13 +153,23 @@ const fetchAndPlayText = async (text: string, speechId: number): Promise<boolean
   
   isPendingRequest = true;
   try {
-    const koreanPrompt = `다음 텍스트를 30대 여성의 힐링이 되는 감성적이고 자연스러운 목소리로 읽어주세요. 기계음처럼 들리지 않게 최대한 사람처럼, 따뜻하고 부드러운 톤으로 말해주세요. 반드시 한국어로만 말하고 숫자도 한국어로 자연스럽게 읽어주세요:\n\n${text}`;
+    const isEnglish = true;
+    const ttsPrompt = isEnglish
+      ? `Please read the following text in a natural, warm, and healing voice of a female in her 30s. Make it sound as natural and human-like as possible, with a warm and gentle tone:\n\n${text}`
+      : `다음 텍스트를 30대 여성의 힐링이 되는 감성적이고 자연스러운 목소리로 읽어주세요. 기계음처럼 들리지 않게 최대한 사람처럼, 따뜻하고 부드러운 톤으로 말해주세요. 반드시 한국어로만 말하고 숫자도 한국어로 자연스럽게 읽어주세요:\n\n${text}`;
+    
     const ttsParams = {
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: koreanPrompt }] }],
+      contents: [{ parts: [{ text: ttsPrompt }] }],
       config: {
         responseModalities: [Modality.AUDIO],
-        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
+        speechConfig: { 
+          voiceConfig: { 
+            prebuiltVoiceConfig: { 
+              voiceName: isEnglish ? 'Aoede' : 'Kore' 
+            } 
+          } 
+        },
       },
     };
 

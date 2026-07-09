@@ -1,0 +1,348 @@
+﻿diff --git a/components/BrainTestModule.tsx b/components/BrainTestModule.tsx
+index 9ac80f9..d9500f0 100644
+--- a/components/BrainTestModule.tsx
++++ b/components/BrainTestModule.tsx
+@@ -1,5 +1,6 @@
+-
++// ?먮뇤 ?몄? 諛섏쓳 諛?湲곗뼲???뚯뒪??吏꾪뻾??泥섎━?섎뒗 寃뚯엫??痢≪젙 而댄룷?뚰듃
+ import React, { useState, useEffect, useRef, useCallback } from 'react';
++import { useTranslation } from 'react-i18next';
+ import { AssessmentStep, BrainTestData, UserInfo } from '../types';
+ import { speak } from '../services/ttsService';
+ import * as tf from '@tensorflow/tfjs-core';
+@@ -20,43 +21,43 @@ type GamePhase = 'intro' | 'calibration' | 'handcheck' | 'countdown' | 'playing'
+ 
+ // Cross-body instructions (臾대쫷 ?ы븿)
+ const CROSS_INSTRUCTIONS = [
+-  { text: '?ㅻⅨ?????쇱そ ?닿묠', ttsText: '?ㅻⅨ?? ?쇱そ ?닿묠', hand: 'right', target: 'left_shoulder' },
+-  { text: '?쇱넀 ???ㅻⅨ履??닿묠', ttsText: '?쇱넀, ?ㅻⅨ履??닿묠', hand: 'left', target: 'right_shoulder' },
+-  { text: '?ㅻⅨ?????쇱そ 臾대쫷', ttsText: '?ㅻⅨ?? ?쇱そ 臾대쫷', hand: 'right', target: 'left_knee' },
+-  { text: '?쇱넀 ???ㅻⅨ履?臾대쫷', ttsText: '?쇱넀, ?ㅻⅨ履?臾대쫷', hand: 'left', target: 'right_knee' },
+-  { text: '?ㅻⅨ?????쇱そ ?덈━', ttsText: '?ㅻⅨ?? ?쇱そ ?덈━', hand: 'right', target: 'left_hip' },
+-  { text: '?쇱넀 ???ㅻⅨ履??덈━', ttsText: '?쇱넀, ?ㅻⅨ履??덈━', hand: 'left', target: 'right_hip' },
+-  { text: '?ㅻⅨ????癒몃━ ??, ttsText: '?ㅻⅨ?? 癒몃━ ??, hand: 'right', target: 'head' },
+-  { text: '?쇱넀 ??癒몃━ ??, ttsText: '?쇱넀, 癒몃━ ??, hand: 'left', target: 'head' },
++  { text: '?ㅻⅨ?????쇱そ ?닿묠', textEn: 'Right Hand ??Left Shoulder', ttsText: '?ㅻⅨ?? ?쇱そ ?닿묠', ttsTextEn: 'Right hand, left shoulder', hand: 'right', target: 'left_shoulder' },
++  { text: '?쇱넀 ???ㅻⅨ履??닿묠', textEn: 'Left Hand ??Right Shoulder', ttsText: '?쇱넀, ?ㅻⅨ履??닿묠', ttsTextEn: 'Left hand, right shoulder', hand: 'left', target: 'right_shoulder' },
++  { text: '?ㅻⅨ?????쇱そ 臾대쫷', textEn: 'Right Hand ??Left Knee', ttsText: '?ㅻⅨ?? ?쇱そ 臾대쫷', ttsTextEn: 'Right hand, left knee', hand: 'right', target: 'left_knee' },
++  { text: '?쇱넀 ???ㅻⅨ履?臾대쫷', textEn: 'Left Hand ??Right Knee', ttsText: '?쇱넀, ?ㅻⅨ履?臾대쫷', ttsTextEn: 'Left hand, right knee', hand: 'left', target: 'right_knee' },
++  { text: '?ㅻⅨ?????쇱そ ?덈━', textEn: 'Right Hand ??Left Hip', ttsText: '?ㅻⅨ?? ?쇱そ ?덈━', ttsTextEn: 'Right hand, left hip', hand: 'right', target: 'left_hip' },
++  { text: '?쇱넀 ???ㅻⅨ履??덈━', textEn: 'Left Hand ??Right Hip', ttsText: '?쇱넀, ?ㅻⅨ履??덈━', ttsTextEn: 'Left hand, right hip', hand: 'left', target: 'right_hip' },
++  { text: '?ㅻⅨ????癒몃━ ??, textEn: 'Right Hand ??Above Head', ttsText: '?ㅻⅨ?? 癒몃━ ??, ttsTextEn: 'Right hand, above head', hand: 'right', target: 'head' },
++  { text: '?쇱넀 ??癒몃━ ??, textEn: 'Left Hand ??Above Head', ttsText: '?쇱넀, 癒몃━ ??, ttsTextEn: 'Left hand, above head', hand: 'left', target: 'head' },
+ ];
+ 
+ // ============ MART SHOPPING GAME DATA v5.1 ============
+ // v5.1: 24媛?臾쇨굔, ?대?吏 ?꾩슜 湲곗뼲, 泥쒖썝 ?⑥쐞 媛寃? const MART_ITEMS = [
+-  { id: 'apple', emoji: '?뜋', name: '?ш낵', price: 4000 },
+-  { id: 'banana', emoji: '?뜉', name: '諛붾굹??, price: 3000 },
+-  { id: 'milk', emoji: '?쪢', name: '?곗쑀', price: 4000 },
+-  { id: 'bread', emoji: '?뜛', name: '?앸뭇', price: 3000 },
+-  { id: 'egg', emoji: '?쪡', name: '怨꾨?', price: 6000 },
+-  { id: 'carrot', emoji: '?쪜', name: '?밴렐', price: 2000 },
+-  { id: 'fish', emoji: '?맅', name: '?앹꽑', price: 8000 },
+-  { id: 'cheese', emoji: '??', name: '移섏쫰', price: 4000 },
+-  { id: 'tomato', emoji: '?뛿', name: '?좊쭏??, price: 3000 },
+-  { id: 'chicken', emoji: '?뜔', name: '??퀬湲?, price: 7000 },
+-  { id: 'grape', emoji: '?뜃', name: '?щ룄', price: 5000 },
+-  { id: 'watermelon', emoji: '?뜆', name: '?섎컯', price: 9000 },
+-  { id: 'onion', emoji: '?쭋', name: '?묓뙆', price: 2000 },
+-  { id: 'corn', emoji: '?뙺', name: '?μ닔??, price: 3000 },
+-  { id: 'shrimp', emoji: '?쫹', name: '?덉슦', price: 6000 },
+-  { id: 'pepper', emoji: '?뙳截?, name: '怨좎텛', price: 2000 },
+-  { id: 'mushroom', emoji: '?뛾', name: '踰꾩꽢', price: 4000 },
+-  { id: 'peach', emoji: '?뜎', name: '蹂듭댂??, price: 5000 },
+-  { id: 'strawberry', emoji: '?뜐', name: '?멸린', price: 6000 },
+-  { id: 'pear', emoji: '?뜍', name: '諛?, price: 4000 },
+-  { id: 'melon', emoji: '?뜄', name: '李몄쇅', price: 3000 },
+-  { id: 'sweetpotato', emoji: '?뜝', name: '怨좉뎄留?, price: 3000 },
+-  { id: 'broccoli', emoji: '?ⅵ', name: '釉뚮줈肄쒕━', price: 3000 },
+-  { id: 'avocado', emoji: '?쪗', name: '?꾨낫移대룄', price: 5000 },
++  { id: 'apple', emoji: '?뜋', name: '?ш낵', nameEn: 'Apple', price: 4000 },
++  { id: 'banana', emoji: '?뜉', name: '諛붾굹??, nameEn: 'Banana', price: 3000 },
++  { id: 'milk', emoji: '?쪢', name: '?곗쑀', nameEn: 'Milk', price: 4000 },
++  { id: 'bread', emoji: '?뜛', name: '?앸뭇', nameEn: 'Bread', price: 3000 },
++  { id: 'egg', emoji: '?쪡', name: '怨꾨?', nameEn: 'Eggs', price: 6000 },
++  { id: 'carrot', emoji: '?쪜', name: '?밴렐', nameEn: 'Carrot', price: 2000 },
++  { id: 'fish', emoji: '?맅', name: '?앹꽑', nameEn: 'Fish', price: 8000 },
++  { id: 'cheese', emoji: '??', name: '移섏쫰', nameEn: 'Cheese', price: 4000 },
++  { id: 'tomato', emoji: '?뛿', name: '?좊쭏??, nameEn: 'Tomato', price: 3000 },
++  { id: 'chicken', emoji: '?뜔', name: '??퀬湲?, nameEn: 'Chicken', price: 7000 },
++  { id: 'grape', emoji: '?뜃', name: '?щ룄', nameEn: 'Grapes', price: 5000 },
++  { id: 'watermelon', emoji: '?뜆', name: '?섎컯', nameEn: 'Watermelon', price: 9000 },
++  { id: 'onion', emoji: '?쭋', name: '?묓뙆', nameEn: 'Onion', price: 2000 },
++  { id: 'corn', emoji: '?뙺', name: '?μ닔??, keywordEn: 'Corn', nameEn: 'Corn', price: 3000 },
++  { id: 'shrimp', emoji: '?쫹', name: '?덉슦', nameEn: 'Shrimp', price: 6000 },
++  { id: 'pepper', emoji: '?뙳截?, name: '怨좎텛', nameEn: 'Pepper', price: 2000 },
++  { id: 'mushroom', emoji: '?뛾', name: '踰꾩꽢', nameEn: 'Mushroom', price: 4000 },
++  { id: 'peach', emoji: '?뜎', name: '蹂듭댂??, nameEn: 'Peach', price: 5000 },
++  { id: 'strawberry', emoji: '?뜐', name: '?멸린', nameEn: 'Strawberry', price: 6000 },
++  { id: 'pear', emoji: '?뜍', name: '諛?, nameEn: 'Pear', price: 4000 },
++  { id: 'melon', emoji: '?뜄', name: '李몄쇅', nameEn: 'Melon', price: 3000 },
++  { id: 'sweetpotato', emoji: '?뜝', name: '怨좉뎄留?, nameEn: 'Sweet Potato', price: 3000 },
++  { id: 'broccoli', emoji: '?ⅵ', name: '釉뚮줈肄쒕━', nameEn: 'Broccoli', price: 3000 },
++  { id: 'avocado', emoji: '?쪗', name: '?꾨낫移대룄', nameEn: 'Avocado', price: 5000 },
+ ];
+ 
+ // v5.0 諛⑺빐 怨쇱젣: 3?먮━ 諛쏆븘?щ┝/諛쏆븘?대┝ ?곗궛 ?앹꽦湲?@@ -91,6 +92,7 @@ const generateHardMathQuiz = (isAdd: boolean): { question: string; answer: numbe
+ };
+ 
+ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete, preferredCameraId, userInfo }) => {
++  const { t, i18n } = useTranslation();
+   const [isPortraitMode, setIsPortraitMode] = useState(false);
+   const videoRef = useRef<HTMLVideoElement>(null);
+   const canvasRef = useRef<HTMLCanvasElement>(null);
+@@ -1184,7 +1186,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+           clearInterval(ci);
+           const cc = cartItemsRef.current.filter(id => martItemsRef.current.some(i => i.id === id)).length;
+           moveToPriceQuiz(cc);
+-          speak(`?쒓컙 珥덇낵! ${cc}媛쒕? 怨⑤옄?듬땲??`);
++          speak(t('speech.timeOutShopping', { cc: cc }));
+           return 0;
+         }
+         return prev - 1;
+@@ -1202,7 +1204,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+           setMathQuizPhase('answered');
+           setMathIsCorrect(false);
+           setResultData(prev => ({ ...prev, mathCorrect: false }));
+-          speak('?쒓컙 珥덇낵?낅땲??');
++          speak(t('speech.timeOut'));
+           setTimeout(() => setPhase('result'), 2500);
+           return 0;
+         }
+@@ -1216,7 +1218,9 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+   const handleMathSubmit = () => {
+     if (mathQuizPhase !== 'quiz' || !mathInputValue.trim()) return;
+     setMathQuizPhase('answered');
+-    const userPrice = parseInt(mathInputValue);
++    const isEnglish = i18n.language ? i18n.language.startsWith('en') : true;
++    const userPriceRaw = parseInt(mathInputValue);
++    const userPrice = isEnglish ? userPriceRaw * 1000 : userPriceRaw;
+     // ?ㅼ감 짹500???대궡硫??뺣떟 泥섎━
+     const ok = Math.abs(userPrice - mathCorrectAnswer) <= 500;
+     setMathIsCorrect(ok);
+@@ -1254,7 +1258,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+       mathTime
+     }));
+     
+-    speak(ok ? '?뺣떟?낅땲??' : `?꾩돺?듬땲?? ?뺣떟? ${mathCorrectAnswer.toLocaleString()}?먯씠?덉뒿?덈떎.`);
++    speak(ok ? t('speech.correct') : t('speech.incorrect', { answer: mathCorrectAnswer.toLocaleString() }));
+     setTimeout(() => setPhase('result'), 2500);
+   };
+ 
+@@ -1263,9 +1267,9 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+     if (testType === AssessmentStep.BRAIN_MEMORY) {
+       // 移대찓???놁씠 諛붾줈 ?쒖옉
+       setPhase('countdown');
+-      speak('留덊듃 ?λ낫湲??뚯뒪?몃? ?쒖옉?⑸땲??');
++      speak(t('speech.startMemoryTest'));
+     } else {
+-      speak('?몄? ?λ젰 ?뚯뒪?몃? ?쒖옉?⑸땲?? ?붾㈃??珥덈줉遺덉씠 ?ㅼ뼱?ㅻ㈃ ?ㅻⅨ?먯쓣, ?뚮?遺덉씠 ?ㅼ뼱?ㅻ㈃ ?쇱넀?? ?곗깋遺덉씠 ?ㅼ뼱?ㅻ㈃ ?묒넀???쒖꽭?? 鍮④컙遺덉씠 ?ㅼ뼱?ㅻ㈃ 異⑸룞???듭젣?섍퀬 ?吏곸씠吏 留덉꽭?? 移대찓?쇱뿉 ?곷컲?좎씠 蹂댁씠?꾨줉 ?쒖＜?몄슂.');
++      speak(t('speech.startReactionTest'));
+       setPhase('calibration');
+     }
+   };
+@@ -1283,9 +1287,9 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+ 
+   const getTestTitle = () => {
+     switch (testType) {
+-      case ('BRAIN_REACTION' as any): return { icon: '?쭬', title: '?몄? ?λ젰 ?뚯뒪??, subtitle: '?됱긽 洹쒖튃???곕씪 異⑸룞???듭젣?섏꽭?? };
+-      case AssessmentStep.BRAIN_MEMORY: return { icon: '?썟', title: '留덊듃 ?λ낫湲?, subtitle: '臾쇨굔??湲곗뼲?섍퀬 ?대┃?쇰줈 怨⑤씪二쇱꽭?? };
+-      default: return { icon: '?쭬', title: '???뚯뒪??, subtitle: '' };
++      case ('BRAIN_REACTION' as any): return { icon: '?쭬', title: t('brainTest.reactionTitle'), subtitle: t('brainTest.reactionSubtitle') };
++      case AssessmentStep.BRAIN_MEMORY: return { icon: '?썟', title: t('brainTest.memoryTitle'), subtitle: t('brainTest.memorySubtitle') };
++      default: return { icon: '?쭬', title: t('brainTest.defaultTitle'), subtitle: '' };
+     }
+   };
+ 
+@@ -1318,9 +1322,9 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+               <span>?뫀</span>
+               <span>{userInfo.name}</span>
+               <span className="text-amber-400">|</span>
+-              <span>{userInfo.gender === 'male' ? '?? : '??}</span>
++              <span>{userInfo.gender === 'male' ? t('userInfo.male') : t('userInfo.female')}</span>
+               <span className="text-amber-400">|</span>
+-              <span>{userInfo.age}??/span>
++              <span>{userInfo.age}{t('userInfo.yearsOld')}</span>
+             </div>
+           )}
+           <button
+@@ -1328,7 +1332,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl flex items-center gap-2 transition-colors border border-slate-700"
+           >
+             <i className={`fas fa-${isPortraitMode ? 'mobile-alt' : 'desktop'}`}></i>
+-            {isPortraitMode ? '?몃줈 紐⑤뱶' : '媛濡?紐⑤뱶'}
++            {isPortraitMode ? t('common.portrait') : t('common.landscape')}
+           </button>
+         </div>
+       </div>
+@@ -1375,19 +1379,19 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+               <div className="text-left space-y-3 text-white/70 text-sm sm:text-base">
+                 {testType === ('BRAIN_REACTION' as any) && (
+                   <>
+-                    <p>?윟 <strong className="text-emerald-400">珥덈줉遺?/strong> ???ㅻⅨ?먯쓣 鍮좊Ⅴ寃??ㅼ뼱?щ━?몄슂</p>
+-                    <p>?뵷 <strong className="text-blue-400">?뚮?遺?/strong> ???쇱넀??鍮좊Ⅴ寃??ㅼ뼱?щ━?몄슂</p>
+-                    <p>??<strong className="text-white">?곗깋遺?/strong> ???묒넀??紐⑤몢 ?ㅼ뼱?щ━?몄슂!</p>
+-                    <p>?뵶 <strong className="text-rose-400">鍮④컙遺?/strong> ???吏곸씠吏 留덉꽭??</p>
+-                    <p className="mt-3 text-amber-300 font-bold bg-amber-500/20 px-3 py-2 rounded-lg">?좑툘 二쇱쓽: ?섏쨷?먮뒗 ?붿궡??諛⑺뼢??臾댁옉?꾨줈 ?섏샃?덈떎. 諛⑺뼢???띿? 留먭퀬 ?됱긽?먮쭔 諛섏쓳?섏꽭??</p>
+-                    <p className="mt-1">?뱤 珥?10??吏꾪뻾</p>
++                    <p>{t('brainTest.greenRule')}</p>
++                    <p>{t('brainTest.blueRule')}</p>
++                    <p>{t('brainTest.whiteRule')}</p>
++                    <p>{t('brainTest.redRule')}</p>
++                    <p className="mt-3 text-amber-300 font-bold bg-amber-500/20 px-3 py-2 rounded-lg">{t('brainTest.warningRule')}</p>
++                    <p className="mt-1">{t('brainTest.totalTurns')}</p>
+                   </>
+                 )}
+ 
+                 {testType === AssessmentStep.BRAIN_MEMORY && (
+                   <>
+-                    <p className="text-base sm:text-lg">?썟 20珥??숈븞 臾쇨굔 <strong className="text-amber-400">8媛?/strong>???대?吏瑜?湲곗뼲?섏꽭??/p>
+-                    <p className="text-base sm:text-lg">?뮥 媛寃⑹씠 ?쒖떆??臾쇨굔??<strong className="text-rose-400">媛寃??⑷퀎</strong>瑜?湲곗뼲?섏꽭??/p>
++                    <p className="text-base sm:text-lg">{t('brainTest.memoryRule1')}</p>
++                    <p className="text-base sm:text-lg">{t('brainTest.memoryRule2')}</p>
+                   </>
+                 )}
+               </div>
+@@ -1396,7 +1400,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+                 onClick={handleStart}
+                 className="w-full py-5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xl sm:text-2xl font-black rounded-2xl shadow-lg hover:scale-[1.02] transition-all"
+               >
+-                ?쒖옉?섍린
++                {t('common.start')}
+               </button>
+             </div>
+           )}
+@@ -1524,7 +1528,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+                     <span className={`text-sm font-bold ${
+                       rightHandChecked ? 'text-emerald-400' : handCheckStep === 'right' ? 'text-emerald-400 animate-pulse' : 'text-white/40'
+                     }`}>
+-                      ?ㅻⅨ??{rightHandChecked ? '?뺤씤!' : handCheckStep === 'right' ? '?ㅼ뼱蹂댁꽭?? : '?湲?}
++                      {t('brainTest.rightHand')} {rightHandChecked ? t('brainTest.checked') : handCheckStep === 'right' ? t('brainTest.raise') : t('brainTest.wait')}
+                     </span>
+                   </div>
+                 </div>
+@@ -1537,74 +1541,60 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
+                     <div className="flex items-center justify-center gap-2">
+                       <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
+                       <span className="text-emerald-400 text-sm font-black">
+-                        ?묒넀 ?몄떇 ?꾨즺! ?럦
+-                      </span>
++                        ?묒넀 ?몄떇 ?꾨즺! ??             <div className={`absolute top-3 inset-x-0 text-center z-50 pointer-events-none ${martPhase === 'showing' ? 'hidden' : ''}`}>
++                {martPhase === 'shopping' && (
++                  <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 mb-2 font-black text-base sm:text-lg shadow-lg ${
++                    martTimeLeft <= 10 
++                      ? 'bg-red-500/90 text-white animate-pulse' 
++                      : martTimeLeft <= 30 
++                      ? 'bg-amber-500/80 text-white' 
++                      : 'bg-black/80 text-white'
++                  } backdrop-blur-md`}>
++                    <span>?깍툘</span>
++                    <span>{martTimeLeft}{t('common.seconds', '珥?)}</span>
++                  </div>
++                )}
++                {martPhase !== 'shopping' && (
++                  <div>
++                    <div className="bg-black/80 backdrop-blur-md rounded-xl px-4 py-2 inline-block shadow-lg border border-white/10">
++                      <p className="text-white font-bold text-sm">{martMessage}</p>
+                     </div>
+-                  ) : (
+-                    <>
+-                      <p className="text-amber-400 text-xs font-bold mb-2">
+-                        {handCheckStep === 'right' ? '?윟 ?ㅻⅨ?먯쓣 ?닿묠 ?꾨줈 1珥덇컙 ?щ젮二쇱꽭?? : '?뵷 ?쇱넀???닿묠 ?꾨줈 1珥덇컙 ?щ젮二쇱꽭??}
+-                      </p>
+-                      <p className="text-white/40 text-[10px]">
+-                        ?몄떇??????寃쎌슦 移대찓???꾩튂瑜?議곗젙??二쇱꽭??-                      </p>
+-                    </>
+-                  )}
+-                </div>
+-              </div>
+-            </div>
+-          )}
+-
+-
+-          {/* COUNTDOWN PHASE */}
+-          {phase === 'countdown' && (
+-            <div className="text-center">
+-              <div className="text-9xl font-black text-white drop-shadow-2xl animate-pulse">{countdown || '?쒖옉!'}</div>
+-              <p className="text-xl text-white/80 mt-4 font-bold">以鍮꾪븯?몄슂...</p>
+-            </div>
+-          )}
+-
+-          {/* PLAYING - REACTION (?먯쭊???쒖씠??10?? */}
+-          {phase === 'playing' && testType === ('BRAIN_REACTION' as any) && (
+-            <>
+-              {/* ?ㅻ떟 ???붾㈃ 踰덉꺽???④낵 */}
+-              {reactionFlash === 'wrong' && (
+-                <div className="absolute inset-0 bg-red-500/30 z-40 animate-pulse pointer-events-none rounded-[2.5rem]" />
+-              )}
+-              {reactionFlash === 'correct' && (
+-                <div className="absolute inset-0 bg-emerald-500/15 z-40 pointer-events-none rounded-[2.5rem]" />
+-              )}
+-              <div className="text-center space-y-6">
+-                <div className="flex justify-center items-center gap-4">
+-                  <div className="text-sm font-bold text-white/60 uppercase tracking-wider">
+-                    {reactionRound + 1} / {REACTION_TOTAL}
+                   </div>
+-                  {reactionErrors > 0 && (
+-                    <div className="bg-red-500/80 text-white text-xs font-black px-3 py-1 rounded-full animate-pulse">
+-                      ?ㅻ떟 {reactionErrors}??+                )}
++              </div>
++ 
++              {/* v5.0: 湲곗뼲?섍린 ?④퀎 ???대?吏 ?꾩슜 + 媛寃??쒖떆 */}
++              {martPhase === 'showing' && (
++                <div className={`flex-1 flex flex-col items-center ${isPortraitMode ? 'justify-start pt-4' : 'justify-center'} p-3 sm:p-4 overflow-auto`}>
++                  <div className={`w-full ${isPortraitMode ? 'max-w-xl px-3' : 'max-w-4xl px-2 sm:px-4'}`}>
++                    {/* ?덈궡 + ??대㉧ */}
++                    <div className={`flex items-center justify-between bg-black/50 backdrop-blur-sm border border-white/10 mb-4 sm:mb-6 rounded-2xl sm:rounded-3xl px-4 sm:px-8 py-3 sm:py-5`}>
++                      <span className="text-white font-bold text-sm sm:text-xl">{t('brainTest.memorizeItemsAndPrices', '?썟 臾쇨굔 8媛쒖? ?쒖떆??媛寃⑹쓣 湲곗뼲?섏꽭??)}</span>
++                      <span className={`font-black ml-3 text-xl sm:text-3xl ${martShowingCountdown <= 5 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`}>
++                        ?깍툘 {martShowingCountdown}{t('common.seconds', '珥?)}
++                      </span>
+                     </div>
+-                  )}
+-                </div>
+-                
+-                <div className={`w-40 h-40 rounded-full mx-auto flex items-center justify-center transition-all duration-200 ${
+-                  signalColor === 'green' ? 'bg-emerald-500 shadow-[0_0_80px_rgba(16,185,129,0.8)]' :
+-                  signalColor === 'blue' ? 'bg-blue-500 shadow-[0_0_80px_rgba(59,130,246,0.8)]' :
+-                  signalColor === 'red' ? 'bg-rose-500 shadow-[0_0_80px_rgba(244,63,94,0.8)]' :
+-                  signalColor === 'white' ? 'bg-white shadow-[0_0_80px_rgba(255,255,255,0.8)]' :
+-                  'bg-white/20 border-2 border-white/30'
+-                }`}>
+-                  <span className="text-5xl">
+-                    {signalDirection === 'right' ? '?몛' : 
+-                     signalDirection === 'left' ? '?몚' : 
+-                     signalDirection === 'both' ? '?솈' : 
+-                     signalDirection === 'none' && signalColor === 'red' ? '?슟' : '??}
+-                  </span>
+-                </div>
+-
+-                {/* 醫뚯슦 ?덈궡 ?쒖떆 */}
+-                <div className="flex justify-center gap-8 text-white/50 text-xs font-bold">
+-                  <span className={signalColor === 'blue' ? 'text-blue-400 scale-125 transition-all' : ''}>?몚 ?쇱넀 (?뚮???</span>
+-                  <span className={signalColor === 'green' ? 'text-emerald-400 scale-125 transition-all' : ''}>(珥덈줉?? ?ㅻⅨ???몛</span>
++                    {/* v5.1: 8媛??꾩씠??洹몃━?????대?吏 ?꾩슜, ?쒕뜡 4媛쒕쭔 媛寃??쒖떆 */}
++                    <div className={`grid ${isPortraitMode ? 'grid-cols-2 gap-3' : 'grid-cols-4 gap-3 sm:gap-4'}`}>
++                      {martItemsToRemember.map((item, i) => {
++                        const showPrice = martPriceVisibleIds.includes(item.id);
++                        const isEnglish = i18n.language ? i18n.language.startsWith('en') : true;
++                        return (
++                          <div key={item.id}
++                            className={`flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl border ${showPrice ? 'bg-amber-500/20 border-amber-500/50' : 'bg-slate-700/30 border-white/20'} ${isPortraitMode ? 'px-3 py-4' : 'px-3 sm:px-5 py-3 sm:py-5'}`}>
++                            <span className={`${isPortraitMode ? 'text-5xl' : 'text-4xl sm:text-6xl'}`}>{item.emoji}</span>
++                            {showPrice ? (
++                              <span className={`text-amber-300 font-black mt-2 ${isPortraitMode ? 'text-base' : 'text-sm sm:text-lg'}`}>
++                                {isEnglish ? `$${(item.price / 1000).toLocaleString()}` : `${item.price.toLocaleString()}${t('common.currencyWon', '??)}`}
++                              </span>
++                            ) : (
++                              <span className={`text-white/30 font-bold mt-2 ${isPortraitMode ? 'text-sm' : 'text-xs sm:text-sm'}`}>???</span>
++                            )}
++                          </div>
++                        );
++                      })}
++                    </div>
++                  </div>an className={signalColor === 'green' ? 'text-emerald-400 scale-125 transition-all' : ''}>(珥덈줉?? ?ㅻⅨ???몛</span>
+                 </div>
+ 
+                 <p className={`text-xl font-bold drop-shadow-md ${

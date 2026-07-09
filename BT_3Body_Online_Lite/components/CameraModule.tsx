@@ -1,5 +1,6 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { t } from '../i18n';
 import { speak } from '../services/ttsService';
 import { usePoseEstimation } from '../hooks/usePoseEstimation';
 import { useBackgroundBlur } from '../hooks/useBackgroundBlur';
@@ -15,9 +16,14 @@ interface CameraModuleProps {
 }
 
 const toKoreanNumber = (n: number): string => {
-  const nums = ['영', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구', '십'];
+  const nums = [
+    t('영'), t('일'), t('이'), t('삼'), t('사'), 
+    t('오'), t('육'), t('칠'), t('팔'), t('구'), t('십')
+  ];
   return n <= 10 ? nums[n] : n.toString();
 };
+
+const DEFAULT_PERF_INFO = { poseInterval: 500, poseInputSize: 256, drawSkeleton: true, videoWidth: 640, videoHeight: 480 };
 
 const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, autoCapture, timerDuration, preferredDeviceId, onDeviceChange, perfInfo }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -44,8 +50,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
   const [activeDeviceId, setActiveDeviceId] = useState<string>('');
 
   // perfInfo가 전달되지 않았을 때 기본값 생성 (포즈 감지 루프가 항상 동작하도록)
-  const defaultPerfInfo = { poseInterval: 500, poseInputSize: 256, drawSkeleton: true, videoWidth: 640, videoHeight: 480 };
-  const activePerfInfo = perfInfo || defaultPerfInfo;
+  const activePerfInfo = perfInfo || DEFAULT_PERF_INFO;
 
   const { reps: autoReps, feedback: poseFeedback, isModelLoaded: isPoseLoaded, footDrops, swayScore, formScore, postureData, validation } = usePoseEstimation(
     videoRef, 
@@ -85,14 +90,14 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
 
   const getGuideMessage = () => {
     switch (guidelineType) {
-      case 'front': return '가이드라인에 맞춰 정면 전체 몸이 나오도록 서주세요.';
-      case 'side': return '수직선에 몸의 중심을 맞추고 옆으로 서주세요.';
-      case 'balance': return '눈을 감고 한 발로 서서 균형을 유지하세요.';
-      case 'arm_raise': return '팔을 최대한 높이 들어 올려 주세요.';
-      case 'flexibility': return '동작을 크게 취하고 촬영 버튼을 누르세요.';
-      case 'squat': return '15초 동안 스쿼트를 반복하세요.';
-      case 'pushup': return '15초 동안 푸시업을 반복하세요.';
-      case 'face': return '조명을 밝게 세팅한 후, 얼굴을 원 안에 맞추고 정면을 응시하세요.';
+      case 'front': return t('가이드라인에 맞춰 정면 전체 몸이 나오도록 서주세요.');
+      case 'side': return t('수직선에 몸의 중심을 맞추고 옆으로 서주세요.');
+      case 'balance': return t('눈을 감고 한 발로 서서 균형을 유지하세요.');
+      case 'arm_raise': return t('팔을 최대한 높이 들어 올려 주세요.');
+      case 'flexibility': return t('동작을 크게 취하고 촬영 버튼을 누르세요.');
+      case 'squat': return t('15초 동안 스쿼트를 반복하세요.');
+      case 'pushup': return t('15초 동안 푸시업을 반복하세요.');
+      case 'face': return t('조명을 밝게 세팅한 후, 얼굴을 원 안에 맞추고 정면을 응시하세요.');
       default: return '';
     }
   };
@@ -195,7 +200,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
         if (isMounted) {
           setIsCameraReady(false);
           setIsLoading(false);
-          setCameraError("카메라에 접근할 수 없습니다. 권한 설정을 확인해 주세요.");
+          setCameraError(t("카메라에 접근할 수 없습니다. 권한 설정을 확인해 주세요."));
         }
       }
     }
@@ -334,9 +339,9 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
   useEffect(() => {
     if (autoCapture && isCameraReady && isStarted) {
       if (guidelineType === 'face') {
-        speak("조명을 밝게 셋팅해 주세요. 5초 뒤에 촬영합니다. 준비해 주세요.");
+        speak(t("조명을 밝게 셋팅해 주세요. 5초 뒤에 촬영합니다. 준비해 주세요."));
       } else {
-        speak("5초 뒤에 촬영합니다. 준비해 주세요.");
+        speak(t("5초 뒤에 촬영합니다. 준비해 주세요."));
       }
       const COUNTDOWN_DURATION = 5;
       setCountdown(COUNTDOWN_DURATION);
@@ -449,8 +454,8 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
 
     // Appropriate narration per test type
     const narration = guidelineType === 'balance'
-      ? `5초 뒤에 테스트를 시작합니다. ${timerDuration}초 동안 균형을 유지해 주세요. 준비해 주세요.`
-      : `5초 뒤에 테스트를 시작합니다. ${timerDuration}초 동안 동작을 반복해 주세요. 준비해 주세요.`;
+      ? `${t("5초 뒤에 테스트를 시작합니다. ")}${timerDuration}${t("초 동안 균형을 유지해 주세요. 준비해 주세요.")}`
+      : `${t("5초 뒤에 테스트를 시작합니다. ")}${timerDuration}${t("초 동안 동작을 반복해 주세요. 준비해 주세요.")}`;
     speak(narration);
 
     // 5-second preparation countdown first
@@ -498,7 +503,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
   const beginTestTimer = () => {
     if (!timerDuration) return;
 
-    speak("시작!");
+    speak(t("시작!"));
 
     const startTime = Date.now();
     setTestTimer(timerDuration);
@@ -521,7 +526,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
           }
         } else if (type === 'testComplete') {
           setTestTimer(null);
-          speak("측정이 완료되었습니다.");
+          speak(t("측정이 완료되었습니다."));
           setTimeout(() => {
             if(handleCaptureRef.current) handleCaptureRef.current();
           }, 300);
@@ -537,7 +542,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
         if (remaining <= 0) {
           testTimerIntervalRef.current = null;
           setTestTimer(null);
-          speak("측정이 완료되었습니다.");
+          speak(t("측정이 완료되었습니다."));
           setTimeout(() => {
             if(handleCaptureRef.current) handleCaptureRef.current();
           }, 300);
@@ -575,7 +580,7 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
       {isLoading && !cameraError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 z-40">
           <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4"></div>
-          <p className="text-white/60 text-sm font-medium">카메라를 연결 중입니다...</p>
+          <p className="text-white/60 text-sm font-medium">{t("카메라를 연결 중입니다...")}</p>
         </div>
       )}
 
@@ -796,6 +801,37 @@ const CameraModule: React.FC<CameraModuleProps> = ({ onCapture, guidelineType, a
             <div className="w-14 h-14 rounded-full border-4 border-indigo-600 flex items-center justify-center">
                <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
             </div>
+          </button>
+        )}
+        {!isCameraReady && (
+          <button 
+            type="button"
+            onClick={() => {
+              const mockCanvas = document.createElement('canvas');
+              mockCanvas.width = 640;
+              mockCanvas.height = 480;
+              const ctx = mockCanvas.getContext('2d');
+              if (ctx) {
+                ctx.fillStyle = '#1e1b4b';
+                ctx.fillRect(0, 0, 640, 480);
+                ctx.font = '24px sans-serif';
+                ctx.fillStyle = '#38bdf8';
+                ctx.textAlign = 'center';
+                ctx.fillText('MOCK SCAN CAPTURE', 320, 240);
+              }
+              onCapture(mockCanvas.toDataURL('image/jpeg', 0.8), 0, {
+                reps: 0,
+                footDrops: 0,
+                swayScore: 0,
+                formScore: 100,
+                postureData: { mock: true }
+              });
+            }}
+            className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl transition-all flex justify-center items-center gap-2 border border-red-500 shadow-lg active:scale-95"
+            style={{ zIndex: 100 }}
+            id="mock-camera-capture-btn"
+          >
+            [Dev Only] Mock Camera Scan Capture
           </button>
         )}
       </div>

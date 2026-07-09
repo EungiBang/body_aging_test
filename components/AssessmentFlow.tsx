@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AssessmentStep, CapturedImage, BodyReport, UserInfo, MemberRecord, BrainTestData } from '../types';
 import pkg from '../package.json';
 import CameraModule from './CameraModule';
@@ -60,6 +61,7 @@ const resizeImage = (dataUrl: string, maxWidth = 400): Promise<string> => {
 };
 
 const AssessmentFlow: React.FC = () => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<AssessmentStep | 'HISTORY'>(AssessmentStep.INTRO);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [capturedImages, setCapturedImages] = useState<CapturedImage[]>([]);
@@ -217,25 +219,25 @@ const AssessmentFlow: React.FC = () => {
   const getStepGuidance = (currentStep: AssessmentStep | 'HISTORY' | 'INTRO') => {
     switch (currentStep) {
       case AssessmentStep.INTRO:
-        return `${BRAND_NAME} ${SUB_NAME} 시스템입니다.`;
+        return t('assessment.introGuidance', `${BRAND_NAME} ${SUB_NAME} system.`);
       case AssessmentStep.USER_INFO:
-        return "측정 대상자의 정보를 입력해 주세요.";
+        return t('assessment.userInfoGuidance', "Please enter the user information.");
       case AssessmentStep.POSTURE_FRONT:
-        return "정면 전체 몸이 나오도록 서주세요.";
+        return t('assessment.postureFrontGuidance', "Please stand so that your entire body is visible from the front.");
       case AssessmentStep.POSTURE_SIDE:
-        return "옆으로 서서 몸의 중심을 맞춰주세요.";
+        return t('assessment.postureSideGuidance', "Please stand sideways and align your center of gravity.");
       case AssessmentStep.BALANCE_TEST:
-        return "눈을 감고 한 발로 서서 균형을 유지하세요.";
+        return t('assessment.balanceTestGuidance', "Please close your eyes, stand on one foot, and maintain your balance.");
       case AssessmentStep.BRAIN_MEMORY:
-        return "10초 동안 장볼 물건들을 기억하고, 손으로 골라 담아주세요.";
+        return t('assessment.brainMemoryGuidance', "Remember the grocery items for 10 seconds, then select and put them in the cart.");
       case AssessmentStep.FACE_ANALYSIS:
-        return "얼굴을 화면 중앙에 맞추고 밝은 표정을 지어주세요.";
+        return t('assessment.faceAnalysisGuidance', "Align your face to the center of the screen and make a bright expression.");
       case AssessmentStep.SEVEN_CODE_CHECK:
-        return "최근 자주 느끼는 증상과 감정을 선택해 주세요.";
+        return t('assessment.sevenCodeCheckGuidance', "Please select symptoms and emotions you have felt frequently recently.");
       case AssessmentStep.ANALYZING:
-        return "통합 AI 리포트를 생성 중입니다.";
+        return t('assessment.analyzingGuidance', "Generating the integrated AI report.");
       case AssessmentStep.REPORT:
-        return "측정 결과를 확인해 보세요.";
+        return t('assessment.reportGuidance', "Please review the assessment report.");
       default:
         return "";
     }
@@ -259,20 +261,10 @@ const AssessmentFlow: React.FC = () => {
       setStep(AssessmentStep.FACE_ANALYSIS);
     };
     const handleNavKFace = () => {
-      if (!userInfo) {
-        setTargetStepAfterUserInfo(AssessmentStep.KFACE);
-        setStep(AssessmentStep.USER_INFO);
-        return;
-      }
-      setStep(AssessmentStep.KFACE);
+      alert(t('common.kfaceComingSoon', 'K-관상 서비스는 준비 중입니다.'));
     };
     const handleNavKTarot = () => {
-      if (!userInfo) {
-        setTargetStepAfterUserInfo(('KTAROT' as any));
-        setStep(AssessmentStep.USER_INFO);
-        return;
-      }
-      setStep(('KTAROT' as any));
+      alert(t('common.ktarotComingSoon', 'K타로 서비스는 준비 중입니다.'));
     };
 
     window.addEventListener('nav:home', handleNavHome);
@@ -295,10 +287,11 @@ const AssessmentFlow: React.FC = () => {
   }, [hasStarted]);
 
   const testSteps = [
-    AssessmentStep.SEVEN_CODE_CHECK,
     AssessmentStep.POSTURE_FRONT, AssessmentStep.POSTURE_SIDE,
-    AssessmentStep.BALANCE_TEST, AssessmentStep.BRAIN_MEMORY,
-    AssessmentStep.FACE_ANALYSIS, AssessmentStep.ANALYZING
+    AssessmentStep.BALANCE_TEST, AssessmentStep.ARM_RAISE_TEST, AssessmentStep.FLEXIBILITY_TEST,
+    AssessmentStep.STRENGTH_SQUAT, AssessmentStep.STRENGTH_PUSHUP,
+    AssessmentStep.BRAIN_REACTION, AssessmentStep.BRAIN_MEMORY,
+    AssessmentStep.FACE_ANALYSIS, AssessmentStep.SEVEN_CODE_CHECK, AssessmentStep.ANALYZING
   ];
   useEffect(() => {
     const isTest = testSteps.includes(step as AssessmentStep);
@@ -398,7 +391,7 @@ const AssessmentFlow: React.FC = () => {
     const mergedMetadata = { ...metadata, reps: autoReps };
     // 촬영 후 미리보기 화면으로 전환 (originalDataUrl은 Gemini 분석용 원본 보존)
     setPreviewData({ dataUrl, originalDataUrl: dataUrl, metadata: mergedMetadata, validationResult: null });
-    speak("촬영이 완료되었습니다.");
+    speak(t('assessment.captureDoneSpeech', "촬영이 완료되었습니다."));
 
     // 사후 검증: 1, 2, 4, 5단계(정지 촬영)에서만 전신 체크
     const requiresValidation = [
@@ -716,15 +709,15 @@ const AssessmentFlow: React.FC = () => {
 
               // 합성된 이미지로 교체
               const analyzedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-              setPreviewData(prev => prev ? { ...prev, dataUrl: analyzedDataUrl, validationResult: { passed: true, message: `AI가 ${visibleCount}개 관절을 인식했습니다. 분석에 적합합니다.` } } : null);
+              setPreviewData(prev => prev ? { ...prev, dataUrl: analyzedDataUrl, validationResult: { passed: true, message: t('assessment.jointsDetected', { count: visibleCount, defaultValue: `AI가 ${visibleCount}개 관절을 인식했습니다. 분석에 적합합니다.` }) } } : null);
             } else {
-              setPreviewData(prev => prev ? { ...prev, validationResult: { passed: false, message: '전신이 충분히 나오지 않았습니다. 뒤로 물러나서 재촬영해 주세요.' } } : null);
-              speak("전신이 충분히 나오지 않았습니다. 재촬영해 주세요.");
+              setPreviewData(prev => prev ? { ...prev, validationResult: { passed: false, message: t('assessment.bodyNotVisibleDetail', '전신이 충분히 나오지 않았습니다. 뒤로 물러나서 재촬영해 주세요.') } } : null);
+              speak(t('assessment.bodyNotVisibleSpeech', "전신이 충분히 나오지 않았습니다. 재촬영해 주세요."));
             }
           } else {
             // Thunder 모델도 감지하지 못할 경우, 강제로 수동 패스할 수 있도록 안내 (차단하지 않음)
-            setPreviewData(prev => prev ? { ...prev, validationResult: { passed: false, message: 'AI가 사람을 명확히 인식하지 못했습니다. 사진이 정상이면 수동으로 다음 단계로 넘어가세요.' } } : null);
-            speak("사람이 명확히 감지되지 않았습니다. 사진을 확인하고 수동으로 넘어가거나 재촬영해 주세요.");
+            setPreviewData(prev => prev ? { ...prev, validationResult: { passed: false, message: t('assessment.personNotFoundDetail', 'AI가 사람을 명확히 인식하지 못했습니다. 사진이 정상이면 수동으로 다음 단계로 넘어가세요.') } } : null);
+            speak(t('assessment.personNotFoundSpeech', "사람이 명확히 감지되지 않았습니다. 사진을 확인하고 수동으로 넘어가거나 재촬영해 주세요."));
           }
         } catch (err) {
           console.error('Post-capture validation error:', err);
@@ -774,6 +767,13 @@ const AssessmentFlow: React.FC = () => {
       return;
     }
 
+    // 스쿼트 및 푸시업 수동 입력 모달 표시
+    if (step === AssessmentStep.STRENGTH_SQUAT || step === AssessmentStep.STRENGTH_PUSHUP) {
+      setRepCount(String(reps || 0));
+      setRepInputModal({ isOpen: true, step: step as AssessmentStep, dataUrl: originalDataUrl, formScore, kneeAssisted, postureData });
+      return;
+    }
+
     // 팔 올리기 단계 (수동 확인 모달)
     if (step === ('ARM_RAISE_TEST' as any)) {
       const defaultGrade = postureData?.armRaiseGrade || '보통 (135도)';
@@ -799,7 +799,7 @@ const AssessmentFlow: React.FC = () => {
   // 미리보기에서 '재촬영' → 미리보기 닫고 현재 단계 유지
   const retakeCapture = () => {
     setPreviewData(null);
-    speak("다시 촬영합니다. 준비해 주세요.");
+    speak(t('assessment.retakeSpeech', "다시 촬영합니다. 준비해 주세요."));
   };
 
   const proceedToNextStep = (currentStep: AssessmentStep, dataUrl: string, reps?: number, footDrops?: number, swayScore?: number, formScore?: number, eyesClosedVal?: boolean, kneeAssisted?: boolean, postureData?: any, brainTestData?: BrainTestData, originalDataUrl?: string) => {
@@ -825,7 +825,7 @@ const AssessmentFlow: React.FC = () => {
 
     if (nextStep === AssessmentStep.READY_FOR_ANALYSIS) {
       setStep(nextStep as AssessmentStep);
-      speak("모든 측정이 완료되었습니다. 화면의 분석 시작 버튼을 눌러주세요.");
+      speak(t('assessment.allTestsDoneSpeech', "모든 측정이 완료되었습니다. 화면의 분석 시작 버튼을 눌러주세요."));
     } else if (nextStep === AssessmentStep.ANALYZING) {
       runAnalysis(newImages);
     } else {
@@ -886,7 +886,7 @@ const AssessmentFlow: React.FC = () => {
   const runAnalysis = async (images: CapturedImage[]) => {
     if (!userInfo) return;
     setStep(AssessmentStep.ANALYZING);
-    speak("이 분석은 브레인트레이닝센터와 연구원, 대학교 등 전문가들이 연구, 개발하였고, 최신 AI 기술을 접목하여 개발한 프로그램입니다. 본 시스템은 건강 관리에 도움을 주고자 자세, 동작, 기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다. 데이터 분석에 약 1분 정도 소요됩니다.");
+    speak(t('assessment.analyzingSpeech', "이 분석은 브레인트레이닝센터와 연구원, 대학교 등 전문가들이 연구, 개발하였고, 최신 AI 기술을 접목하여 개발한 프로그램입니다. 본 시스템은 건강 관리에 도움을 주고자 자세, 동작, 기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다. 데이터 분석에 약 1분 정도 소요됩니다."));
     setIsAnalyzing(true);
     try {
       // For AI analysis, use original (un-overlaid) images for accuracy
@@ -897,7 +897,7 @@ const AssessmentFlow: React.FC = () => {
 
       const result = await analyzeHealth(userInfo, aiOptimizedImages);
       setReport(result);
-      speak("분석 결과 리포트가 생성되었습니다. 결과를 확인해 보세요.");
+      speak(t('assessment.reportGeneratedSpeech', "분석 결과 리포트가 생성되었습니다. 결과를 확인해 보세요."));
       
       // Attempt to save to history, but don't crash if it fails
       // pending 레코드 삭제 후 최종 report로 저장
@@ -927,8 +927,11 @@ const AssessmentFlow: React.FC = () => {
       setErrorModal({ 
         isOpen: true, 
         message: isQuotaError 
-          ? "현재 AI 분석 요청이 너무 많아 일시적으로 처리가 지연되고 있습니다. 잠시 후 '분석 재시작' 버튼을 누르시면 안전하게 저장된 사진들로 다시 분석을 진행합니다."
-          : `AI 분석 서버와 통신 중 일시적인 오류가 발생했습니다.\n(상세 에러: ${error instanceof Error ? error.message : JSON.stringify(error)})\n\n촬영하신 5단계 사진과 데이터는 기기에 안전하게 저장되어 있습니다. 아래 '분석 재시작' 버튼을 눌러주시면 처음부터 다시 촬영할 필요 없이 즉시 분석을 재개합니다.`,
+          ? t('assessment.quotaErrorText', "현재 AI 분석 요청이 너무 많아 일시적으로 처리가 지연되고 있습니다. 잠시 후 '분석 재시작' 버튼을 누르시면 안전하게 저장된 사진들로 다시 분석을 진행합니다.")
+          : t('assessment.apiErrorText', { 
+              error: error instanceof Error ? error.message : JSON.stringify(error),
+              defaultValue: `AI 분석 서버와 통신 중 일시적인 오류가 발생했습니다.\n(상세 에러: ${error instanceof Error ? error.message : JSON.stringify(error)})\n\n촬영하신 5단계 사진과 데이터는 기기에 안전하게 저장되어 있습니다. 아래 '분석 재시작' 버튼을 눌러주시면 처음부터 다시 촬영할 필요 없이 즉시 분석을 재개합니다.`
+            }),
         showRetry: true
       });
       // Stay on ANALYZING step or show a state where they can retry
@@ -968,9 +971,9 @@ const AssessmentFlow: React.FC = () => {
                   <span>👤</span>
                   <span>{userInfo.name}</span>
                   <span className="text-amber-400/60">|</span>
-                  <span>{userInfo.gender === 'male' ? '남' : '여'}</span>
+                  <span>{userInfo.gender === 'male' ? t('common.maleShort', '남') : t('common.femaleShort', '여')}</span>
                   <span className="text-amber-400/60">|</span>
-                  <span>{userInfo.age}세</span>
+                  <span>{t('userInfo.yearsOldShort', { age: userInfo.age, defaultValue: `${userInfo.age}세` })}</span>
                 </div>
               )}
               {devices.length > 0 && (
@@ -978,7 +981,7 @@ const AssessmentFlow: React.FC = () => {
                   <button 
                     onClick={() => setShowDeviceSelect(!showDeviceSelect)}
                     className="w-12 h-12 bg-slate-800 border border-slate-700/80 text-slate-300 rounded-full flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all shadow-lg cursor-pointer relative"
-                    title="카메라 설정"
+                    title={t('common.cameraConfig', '카메라 설정')}
                   >
                     <i className="fas fa-video text-lg"></i>
                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-500 rounded-full text-[9px] flex items-center justify-center text-white font-bold border-2 border-slate-900">{devices.length}</div>
@@ -986,7 +989,7 @@ const AssessmentFlow: React.FC = () => {
                   
                   {showDeviceSelect && (
                     <div className="absolute right-0 top-14 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-2 z-50 w-64 animate-fade-in">
-                      <div className="text-xs text-slate-400 font-bold mb-2 px-2 pt-1"><i className="fas fa-camera mr-1"></i> 카메라 선택</div>
+                      <div className="text-xs text-slate-400 font-bold mb-2 px-2 pt-1"><i className="fas fa-camera mr-1"></i> {t('common.selectCamera', '카메라 선택')}</div>
                       <div className="flex flex-col gap-1">
                         {devices.map((device, idx) => (
                           <button
@@ -1016,19 +1019,19 @@ const AssessmentFlow: React.FC = () => {
               <button 
                 onClick={repeatGuidance}
                 className="w-12 h-12 bg-slate-800 border border-slate-700/80 text-indigo-400 rounded-full flex items-center justify-center hover:bg-slate-700 hover:text-indigo-300 transition-all shadow-lg hover:rotate-12 cursor-pointer"
-                title="안내 다시 듣기"
+                title={t('common.repeatGuidance', '안내 다시 듣기')}
               >
                 <i className="fas fa-volume-up text-lg"></i>
               </button>
               
               <button 
                 onClick={() => {
-                  if (window.confirm("테스트를 중단하고 홈으로 이동하시겠습니까? 진행 중인 데이터는 저장되지 않을 수 있습니다.")) {
+                  if (window.confirm(t('assessment.confirmStop', "테스트를 중단하고 홈으로 이동하시겠습니까? 진행 중인 데이터는 저장되지 않을 수 있습니다."))) {
                     setStep(AssessmentStep.INTRO);
                   }
                 }}
                 className="w-12 h-12 bg-slate-800 border border-slate-700/80 text-slate-400 rounded-full flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all shadow-lg hover:rotate-12 cursor-pointer"
-                title="홈으로 가기"
+                title={t('common.goHome', '홈으로 가기')}
               >
                 <i className="fas fa-home text-lg"></i>
               </button>
@@ -1139,16 +1142,16 @@ const AssessmentFlow: React.FC = () => {
             </div>
 
             <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 via-white to-indigo-200 mb-4 tracking-tight drop-shadow-sm">
-              BTC 3바디 7코드 AI건강센터
+              {t('intro.title', 'BTC 3바디 7코드 AI건강센터')}
             </h2>
             <div className="w-12 h-1 bg-gradient-to-r from-indigo-500 to-blue-500 mx-auto rounded-full mb-6"></div>
             
             <p className="text-slate-300 mb-10 leading-relaxed text-sm font-medium">
-              본 서비스는 원활한 측정을 위해 <span className="text-indigo-300 font-bold">음성 안내</span>를 제공합니다.<br/>
-              주변 환경을 정리하시고 아래 버튼을 눌러주세요.
+              {t('intro.subTitle', '3바디 (몸·마음·뇌) & 7코드 에너지 밸런스를 인공지능으로 점검하여 최적의 솔루션을 제공합니다.')}
             </p>
 
             <button 
+              id="activate-assessment-btn"
               onClick={() => {
                 // 분석 시스템 활성화 클릭 시 시스템 점검 먼저 실행
                 setShowSysCheck(true);
@@ -1159,7 +1162,7 @@ const AssessmentFlow: React.FC = () => {
             >
               <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-[150%] skew-x-[-20deg] group-hover:translate-x-[250%] transition-transform duration-1000 ease-out"></div>
               <span className="relative z-10 flex items-center justify-center gap-2 text-lg tracking-wide">
-                측정 시스템 활성화 <i className="fas fa-play text-xs ml-1 relative top-[1px]"></i>
+                {t('intro.systemActive', '측정 시스템 활성화')} <i className="fas fa-play text-xs ml-1 relative top-[1px]"></i>
               </span>
             </button>
             <div className="mt-8 flex flex-col items-center justify-center gap-1 text-slate-500 text-[10px] font-semibold tracking-widest uppercase">
@@ -1198,11 +1201,19 @@ const AssessmentFlow: React.FC = () => {
 
 
     // ───── 건강 니즈 파악 페이지 (7코드 완료 후 표시) ─────
-    const HEALTH_NEEDS_OPTIONS = [
-      '잠을 잘 자고 싶다', '스트레스를 해소하고 싶다', '감정을 관리하고 싶다',
-      '멘탈을 관리하고 싶다', '집중력을 높이고 싶다', '인간관계를 개선하고 싶다',
-      '체력을 키우고 싶다', '통증을 완화하고 싶다', '다이어트를 하고 싶다',
-      '화를 다스리고 싶다', '젊어지고 싶다', '행복해지고 싶다'
+    const HEALTH_NEEDS_KEYS = [
+      { key: 'sleep', defaultVal: '잠을 잘 자고 싶다' },
+      { key: 'stress', defaultVal: '스트레스를 해소하고 싶다' },
+      { key: 'emotion', defaultVal: '감정을 관리하고 싶다' },
+      { key: 'mental', defaultVal: '멘탈을 관리하고 싶다' },
+      { key: 'focus', defaultVal: '집중력을 높이고 싶다' },
+      { key: 'relationship', defaultVal: '인간관계를 개선하고 싶다' },
+      { key: 'stamina', defaultVal: '체력을 키우고 싶다' },
+      { key: 'pain', defaultVal: '통증을 완화하고 싶다' },
+      { key: 'diet', defaultVal: '다이어트를 하고 싶다' },
+      { key: 'anger', defaultVal: '화를 다스리고 싶다' },
+      { key: 'youth', defaultVal: '젊어지고 싶다' },
+      { key: 'happiness', defaultVal: '행복해지고 싶다' }
     ];
 
     if (showHealthNeeds) {
@@ -1262,21 +1273,21 @@ const AssessmentFlow: React.FC = () => {
         setPendingSevenCodeData(null);
       };
 
-      const toggleHealthNeed = (need: string) => {
+      const toggleHealthNeed = (needKey: string) => {
         setSelectedHealthNeeds(prev =>
-          prev.includes(need) ? prev.filter(n => n !== need) : [...prev, need]
+          prev.includes(needKey) ? prev.filter(n => n !== needKey) : [...prev, needKey]
         );
       };
 
       return (
         <div className="flex-1 flex flex-col items-center h-[calc(100vh-80px)] p-4 mx-auto max-w-5xl transition-all bg-slate-900">
           <div className="text-center mb-4 shrink-0">
-            <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">현재 내가 바라는 건강에 대한 주요 관심</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">{t('healthNeeds.title')}</h2>
             <p className="text-gray-300 text-base sm:text-lg font-bold">
-              몸과 마음, 뇌 건강에 대해 원하시는 것이 있다면 선택해 주세요.
+              {t('healthNeeds.subtitle')}
             </p>
             <p className="text-gray-400 text-sm sm:text-base font-medium mt-1">
-              복수 선택 가능하며, 목록에 없는 경우 직접 입력할 수 있습니다.
+              {t('healthNeeds.subNotice')}
             </p>
           </div>
 
@@ -1287,19 +1298,19 @@ const AssessmentFlow: React.FC = () => {
 
           {/* 니즈 선택 그리드 */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full flex-1 min-h-0 content-center overflow-y-auto">
-            {HEALTH_NEEDS_OPTIONS.map(need => {
-              const isSelected = selectedHealthNeeds.includes(need);
+            {HEALTH_NEEDS_KEYS.map(need => {
+              const isSelected = selectedHealthNeeds.includes(need.key);
               return (
                 <button
-                  key={need}
-                  onClick={() => toggleHealthNeed(need)}
+                  key={need.key}
+                  onClick={() => toggleHealthNeed(need.key)}
                   className={`p-5 md:p-6 rounded-2xl text-lg md:text-xl font-black transition-all duration-200 transform hover:scale-[1.02] active:scale-95 leading-snug break-keep ${
                     isSelected
                       ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-[0_0_30px_rgba(245,158,11,0.4)] border-2 border-white/30'
                       : 'bg-gray-800 text-gray-200 hover:bg-gray-700 border-2 border-gray-700 hover:border-gray-500 shadow-lg'
                   }`}
                 >
-                  {need}
+                  {t('healthNeeds.options.' + need.key, need.defaultVal)}
                 </button>
               );
             })}
@@ -1312,7 +1323,7 @@ const AssessmentFlow: React.FC = () => {
                 type="text"
                 value={customHealthNeed}
                 onChange={(e) => setCustomHealthNeed(e.target.value)}
-                placeholder="기타 원하시는 건강 목표를 입력하세요"
+                placeholder={t('healthNeeds.placeholder')}
                 className="flex-1 px-4 py-3 rounded-xl bg-gray-800 text-white border-2 border-gray-700 focus:border-amber-500 outline-none text-base font-bold placeholder:text-gray-500"
               />
             </div>
@@ -1321,7 +1332,7 @@ const AssessmentFlow: React.FC = () => {
           {/* 선택 현황 및 완료 버튼 */}
           <div className="flex justify-between items-center w-full max-w-2xl mt-3 pb-2 shrink-0">
             <span className="text-slate-500 text-sm font-medium">
-              선택: <span className="text-amber-400 font-black text-base">{selectedHealthNeeds.length + (customHealthNeed.trim() ? 1 : 0)}개</span>
+              {t('healthNeeds.selectedCount', { count: selectedHealthNeeds.length + (customHealthNeed.trim() ? 1 : 0) })}
             </span>
           </div>
           <div className="flex justify-between w-full max-w-2xl gap-3 pb-2 shrink-0">
@@ -1332,13 +1343,13 @@ const AssessmentFlow: React.FC = () => {
               }}
               className="flex-1 px-6 py-4 rounded-2xl text-xl font-bold bg-gray-700 text-white hover:bg-gray-600 transition-colors shadow-lg"
             >
-              <i className="fas fa-arrow-left mr-2" /> 이전
+              <i className="fas fa-arrow-left mr-2" /> {t('common.prev', '이전')}
             </button>
             <button
               onClick={handleHealthNeedsComplete}
               className="flex-1 px-10 py-4 rounded-2xl text-xl font-black transition-all shadow-xl hover:shadow-amber-500/40 active:scale-95 bg-gradient-to-r from-amber-500 to-orange-500 text-white"
             >
-              <i className="fas fa-check-circle mr-2" /> {isReceptionOnly ? '접수 완료' : '다음 단계로'}
+              <i className="fas fa-check-circle mr-2" /> {isReceptionOnly ? t('healthNeeds.complete') : t('healthNeeds.nextStep')}
             </button>
           </div>
         </div>
@@ -1394,6 +1405,7 @@ const AssessmentFlow: React.FC = () => {
               <div className="flex flex-col gap-3 filter drop-shadow-xl">
                 {/* 1. 즉석 통합 시작 (기존 All-in-One) */}
                 <button 
+                  id="start-onestop-btn"
                   onClick={() => {
                     initAudio().catch(() => {});
                     setIsReceptionOnly(false);
@@ -1403,11 +1415,12 @@ const AssessmentFlow: React.FC = () => {
                   }}
                   className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-4 rounded-xl hover:from-indigo-500 hover:to-purple-500 transition-all flex items-center justify-center gap-2.5 text-[15px] shadow-lg shadow-indigo-650/30 active:scale-[0.99]"
                 >
-                  <i className="fas fa-running text-sm"></i> 바로 측정 시작하기 (원스톱) <i className="fas fa-chevron-right text-xs"></i>
+                  <i className="fas fa-running text-sm"></i> {t('intro.startOnestop', '바로 측정 시작하기 (원스톱)')} <i className="fas fa-chevron-right text-xs"></i>
                 </button>
 
                 {/* 2. 사전 접수 등록 */}
                 <button 
+                  id="start-preregister-btn"
                   onClick={() => {
                     initAudio().catch(() => {});
                     setIsReceptionOnly(true);
@@ -1417,7 +1430,7 @@ const AssessmentFlow: React.FC = () => {
                   }}
                   className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold py-3.5 rounded-xl hover:from-emerald-500 hover:to-teal-500 transition-all flex items-center justify-center gap-2.5 text-sm shadow-lg shadow-emerald-650/20 active:scale-[0.99]"
                 >
-                  <i className="fas fa-user-plus text-sm"></i> 사전 접수 등록 (7코드 선점검)
+                  <i className="fas fa-user-plus text-sm"></i> {t('intro.startPreRegister', '사전 접수 등록 (7코드 선점검)')}
                 </button>
 
                 {/* 3. 대기 리스트 불러오기 */}
@@ -1428,13 +1441,13 @@ const AssessmentFlow: React.FC = () => {
                   }}
                   className="w-full bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 font-bold py-3.5 rounded-xl hover:bg-indigo-900/60 transition-all flex items-center justify-center gap-2.5 text-sm active:scale-[0.99] relative"
                 >
-                  <i className="fas fa-list-ol"></i> 대기 리스트 불러오기
+                  <i className="fas fa-list-ol"></i> {t('intro.loadWaitingList', '대기 리스트 불러오기')}
                   {uniqueWaitingList.length > 0 ? (
                     <span className="absolute right-4 bg-indigo-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
                       {uniqueWaitingList.length}
                     </span>
                   ) : (
-                    <span className="absolute right-4 text-[10px] text-slate-500 font-bold">비어있음</span>
+                    <span className="absolute right-4 text-[10px] text-slate-500 font-bold">{t('intro.empty', '비어있음')}</span>
                   )}
                 </button>
 
@@ -1443,7 +1456,7 @@ const AssessmentFlow: React.FC = () => {
                   onClick={() => setStep('HISTORY')}
                   className="w-full bg-slate-800/80 border border-slate-700 text-slate-300 font-bold py-3.5 rounded-xl hover:bg-slate-700 transition-all flex items-center justify-center gap-2.5 text-sm active:scale-[0.99]"
                 >
-                  <i className="fas fa-comments"></i> 완료 결과 조회 (전문 상담)
+                  <i className="fas fa-comments"></i> {t('intro.loadHistory', '완료 결과 조회 (전문 상담)')}
                 </button>
                 
                 {/* K-관상 / K-타로 버튼 제거됨 */}
@@ -1460,17 +1473,17 @@ const AssessmentFlow: React.FC = () => {
         return <UserInfoForm onSubmit={handleUserSubmit} />;
 
       case AssessmentStep.POSTURE_FRONT:
-        return renderCameraStep("측정 1단계", "정면 신체 균형", 1, <CameraModule key="front" onCapture={handleCapture} guidelineType="front" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
+        return renderCameraStep(t('assessment.stepNum', { num: 1, defaultValue: "측정 1단계" }), t('assessment.step1', "정면 신체 균형"), 1, <CameraModule key="front" onCapture={handleCapture} guidelineType="front" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
 
       case AssessmentStep.POSTURE_SIDE:
-        return renderCameraStep("측정 2단계", "측면 신체 균형", 2, <CameraModule key="side" onCapture={handleCapture} guidelineType="side" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
+        return renderCameraStep(t('assessment.stepNum', { num: 2, defaultValue: "측정 2단계" }), t('assessment.step2', "측면 신체 균형"), 2, <CameraModule key="side" onCapture={handleCapture} guidelineType="side" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
 
       case AssessmentStep.BALANCE_TEST:
         return (
           <div className="flex-1 flex flex-col">
             {/* 눈 상태 토글 버튼 */}
             <div className="flex items-center justify-center gap-3 px-6 pt-4 pb-2">
-              <span className="text-slate-400 text-sm font-medium">균형 테스트 조건:</span>
+              <span className="text-slate-400 text-sm font-medium">{t('assessment.balanceConditions', '균형 테스트 조건:')}</span>
               <button
                 onClick={() => setEyesClosed(true)}
                 className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
@@ -1479,7 +1492,7 @@ const AssessmentFlow: React.FC = () => {
                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                 }`}
               >
-                <i className="fas fa-eye-slash mr-2"></i>눈 감고 (정규)
+                <i className="fas fa-eye-slash mr-2"></i>{t('assessment.eyesClosedRegular', '눈 감고 (정규)')}
               </button>
               <button
                 onClick={() => setEyesClosed(false)}
@@ -1489,25 +1502,38 @@ const AssessmentFlow: React.FC = () => {
                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                 }`}
               >
-                <i className="fas fa-eye mr-2"></i>눈 뜨고 (보정적용)
+                <i className="fas fa-eye mr-2"></i>{t('assessment.eyesOpenCalibrated', '눈 뜨고 (보정적용)')}
               </button>
               {!eyesClosed && (
                 <span className="text-amber-400 text-xs font-medium animate-pulse">
-                  <i className="fas fa-exclamation-triangle mr-1"></i>+2회 패널티 자동 반영
+                  <i className="fas fa-exclamation-triangle mr-1"></i>{t('assessment.eyesOpenPenalty', '+2회 패널티 자동 반영')}
                 </span>
               )}
             </div>
-            {renderCameraStep("노화 테스트 01", "눈 감고 한발 서기", 3, <CameraModule key="balance" onCapture={handleCapture} guidelineType="balance" timerDuration={15} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />)}
+            {renderCameraStep(t('assessment.ageTestNum', { num: 1, defaultValue: "노화 테스트 01" }), t('assessment.step3', "눈 감고 한발 서기"), 3, <CameraModule key="balance" onCapture={handleCapture} guidelineType="balance" timerDuration={15} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />)}
           </div>
         );
 
+      case AssessmentStep.ARM_RAISE_TEST:
+        return renderCameraStep(t('assessment.stepNum', { num: 4, defaultValue: "측정 4단계" }), t('assessment.step4', "팔 들어 올리기"), 4, <CameraModule key="arm" onCapture={handleCapture} guidelineType="arm_raise" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
 
+      case AssessmentStep.FLEXIBILITY_TEST:
+        return renderCameraStep(t('assessment.stepNum', { num: 5, defaultValue: "측정 5단계" }), t('assessment.step5', "유연성 테스트"), 5, <CameraModule key="flexibility" onCapture={handleCapture} guidelineType="flexibility" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
+
+      case AssessmentStep.STRENGTH_SQUAT:
+        return renderCameraStep(t('assessment.stepNum', { num: 6, defaultValue: "측정 6단계" }), "15초 스쿼트", 6, <CameraModule key="squat" onCapture={handleCapture} guidelineType="squat" timerDuration={15} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
+
+      case AssessmentStep.STRENGTH_PUSHUP:
+        return renderCameraStep(t('assessment.stepNum', { num: 7, defaultValue: "측정 7단계" }), "15초 푸시업", 7, <CameraModule key="pushup" onCapture={handleCapture} guidelineType="pushup" timerDuration={15} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} userAge={userInfo?.age} userGender={userInfo?.gender} />);
+
+      case AssessmentStep.BRAIN_REACTION:
+        return <TmtBrainTestModule key={AssessmentStep.BRAIN_REACTION} onComplete={(dataUrl, testData) => proceedToNextStep(AssessmentStep.BRAIN_REACTION, dataUrl, testData.reactionTimeMs, testData.reactionErrors, undefined, undefined, undefined, undefined, undefined, testData)} />;
 
       case AssessmentStep.BRAIN_MEMORY:
         return <BrainTestModule key={AssessmentStep.BRAIN_MEMORY} testType={AssessmentStep.BRAIN_MEMORY} onComplete={(dataUrl, testData) => proceedToNextStep(AssessmentStep.BRAIN_MEMORY, dataUrl, testData.memorySpan, undefined, undefined, undefined, undefined, undefined, undefined, testData)} preferredCameraId={selectedDeviceId} userInfo={userInfo} />;
 
       case AssessmentStep.FACE_ANALYSIS:
-        return renderCameraStep("측정 5단계", "안면 노화 분석", 5, <CameraModule key="face" onCapture={handleCapture} guidelineType="face" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
+        return renderCameraStep(t('assessment.stepNum', { num: 10, defaultValue: "측정 10단계" }), t('assessment.step5', "안면 노화 분석"), 10, <CameraModule key="face" onCapture={handleCapture} guidelineType="face" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
 
       case AssessmentStep.KFACE:
         return <KFaceApp userInfo={userInfo} onClose={() => setStep(AssessmentStep.INTRO)} onBack={() => setStep(AssessmentStep.INTRO)} />;
@@ -1526,12 +1552,17 @@ const AssessmentFlow: React.FC = () => {
 
       case AssessmentStep.READY_FOR_ANALYSIS:
         const stepChecklist = [
-          { step: AssessmentStep.POSTURE_FRONT, icon: '📸', label: '1. 정면 자세', hasImage: true },
-          { step: AssessmentStep.POSTURE_SIDE, icon: '📸', label: '2. 측면 자세', hasImage: true },
-          { step: AssessmentStep.BALANCE_TEST, icon: '⚖️', label: '3. 균형 테스트', hasImage: true },
-          { step: AssessmentStep.BRAIN_MEMORY, icon: '🛒', label: '4. 뇌 건강 (마트 장보기)', hasImage: false },
-          { step: AssessmentStep.FACE_ANALYSIS, icon: '😊', label: '5. 얼굴 나이 분석', hasImage: true },
-          { step: AssessmentStep.SEVEN_CODE_CHECK, icon: '🧩', label: '6. 7코드 건강 점검', hasImage: false },
+          { step: AssessmentStep.POSTURE_FRONT, icon: '📸', label: t('assessment.step1', '정면 자세'), hasImage: true },
+          { step: AssessmentStep.POSTURE_SIDE, icon: '📸', label: t('assessment.step2', '측면 자세'), hasImage: true },
+          { step: AssessmentStep.BALANCE_TEST, icon: '⚖️', label: t('assessment.step3', '균형 테스트'), hasImage: true },
+          { step: AssessmentStep.ARM_RAISE_TEST, icon: '🙌', label: '4. 팔 올리기', hasImage: true },
+          { step: AssessmentStep.FLEXIBILITY_TEST, icon: '🤸', label: '5. 유연성', hasImage: true },
+          { step: AssessmentStep.STRENGTH_SQUAT, icon: '🏋️', label: '6. 스쿼트', hasImage: true },
+          { step: AssessmentStep.STRENGTH_PUSHUP, icon: '💪', label: '7. 팔굽혀펴기', hasImage: true },
+          { step: AssessmentStep.BRAIN_REACTION, icon: '⚡', label: '8. 뇌 반응속도', hasImage: false },
+          { step: AssessmentStep.BRAIN_MEMORY, icon: '🛒', label: t('assessment.step4', '뇌 건강 (마트 장보기)'), hasImage: false },
+          { step: AssessmentStep.FACE_ANALYSIS, icon: '😊', label: t('assessment.step5', '얼굴 나이 분석'), hasImage: true },
+          { step: AssessmentStep.SEVEN_CODE_CHECK, icon: '🧩', label: t('assessment.step6', '7코드 건강 점검'), hasImage: false },
         ];
         const isAllCompleted = stepChecklist.every(item => capturedImages.some(i => i.step === item.step));
         
@@ -1543,16 +1574,16 @@ const AssessmentFlow: React.FC = () => {
                   <i className={`fas ${isAllCompleted ? 'fa-check text-green-400' : 'fa-exclamation text-amber-400'} text-3xl`}></i>
                 </div>
                 <h3 className="text-2xl font-black text-white mb-1">
-                  {isAllCompleted ? '모든 측정 완료!' : '아직 측정되지 않은 항목이 있습니다'}
+                  {isAllCompleted ? t('assessment.completeTitle', '모든 측정 완료!') : t('assessment.notCompleteTitle', '아직 측정되지 않은 항목이 있습니다')}
                 </h3>
                 <p className="text-slate-400 text-xs">
-                  {isAllCompleted ? '아래 측정 내역 확인 후 AI 분석을 시작하세요.' : '누락된 측정을 완료해야 AI 종합 분석이 가능합니다.'}
+                  {isAllCompleted ? t('assessment.completeSubText', '아래 측정 내역 확인 후 AI 분석을 시작하세요.') : t('assessment.notCompleteSubText', '누락된 측정을 완료해야 AI 종합 분석이 가능합니다.')}
                 </p>
               </div>
 
               <div className="bg-slate-800/50 rounded-2xl p-3 mb-4 border border-slate-700/50">
                 <h4 className="text-white font-bold text-xs mb-2 flex items-center gap-2">
-                  <i className="fas fa-clipboard-check text-emerald-400"></i> 측정 현황 내역
+                  <i className="fas fa-clipboard-check text-emerald-400"></i> {t('assessment.scanHistory', '측정 현황 내역')}
                 </h4>
                 <div className="space-y-1.5">
                   {stepChecklist.map(item => {
@@ -1571,12 +1602,12 @@ const AssessmentFlow: React.FC = () => {
                           <span className="text-emerald-300 text-[10px] font-bold">{img.brainTestData.reactionTimeMs}ms</span>
                         )}
                         {!item.hasImage && img?.brainTestData?.memoryCorrect !== undefined && (
-                          <span className="text-emerald-300 text-[10px] font-bold">{img.brainTestData.memoryCorrect}개정답</span>
+                          <span className="text-emerald-300 text-[10px] font-bold">{t('assessment.correctCount', { count: img.brainTestData.memoryCorrect, defaultValue: `${img.brainTestData.memoryCorrect}개 정답` })}</span>
                         )}
                         {item.step === ('SEVEN_CODE_CHECK' as any) && img?.sevenCodeKeywords && (
-                          <span className="text-emerald-300 text-[10px] font-bold">{img.sevenCodeKeywords.length}항목</span>
+                          <span className="text-emerald-300 text-[10px] font-bold">{t('assessment.keywordsCount', { count: img.sevenCodeKeywords.length, defaultValue: `${img.sevenCodeKeywords.length}개 항목` })}</span>
                         )}
-                        <span className="font-black">{done ? '✅' : '❌ 측정하기'}</span>
+                        <span className="font-black">{done ? t('assessment.scanDone', '✅ 완료') : t('assessment.scanAgain', '❌ 측정하기')}</span>
                       </div>
                     );
                   })}
@@ -1585,8 +1616,8 @@ const AssessmentFlow: React.FC = () => {
 
               <div className="bg-indigo-900/30 border border-indigo-500/20 rounded-xl p-3 mb-5 text-center">
                 <p className="text-indigo-200 text-[11px] font-bold leading-relaxed">
-                  💾 분석 시작 시 측정 데이터가 자동 저장됩니다.<br/>
-                  분석 오류 시에도 <strong className="text-amber-300">재측정 없이</strong> 저장된 데이터로 재분석이 가능합니다.
+                  {t('assessment.dataSaveNotice', '💾 분석 시작 시 측정 데이터가 자동 저장됩니다.')}<br/>
+                  {t('assessment.dataSaveSub', '분석 오류 시에도 재측정 없이 저장된 데이터로 재분석이 가능합니다.')}
                 </p>
               </div>
 
@@ -1603,14 +1634,14 @@ const AssessmentFlow: React.FC = () => {
                     setPendingRecordId(pendingId);
                     const pendingRecord: MemberRecord = {
                       id: pendingId,
-                      name: '(분석 대기) ' + (userInfo?.name || '미정'),
+                      name: t('assessment.pendingAnalysis', '(Analyzing) ') + (userInfo?.name || t('assessment.unknownName', 'Guest')),
                       lastTestDate: new Date().toISOString(),
                       report: { userInfo } as BodyReport,
                       images: resizedForDb,
                       ownerUid: 'local-branch'
                     };
                     await saveRecordLocally(pendingRecord);
-                    setToast({ isVisible: true, message: "측정 데이터가 안전하게 저장되었습니다.", type: 'success' });
+                    setToast({ isVisible: true, message: t('assessment.dataSavedSuccess', 'Scanning data saved successfully.'), type: 'success' });
                   } catch (e) {
                     console.warn('[DB] 사전 저장 실패:', e);
                   }
@@ -1622,7 +1653,7 @@ const AssessmentFlow: React.FC = () => {
                     : 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-70'
                 }`}
               >
-                <i className="fas fa-microchip"></i> AI 종합 분석 시작하기
+                <i className="fas fa-microchip"></i> {t('assessment.startAnalysis', 'AI 종합 분석 시작하기')}
               </button>
             </div>
           </div>
@@ -1641,15 +1672,14 @@ const AssessmentFlow: React.FC = () => {
                 </span>
               </div>
             </div>
-            <h3 className="text-3xl font-black text-white mb-4 tracking-tight">AI 데이터 분석 중</h3>
+            <h3 className="text-3xl font-black text-white mb-4 tracking-tight">{t('assessment.analyzing', 'AI 데이터 분석 중')}</h3>
             <p className="text-slate-400 max-w-md mx-auto text-base leading-relaxed font-medium mt-4">
               <span className="block text-indigo-200 mb-2 font-bold bg-indigo-900/40 p-3 rounded-lg border border-indigo-500/20">
-                이 분석은 브레인트레이닝센터와 연구원, 대학교 등 전문가들이 연구, 개발하였고,<br/>
-                최신 AI의 기술을 접목하여 개발한 프로그램입니다.<br/>
-                <span className="text-[11px] text-indigo-300 mt-1 block">※ 본 시스템은 건강 관리에 도움을 주고자 자세, 동작, 기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다.</span>
+                {t('assessment.academicNotice', '이 분석은 브레인트레이닝센터와 연구원, 대학교 등 전문가들이 연구, 개발하였고, 최신 AI의 기술을 접목하여 개발한 프로그램입니다.')}<br/>
+                <span className="text-[11px] text-indigo-300 mt-1 block">{t('userInfo.wellnessNotice', '※ 본 시스템은 건강 관리에 도움을 주고자 자세, 동작, 기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다.')}</span>
               </span>
-              3바디 측정 모델이 수집된 체형과 동작 데이터를 다각도로 종합 분석하고 있습니다.<br/>
-              <span className="text-indigo-400 mt-2 inline-block text-sm">약 1분 정도 소요됩니다</span>
+              {t('assessment.scansAnalyzing', '3바디 측정 모델이 수집된 체형과 동작 데이터를 다각도로 종합 분석하고 있습니다.')}<br/>
+              <span className="text-indigo-400 mt-2 inline-block text-sm">{t('assessment.takesOneMinute', '약 1분 정도 소요됩니다')}</span>
             </p>
           </div>
         );
@@ -2000,9 +2030,9 @@ const AssessmentFlow: React.FC = () => {
                 <i className="fas fa-users text-lg"></i>
               </div>
               <div className="text-left">
-                <h3 className="text-2xl font-black text-white">야외 실시간 대기 리스트</h3>
+                <h3 className="text-2xl font-black text-white">{t('waitingList.title')}</h3>
                 <p className="text-slate-500 text-sm mt-0.5 font-bold">
-                  {activeEventCode ? `연합 행사 모드 활성화 중 (${activeEventCode})` : '지점 내부 대기열'}
+                  {activeEventCode ? t('waitingList.eventModeActive') + ` (${activeEventCode})` : t('waitingList.internalQueue')}
                 </p>
               </div>
             </div>
@@ -2011,8 +2041,8 @@ const AssessmentFlow: React.FC = () => {
               {uniqueWaitingList.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-500 py-12 gap-3">
                   <i className="fas fa-user-clock text-4xl opacity-40"></i>
-                  <span className="text-sm font-medium">현재 대기 중인 접수자가 없습니다.</span>
-                  <span className="text-[10px] text-slate-600 font-bold">사전 접수 기기에서 [사전 접수 등록]을 먼저 완료해 주세요.</span>
+                  <span className="text-sm font-medium">{t('waitingList.empty')}</span>
+                  <span className="text-[10px] text-slate-600 font-bold">{t('waitingList.emptySub')}</span>
                 </div>
               ) : (
                 [...uniqueWaitingList]
@@ -2055,7 +2085,7 @@ const AssessmentFlow: React.FC = () => {
                                   className="text-sm bg-amber-500/10 text-amber-400 border border-amber-500/30 font-black px-3 py-1.5 rounded-xl ml-2 hover:bg-amber-500 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                                   title="선택한 7코드 질문 항목 보기"
                                 >
-                                  <span>🚨 {CHAKRA_MAP[member.weakestCode] || `${member.weakestCode}번 코드`} 취약</span>
+                                  <span>🚨 {t('waitingList.weakCodeNotice', { codeName: CHAKRA_MAP[member.weakestCode] || `${member.weakestCode} Code` })}</span>
                                   <i className="fas fa-search text-[9px]"></i>
                                 </button>
                               )}
@@ -2063,7 +2093,7 @@ const AssessmentFlow: React.FC = () => {
                             <span className={`text-sm px-3 py-1 rounded-full font-bold ${
                               member.gender === 'male' ? 'bg-blue-500/10 text-blue-400' : 'bg-pink-500/10 text-pink-400'
                             }`}>
-                              {member.age}세 · {member.gender === 'male' ? '남' : '여'}
+                              {member.age}{t('userInfo.yearsOld')} · {member.gender === 'male' ? t('userInfo.male') : t('userInfo.female')}
                             </span>
                           </div>
                           {/* 건강 니즈 표시 */}
@@ -2077,7 +2107,7 @@ const AssessmentFlow: React.FC = () => {
                             </div>
                           )}
                           <div className="text-xs text-slate-500 mt-2 flex items-center gap-2">
-                            <span><i className="fas fa-phone-alt"></i> {member.phone ? member.phone.slice(-4) : '없음'}</span>
+                            <span><i className="fas fa-phone-alt"></i> {member.phone ? member.phone.slice(-4) : t('common.none')}</span>
                             <span>•</span>
                             <span><i className="fas fa-clock"></i> {new Date(member.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
@@ -2100,7 +2130,7 @@ const AssessmentFlow: React.FC = () => {
                               ? 'bg-rose-600/30 text-rose-400 border-rose-500/50 hover:bg-rose-600 hover:text-white'
                               : 'bg-slate-800 text-slate-500 border-slate-700 hover:text-slate-300'
                           }`}
-                          title={member.isStarred ? '집중 상담 해제' : '집중 상담 대상자 설정'}
+                          title={member.isStarred ? t('waitingList.starredActive') : t('waitingList.starred')}
                         >
                           <i className={`fas fa-star text-[11px] ${member.isStarred ? 'text-rose-400 animate-pulse' : ''}`}></i>
                         </button>
@@ -2111,7 +2141,7 @@ const AssessmentFlow: React.FC = () => {
                       <button
                         onClick={(e) => handleDeleteWaiting(e, member)}
                         className="w-10 h-10 rounded-full bg-rose-500/10 text-rose-400 hover:bg-rose-600 hover:text-white flex items-center justify-center transition-all shadow-md border border-rose-500/20 cursor-pointer"
-                        title="대기 삭제"
+                        title={t('waitingList.delete')}
                       >
                         <i className="fas fa-trash-alt text-xs"></i>
                       </button>
@@ -2143,12 +2173,12 @@ const AssessmentFlow: React.FC = () => {
                           await updateWaitingStatus(member.id, 'measuring');
                           setShowWaitingModal(false);
                           setStep(AssessmentStep.POSTURE_FRONT);
-                          speak(`${member.name} 님의 측정을 개시합니다. 카메라 앞에 바르게 서주세요.`);
+                          speak(t('speech.startAssessment', { name: member.name }));
                         }}
                         className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-base font-black transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer border border-indigo-500/20"
                       >
                         <i className="fas fa-play text-[9px]"></i>
-                        <span>측정 시작</span>
+                        <span>{t('waitingList.startMeasure')}</span>
                       </button>
                     </div>
                   </div>
@@ -2157,8 +2187,8 @@ const AssessmentFlow: React.FC = () => {
             </div>
 
             <div className="mt-6 pt-4 border-t border-slate-800/80 text-center flex justify-between items-center text-sm text-slate-500 font-bold">
-              <span>총 대기 인원: <strong className="text-indigo-400 text-lg">{uniqueWaitingList.length}</strong>명</span>
-              <span>* 클릭 시 즉시 점검 화면으로 진입합니다.</span>
+              <span>{t('waitingList.totalCount')}: <strong className="text-indigo-400 text-lg">{uniqueWaitingList.length}</strong>명</span>
+              <span>{t('waitingList.measureClickNotice')}</span>
             </div>
           </div>
         </div>

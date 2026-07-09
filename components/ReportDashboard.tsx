@@ -7,6 +7,7 @@ import FeedbackPanel from './FeedbackPanel';
 import { BRAND_NAME, SUB_NAME } from '@shared/constants/brand';
 import { getEnergyMbtiCode, ENERGY_MBTI_DATA } from '@shared/ai/scoring/mbti';
 import { EnergyMbtiWebCard } from './EnergyMbtiWebCard';
+import { useTranslation } from 'react-i18next';
 
 // AI 생성 텍스트에서 '차크라'를 '코드'로 치환 (이전에 저장된 결과 호환)
 const sanitize = (text: string | undefined | null): string => {
@@ -32,7 +33,18 @@ const SEVEN_CODE_NAMES: Record<number, { name: string; region: string; symptom: 
   7: { name: '7코드 (백회)', region: '정수리/뇌파/송과선', symptom: '통합 에너지 불안정, 수면 장애 및 뇌파 불균형 과부하', hint: '백회 브레인 호흡 및 뇌파 이완 명상으로 중심을 정렬하세요.', label: '삶의 방향', location: '백회' }
 };
 
+const SEVEN_CODE_NAMES_EN: Record<number, { name: string; region: string; symptom: string; hint: string; label: string; location: string }> = {
+  1: { name: '1-Code (Perineum)', region: 'Lower Body/Pelvis/Kidney', symptom: 'Basic energy deficiency, leg weakness, and spinal support instability', hint: 'Charge basic energy through squats and grounding training by pressing soles to the floor and strengthening lower abdomen.', label: 'Basic Energy', location: 'Perineum' },
+  2: { name: '2-Code (Lower Danjeon)', region: 'Lower Abdomen/Danjeon/Large Intestine', symptom: 'Weakened vitality, cold lower abdomen, and stagnated energy due to poor bowel function', hint: 'Ignite the lower Danjeon fire with Danjeon tapping and abdominal breathing meditation.', label: 'Emotional Flow', location: 'Lower Danjeon' },
+  3: { name: '3-Code (Jungwan)', region: 'Stomach/Solar Plexus/Liver', symptom: 'Reduced willpower, chronic indigestion, and lack of drive', hint: 'Boost your willpower through Jungwan relaxation and core strengthening exercises.', label: 'Drive & Will', location: 'Jungwan' },
+  4: { name: '4-Code (Danjung)', region: 'Chest/Heart/Lung', symptom: 'Emotional stagnation, chest tightness, and chronic accumulated anger/stress', hint: 'Clear emotional congestion through chest-opening meditation and relaxing breathing.', label: 'Emotional Balance', location: 'Danjung' },
+  5: { name: '5-Code (Honmun)', region: 'Throat/Shoulders/Thyroid', symptom: 'Stagnant expression, chronic neck and shoulder stiffness, and difficulty communicating feelings', hint: 'Relax the throat passage with neck/shoulder release movements and vocal meditation.', label: 'Communication', location: 'Honmun' },
+  6: { name: '6-Code (Indang)', region: 'Brow/Brain/Eyes', symptom: 'Diminished intuition, heavy head, and reduced control over frontal lobe inhibition', hint: 'Clear your mind with Indang massage and brain gym exercises.', label: 'Focus & Insight', location: 'Brow' },
+  7: { name: '7-Code (Baekhoe)', region: 'Crown/Brainwaves/Pineal Gland', symptom: 'Unstable integrated energy, sleep disturbances, and brainwave imbalance overload', hint: 'Align your center through Baekhoe brain breathing and brainwave relaxation meditation.', label: 'Life Direction', location: 'Crown' }
+};
+
 const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRestart }) => {
+  const { t, i18n } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(1.15);
   const [isSimpleView, setIsSimpleView] = useState(true); // 간단 뷰 / 상세 뷰 관리 상태
@@ -278,7 +290,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
       const hasSquatIssue = (safeReport.strengthMetrics || []).some(it => it.exercise && it.exercise.includes('스쿼트') && it.formScore < 80);
       const hasPushupIssue = (safeReport.strengthMetrics || []).some(it => it.exercise && it.exercise.includes('푸시업') && it.formScore < 80);
 
-      const reactionData = safeImages.find(img => img.step === 'BRAIN_REACTION')?.brainTestData;
+      const reactionData = safeImages.find(img => img.step === ('BRAIN_REACTION' as any))?.brainTestData;
       const memoryData = safeImages.find(img => img.step === 'BRAIN_MEMORY')?.brainTestData;
       const isBrainSlow = reactionData && reactionData.reactionTimeMs && reactionData.reactionTimeMs > 800;
       const isBrainError = reactionData && reactionData.reactionErrors && reactionData.reactionErrors > 1;
@@ -337,10 +349,12 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
   const sevenCodeList = getSevenCodeList();
 
   const getChakraGrade = (score: number) => {
-    if (score >= 80) return { text: '안정', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-    if (score >= 60) return { text: '주의', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' };
-    return { text: '집중관리', badgeClass: 'bg-rose-50 text-rose-700 border-rose-200 font-black' };
+    if (score >= 80) return { text: t('sevenCode.grades.stable', '안정'), badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    if (score >= 60) return { text: t('sevenCode.grades.warning', '주의'), badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' };
+    return { text: t('sevenCode.grades.focused', '집중관리'), badgeClass: 'bg-rose-50 text-rose-700 border-rose-200 font-black' };
   };
+
+  const isEn = i18n.language?.startsWith('en');
 
   return (
     <div className="flex-1 bg-white overflow-auto print:p-0 print:overflow-visible relative text-slate-800 animate-fade-in-up">
@@ -348,7 +362,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
       {/* 글자 크기 조정 바 */}
       <div className="sticky top-4 right-4 z-50 flex justify-end print:hidden pointer-events-none" style={{ height: 0 }}>
          <div className="bg-white/90 backdrop-blur shadow-lg border border-slate-200 rounded-full px-4 py-2 flex items-center gap-3 pointer-events-auto">
-            <span className="text-xs font-bold text-slate-500">글자 크기</span>
+            <span className="text-xs font-bold text-slate-500">{isEn ? 'Font Size' : '글자 크기'}</span>
             <button onClick={() => setZoomLevel(prev => Math.max(0.8, prev - 0.1))} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 font-bold transition-colors">-</button>
             <span className="text-sm font-black text-indigo-600 w-12 text-center">{Math.round(zoomLevel * 100)}%</span>
             <button onClick={() => setZoomLevel(prev => Math.min(1.8, prev + 0.1))} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 font-bold transition-colors">+</button>
@@ -362,8 +376,8 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-2xl">👤</div>
             <div>
-              <h2 className="text-white font-black text-xl">{userInfo.name} <span className="text-white/70 font-bold text-base ml-1">님의 측정 결과</span></h2>
-              <p className="text-white/60 text-sm font-medium mt-0.5">{userInfo.gender === 'male' ? '남성' : '여성'} · 만 {userInfo.age}세 · {new Date(safeReport.date || Date.now()).toLocaleDateString()}</p>
+              <h2 className="text-white font-black text-xl">{userInfo.name} <span className="text-white/70 font-bold text-base ml-1">{isEn ? "'s Wellness Report" : " 님의 측정 결과"}</span></h2>
+              <p className="text-white/60 text-sm font-medium mt-0.5">{userInfo.gender === 'male' ? (isEn ? 'Male' : '남성') : (isEn ? 'Female' : '여성')} · {isEn ? `Age ${userInfo.age}` : `만 ${userInfo.age}세`} · {new Date(safeReport.date || Date.now()).toLocaleDateString()}</p>
             </div>
           </div>
         </div>
@@ -376,13 +390,13 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
             </div>
             <div className="text-left">
               <h4 className="text-white font-bold text-sm flex items-center gap-2">
-                🔬 {BRAND_NAME} 분석 신뢰도 <span className="text-indigo-400">92%</span>
+                🔬 {BRAND_NAME} {isEn ? 'Analysis Reliability' : '분석 신뢰도'} <span className="text-indigo-400">92%</span>
               </h4>
-              <p className="text-slate-400 text-[10px] font-medium mt-0.5">자세, 균형, 인지반응 및 안면 노화 6대 핵심 조건 교차 검증 완료</p>
+              <p className="text-slate-400 text-[10px] font-medium mt-0.5">{isEn ? 'Cross-validation complete for posture, balance, response, and face metrics' : '자세, 균형, 인지반응 및 안면 노화 6대 핵심 조건 교차 검증 완료'}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5 justify-center md:justify-end">
-            {['정면 자세', '측면 정렬', '균형 데이터', '뇌 인지 반응', '안면 밝기', '7코드 패턴'].map((check) => (
+            {(isEn ? ['Front Posture', 'Side Alignment', 'Balance Data', 'Brain Response', 'Face Brightness', '7-Code Pattern'] : ['정면 자세', '측면 정렬', '균형 데이터', '뇌 인지 반응', '안면 밝기', '7코드 패턴']).map((check) => (
               <span key={check} className="text-[9px] bg-slate-950/80 text-emerald-400 border border-emerald-900/30 px-2 py-0.5 rounded-md font-black">
                 ✓ {check}
               </span>
@@ -394,33 +408,33 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
         <div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 print:grid-cols-7">
             <div className="bg-slate-50 py-6 px-4 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center">
-                <span className="text-slate-500 text-xs font-bold uppercase mb-2">실제 나이</span>
-                <div className="text-4xl font-black text-slate-800 mb-1">{userInfo.age}<span className="text-xl ml-1">세</span></div>
+                <span className="text-slate-500 text-xs font-bold uppercase mb-2">{isEn ? 'Chronological Age' : '실제 나이'}</span>
+                <div className="text-4xl font-black text-slate-800 mb-1">{userInfo.age}<span className="text-xl ml-1">{isEn ? ' yrs' : '세'}</span></div>
             </div>
             <div className="bg-slate-50 py-6 px-4 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center">
-                <span className="text-slate-500 text-xs font-bold uppercase mb-2">신체 나이</span>
-                <div className="text-4xl font-black text-indigo-600 mb-1">{safeReport.physicalAge || 0}<span className="text-xl ml-1">세</span></div>
+                <span className="text-slate-500 text-xs font-bold uppercase mb-2">{isEn ? 'Physical Age' : '신체 나이'}</span>
+                <div className="text-4xl font-black text-indigo-600 mb-1">{safeReport.physicalAge || 0}<span className="text-xl ml-1">{isEn ? ' yrs' : '세'}</span></div>
             </div>
             <div className="bg-slate-50 py-6 px-4 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center">
-                <span className="text-slate-500 text-xs font-bold uppercase mb-2">얼굴 나이</span>
-                <div className="text-4xl font-black text-rose-500 mb-1">{safeReport.faceAgeEstimate || 0}<span className="text-xl ml-1">세</span></div>
+                <span className="text-slate-500 text-xs font-bold uppercase mb-2">{isEn ? 'Face Age' : '얼굴 나이'}</span>
+                <div className="text-4xl font-black text-rose-500 mb-1">{safeReport.faceAgeEstimate || 0}<span className="text-xl ml-1">{isEn ? ' yrs' : '세'}</span></div>
             </div>
             <div className="bg-slate-50 py-6 px-4 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center">
-                <span className="text-slate-500 text-xs font-bold uppercase mb-2">뇌 나이</span>
-                <div className="text-4xl font-black text-amber-500 mb-1">{safeReport.brainAge || '-'}<span className="text-xl ml-1">세</span></div>
+                <span className="text-slate-500 text-xs font-bold uppercase mb-2">{isEn ? 'Brain Age' : '뇌 나이'}</span>
+                <div className="text-4xl font-black text-amber-500 mb-1">{safeReport.brainAge || '-'}<span className="text-xl ml-1">{isEn ? ' yrs' : '세'}</span></div>
             </div>
             <div className="bg-slate-50 py-6 px-4 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center">
-                <span className="text-slate-500 text-xs font-bold uppercase mb-2">마음 나이</span>
-                <div className="text-4xl font-black text-fuchsia-500 mb-1">{safeReport.mindAge || '-'}<span className="text-xl ml-1">세</span></div>
+                <span className="text-slate-500 text-xs font-bold uppercase mb-2">{isEn ? 'Mind Age' : '마음 나이'}</span>
+                <div className="text-4xl font-black text-fuchsia-500 mb-1">{safeReport.mindAge || '-'}<span className="text-xl ml-1">{isEn ? ' yrs' : '세'}</span></div>
             </div>
 
             <div className="bg-emerald-600 py-6 px-4 rounded-3xl flex flex-col items-center justify-center text-center text-white shadow-md shadow-emerald-200">
-                <span className="text-emerald-100 text-xs font-bold uppercase mb-2">통합 밸런스 나이</span>
-                <div className="text-4xl font-black mb-1">{safeReport.comprehensiveAge || safeReport.physicalAge || 0}<span className="text-xl text-emerald-200 ml-1">세</span></div>
+                <span className="text-emerald-100 text-xs font-bold uppercase mb-2">{isEn ? 'Integrated Balance Age' : '통합 밸런스 나이'}</span>
+                <div className="text-4xl font-black mb-1">{safeReport.comprehensiveAge || safeReport.physicalAge || 0}<span className="text-xl text-emerald-200 ml-1">{isEn ? ' yrs' : '세'}</span></div>
             </div>
             <div className="bg-indigo-600 py-6 px-4 rounded-3xl flex flex-col items-center justify-center text-center text-white shadow-md shadow-indigo-200">
-                <span className="text-indigo-200 text-xs font-bold uppercase mb-2">코어 밸런스 점수</span>
-                <div className="text-4xl font-black mb-1">{safeReport.overallScore || 0}<span className="text-xl text-indigo-200 ml-1">점</span></div>
+                <span className="text-indigo-200 text-xs font-bold uppercase mb-2">{isEn ? 'Core Balance Score' : '코어 밸런스 점수'}</span>
+                <div className="text-4xl font-black mb-1">{safeReport.overallScore || 0}<span className="text-xl text-indigo-200 ml-1">{isEn ? ' pts' : '점'}</span></div>
             </div>
           </div>
         </div>
@@ -430,7 +444,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
         <section>
           <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
             <i className="fas fa-camera text-indigo-500"></i>
-            측정 데이터 증빙 (Capture Evidence) {isSimpleView && <span className="text-xs text-slate-400 font-bold">(요약본)</span>}
+            {isEn ? 'Capture Evidence' : '측정 데이터 증빙'} {isSimpleView && <span className="text-xs text-slate-400 font-bold">{isEn ? '(Summary)' : '(요약본)'}</span>}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {safeImages
@@ -449,12 +463,12 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
           {/* 신체 정렬 및 균형 분석 (간단 뷰 50% 요약 및 레이더 차트 가림막) */}
           <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
             <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <span>🦴</span> 신체 정렬 및 균형 분석 {isSimpleView && <span className="text-xs text-rose-500 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-md font-bold">50% 요약본</span>}
+              <span>🦴</span> {isEn ? 'Body Alignment & Balance Analysis' : '신체 정렬 및 균형 분석'} {isSimpleView && <span className="text-xs text-rose-500 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-md font-bold">{isEn ? '50% Summary' : '50% 요약본'}</span>}
             </h3>
             
             {safeReport.bodyTypeAnalysis && (
               <div className="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
-                <h4 className="text-sm font-bold text-indigo-500 mb-1">AI 종합 체형 분석</h4>
+                <h4 className="text-sm font-bold text-indigo-500 mb-1">{isEn ? 'AI Comprehensive Body Analysis' : 'AI 종합 체형 분석'}</h4>
                 <p className="text-lg font-black text-indigo-900">{sanitize(safeReport.bodyTypeAnalysis)}</p>
               </div>
             )}
@@ -462,7 +476,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
             {alignmentAnalysis.length > 0 && (
               <div className="mb-6">
                 <h4 className="text-sm font-bold text-slate-500 mb-3 flex items-center gap-1">
-                  🦴 신체 틀어짐 분석 (AI 실측)
+                  🦴 {isEn ? 'Body Misalignment Analysis (AI Measurement)' : '신체 틀어짐 분석 (AI 실측)'}
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {alignmentAnalysis
@@ -474,23 +488,25 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                         '주의': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
                         '심함': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
                       };
+                      
+                      const severityEn: Record<string, string> = { '정상': 'Normal', '경미': 'Mild', '주의': 'Warning', '심함': 'Severe' };
                       const cfg = severityConfig[item?.severity] || severityConfig['경미'];
                       return (
                         <div key={i} className={`p-3 rounded-xl border ${cfg.border} ${cfg.bg}`}>
                           <div className="flex items-center justify-between mb-1">
                             <h5 className="font-bold text-slate-800 text-sm">{sanitize(item?.issue)}</h5>
                             <span className={`px-2 py-0.5 rounded-md text-xs font-black ${cfg.text} ${cfg.bg} border ${cfg.border}`}>
-                              {item?.severity}
+                              {isEn ? (severityEn[item?.severity] || item?.severity) : item?.severity}
                             </span>
                           </div>
                           <div className="text-xs text-slate-500 mb-1">
                             {item?.measuredValue && String(item.measuredValue).trim() !== '' && !String(item.measuredValue).includes('N/A') && (
                               <>
-                                측정수치 <strong className="text-slate-700">{sanitize(item?.measuredValue)}</strong>
+                                {isEn ? 'Measured' : '측정수치'} <strong className="text-slate-700">{sanitize(item?.measuredValue)}</strong>
                                 <span className="mx-1">|</span>
                               </>
                             )}
-                            정상 범주 {sanitize(item?.normalRange)}
+                            {isEn ? 'Normal Range' : '정상 범주'} {sanitize(item?.normalRange)}
                           </div>
                           <p className="text-xs text-slate-600 leading-relaxed">{sanitize(item?.impact)}</p>
                         </div>
@@ -507,7 +523,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                   <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                     <PolarGrid stroke="#e2e8f0" />
                     <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#64748b' }} />
-                    <Radar name="자세" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.4} />
+                    <Radar name={isEn ? 'Posture' : '자세'} dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.4} />
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
@@ -516,8 +532,8 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                   <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 mb-2 border border-indigo-100">
                     <i className="fas fa-lock"></i>
                   </div>
-                  <span className="text-[11px] text-slate-700 font-bold tracking-tight">자세 밸런스 차트 잠김</span>
-                  <span className="text-[10px] text-slate-400 mt-0.5 text-center leading-snug">상담 신청 시 상세 3D 밸런스 맵이 해제됩니다.</span>
+                  <span className="text-[11px] text-slate-700 font-bold tracking-tight">{isEn ? 'Posture Balance Chart Locked' : '자세 밸런스 차트 잠김'}</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5 text-center leading-snug">{isEn ? 'Schedule counseling to unlock the detailed 3D balance map.' : '상담 신청 시 상세 3D 밸런스 맵이 해제됩니다.'}</span>
                 </div>
               )}
             </div>
@@ -532,7 +548,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                       <p className="text-sm font-medium text-slate-600 leading-snug">{sanitize(item?.description)}</p>
                     </div>
                     <span className={`ml-2 px-3 py-1.5 rounded-lg text-sm font-black ${getStatusColor(item?.status || 'Good')}`}>
-                      {item?.score}점
+                      {item?.score}{isEn ? ' pts' : '점'}
                     </span>
                   </div>
                 ))}
@@ -540,7 +556,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
             
             {isSimpleView && (
               <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent flex items-end justify-center pb-3 pointer-events-none">
-                <span className="text-xs text-rose-500 font-black bg-rose-50 px-3 py-1 rounded-full border border-rose-100 shadow-sm pointer-events-auto">🔒 나머지 50% 분석 잠겨있음</span>
+                <span className="text-xs text-rose-500 font-black bg-rose-50 px-3 py-1 rounded-full border border-rose-100 shadow-sm pointer-events-auto">{isEn ? '🔒 Remaining 50% analysis is locked' : '🔒 나머지 50% 분석 잠겨있음'}</span>
               </div>
             )}
           </div>
@@ -549,7 +565,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
           <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden space-y-6">
             <h3 className="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
               <i className="fas fa-dumbbell text-indigo-505"></i>
-              기능적 수행 능력 상세 {isSimpleView && <span className="text-xs text-rose-500 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-md font-bold">50% 요약본</span>}
+              {isEn ? 'Functional Performance Details' : '기능적 수행 능력 상세'} {isSimpleView && <span className="text-xs text-rose-500 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-md font-bold">{isEn ? '50% Summary' : '50% 요약본'}</span>}
             </h3>
             
             <div className="grid grid-cols-1 gap-4">
@@ -560,8 +576,8 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                       <div className="flex justify-between items-center mb-2">
                           <h5 className="font-bold text-indigo-900 text-base">{sanitize(item?.exercise)}</h5>
                           <div className="text-right">
-                            <span className="text-sm font-black text-indigo-600 block">자세 점수 {item?.formScore}점</span>
-                            {item?.reps > 0 && <span className="text-sm font-bold text-indigo-500 block">수행 횟수 {item?.reps}회</span>}
+                            <span className="text-sm font-black text-indigo-600 block">{isEn ? 'Form Score: ' : '자세 점수 '}{item?.formScore}{isEn ? ' pts' : '점'}</span>
+                            {item?.reps > 0 && <span className="text-sm font-bold text-indigo-500 block">{isEn ? 'Reps: ' : '수행 횟수 '}{item?.reps}{isEn ? ' reps' : '회'}</span>}
                           </div>
                       </div>
                       <p className="text-sm font-medium text-indigo-800 mb-3">{sanitize(item?.performance)}</p>
@@ -582,7 +598,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                     <div key={i} className="p-4 rounded-2xl bg-rose-50/50 border border-rose-100">
                         <div className="flex justify-between items-center mb-2">
                             <h5 className="font-bold text-rose-900 text-base">{sanitize(item.testName)}</h5>
-                            <span className="text-base font-black text-rose-600">{item.score}점</span>
+                            <span className="text-base font-black text-rose-600">{item.score}{isEn ? ' pts' : '점'}</span>
                         </div>
                         <p className="text-sm font-medium text-rose-800">{sanitize(item.result)}</p>
                         
@@ -590,13 +606,17 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                         {isBalanceTest && (
                           <div className="mt-3 p-4 bg-white/80 border border-rose-200/60 rounded-xl space-y-2">
                             <h6 className="text-xs font-black text-rose-600 flex items-center gap-1">
-                              <span>🎯</span> 눈감고 한발서기의 중요성 및 문제 원인
+                              <span>🎯</span> {isEn ? 'Importance and Causes of Single-Leg Stance with Eyes Closed' : '눈감고 한발서기의 중요성 및 문제 원인'}
                             </h6>
                             <p className="text-xs text-slate-600 leading-relaxed font-semibold">
-                              눈감고 한발서기는 시각(눈)을 차단하여 신체의 <strong>고유수용 감각(체성감각)</strong>과 내이의 <strong>평형감각(전정감각)</strong>, 그리고 이를 조절하는 소뇌/두뇌 기능을 종합적으로 확인하는 매우 중요한 노화 스크리닝 지표입니다.
+                              {isEn 
+                                ? 'Single-leg stance with eyes closed is a crucial aging screening metric that checks your body\'s proprioception (somatosensory), inner ear balance (vestibular), and cerebellum/brain function that coordinates them by blocking vision.'
+                                : '눈감고 한발서기는 시각(눈)을 차단하여 신체의 <strong>고유수용 감각(체성감각)</strong>과 내이의 <strong>평형감각(전정감각)</strong>, 그리고 이를 조절하는 소뇌/두뇌 기능을 종합적으로 확인하는 매우 중요한 노화 스크리닝 지표입니다.'}
                             </p>
                             <p className="text-[11px] text-slate-500 leading-relaxed">
-                              이 지표가 평이하거나 낮게 나오는 것은 단순 근력 부족뿐 아니라, 몸의 중심을 잡는 하체 대퇴부 및 코어 근력의 지지력 저하와 더불어, 고유 수용성 신경의 신호 전송 리듬이 둔화되었거나 신체 정렬 불균형이 축적되었음을 의미합니다. 또한 불면, 피로 등으로 인한 뇌 피로도가 높을 때 균형 유지력이 현저히 감소합니다.
+                              {isEn
+                                ? 'If this metric is average or low, it means not only a lack of simple muscular strength, but also that support for the lower thigh and core muscles that keep the body balanced is weakened, and the transmission rhythm of proprioceptive nerves has slowed down or misalignment of the body has accumulated. Also, balance maintenance significantly decreases when brain fatigue is high due to insomnia, fatigue, etc.'
+                                : '이 지표가 평이하거나 낮게 나오는 것은 단순 근력 부족뿐 아니라, 몸의 중심을 잡는 하체 대퇴부 및 코어 근력의 지지력 저하와 더불어, 고유 수용성 신경의 신호 전송 리듬이 둔화되었거나 신체 정렬 불균형이 축적되었음을 의미합니다. 또한 불면, 피로 등으로 인한 뇌 피로도가 높을 때 균형 유지력이 현저히 감소합니다.'}
                             </p>
                           </div>
                         )}
@@ -608,7 +628,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                         ) : (
                           (isBalanceTest || isBrainTest) && isSimpleView && (
                             <p className="text-xs text-rose-550/80 font-bold bg-rose-100/40 p-2 rounded-lg mt-2 text-center">
-                              🔒 상세 솔루션 조언은 전문 상담 신청 시 개방됩니다.
+                              🔒 {isEn ? '🔒 Detailed solution advice will be unlocked upon scheduling counseling.' : '🔒 상세 솔루션 조언은 전문 상담 신청 시 개방됩니다.'}
                             </p>
                           )
                         )}
@@ -619,7 +639,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
 
             {isSimpleView && (
               <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent flex items-end justify-center pb-3 pointer-events-none">
-                <span className="text-xs text-rose-500 font-black bg-rose-50 px-3 py-1 rounded-full border border-rose-100 shadow-sm pointer-events-auto">🔒 나머지 50% 분석 잠겨있음</span>
+                <span className="text-xs text-rose-500 font-black bg-rose-50 px-3 py-1 rounded-full border border-rose-100 shadow-sm pointer-events-auto">{isEn ? '🔒 Remaining 50% analysis is locked' : '🔒 나머지 50% 분석 잠겨있음'}</span>
               </div>
             )}
           </div>
@@ -634,7 +654,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-amber-100 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
             <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2 relative z-10">
               <i className="fas fa-brain text-amber-500"></i>
-              뇌 건강 및 기억력 상세 분석
+              {isEn ? 'Brain Health & Memory Detail Analysis' : '뇌 건강 및 기억력 상세 분석'}
             </h3>
             <div className="relative p-4 bg-amber-50/50 border border-amber-100 rounded-2xl relative z-10 overflow-hidden min-h-[100px]">
               <div className={`${isSimpleView ? 'filter blur-[4px] opacity-40 select-none pointer-events-none' : ''}`}>
@@ -645,8 +665,8 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                   <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 mb-1 border border-amber-200">
                     <i className="fas fa-lock"></i>
                   </div>
-                  <span className="text-xs text-amber-800 font-bold">🔒 뇌 인지 건강 상세 가이드 잠김</span>
-                  <span className="text-[10.5px] text-amber-600/80 mt-0.5">전문 상담 신청 시 전두엽 활성 가이드가 개방됩니다.</span>
+                  <span className="text-xs text-amber-800 font-bold">{isEn ? '🔒 Brain Cognitive Health Detail Guide Locked' : '🔒 뇌 인지 건강 상세 가이드 잠김'}</span>
+                  <span className="text-[10.5px] text-amber-600/80 mt-0.5">{isEn ? 'Scheduling counseling unlocks the frontal lobe activation guide.' : '전문 상담 신청 시 전두엽 활성 가이드가 개방됩니다.'}</span>
                 </div>
               )}
             </div>
@@ -655,7 +675,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
 
         {/* 뇌 인지 반응 결과 가이드는 항상 노출 */}
         {(() => {
-          const reactionImg = safeImages.find(img => img.step === 'BRAIN_REACTION');
+          const reactionImg = safeImages.find(img => img.step === ('BRAIN_REACTION' as any));
           const memoryImg = safeImages.find(img => img.step === 'BRAIN_MEMORY');
           
           // 라이트 버전에서는 두뇌 인지 반응 테스트를 하지 않으므로 fallback 데이터를 생성하지 않음
@@ -670,21 +690,21 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
           };
 
           const getMemoryGrade = (span: number) => {
-            if (span >= 6) return { grade: '매우 우수', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', emoji: '🏆' };
-            if (span >= 5) return { grade: '우수', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', emoji: '✅' };
-            if (span >= 3) return { grade: '보통', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', emoji: '⚠️' };
-            return { grade: '개선 필요', bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', emoji: '🔻' };
+            if (span >= 6) return { grade: isEn ? 'Excellent' : '매우 우수', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', emoji: '🏆' };
+            if (span >= 5) return { grade: isEn ? 'Good' : '우수', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', emoji: '✅' };
+            if (span >= 3) return { grade: isEn ? 'Fair' : '보통', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', emoji: '⚠️' };
+            return { grade: isEn ? 'Needs Improvement' : '개선 필요', bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', emoji: '🔻' };
           };
 
           return (
             <section className="bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 rounded-[40px] p-8 md:p-12 border border-indigo-100 text-left">
               <div className="text-center mb-10">
                 <span className="text-purple-500 text-sm font-bold uppercase tracking-[0.3em]">BRAIN AGE TEST DETAIL</span>
-                <h3 className="text-3xl font-black text-slate-900 mt-3">🧠 {hasReactionData ? '두뇌 인지 반응 결과 가이드' : '마트 장보기 기억력 결과 가이드'}</h3>
+                <h3 className="text-3xl font-black text-slate-900 mt-3">🧠 {hasReactionData ? (isEn ? 'Brain Cognitive Response Guide' : '두뇌 인지 반응 결과 가이드') : (isEn ? 'Grocery Shopping Memory Guide' : '마트 장보기 기억력 결과 가이드')}</h3>
                 {safeReport.brainAge && (
                   <div className="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-3 rounded-full shadow-lg">
-                    <span className="font-bold">추정 뇌 나이</span>
-                    <span className="text-3xl font-black">{safeReport.brainAge}세</span>
+                    <span className="font-bold">{isEn ? 'Estimated Brain Age' : '추정 뇌 나이'}</span>
+                    <span className="text-3xl font-black">{safeReport.brainAge}{isEn ? ' yrs' : '세'}</span>
                   </div>
                 )}
               </div>
@@ -695,8 +715,8 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                   <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-md w-full max-w-2xl">
                     <div className="text-center mb-6">
                       <div className="text-5xl mb-2">🛒</div>
-                      <h4 className="text-xl font-black text-slate-800">마트 장보기 기억력</h4>
-                      <p className="text-xs text-slate-400 mt-1">작업기억(Working Memory) + 산술능력</p>
+                      <h4 className="text-xl font-black text-slate-800">{isEn ? 'Grocery Shopping Memory' : '마트 장보기 기억력'}</h4>
+                      <p className="text-xs text-slate-400 mt-1">{isEn ? 'Working Memory + Arithmetic Ability' : '작업기억(Working Memory) + 산술능력'}</p>
                     </div>
                     
                     <div className="space-y-5">
@@ -750,12 +770,14 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                       <div className="relative overflow-hidden p-4 bg-slate-50 rounded-xl border border-slate-100">
                         <div className={`${isSimpleView ? 'filter blur-[3px] opacity-40 select-none pointer-events-none' : ''}`}>
                           <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-                            마트 장보기 기억력 테스트는 해마와 전두엽의 작업기억 능력을 측정합니다. 8개 물건을 정확히 인지하고 사칙연산 방해 작업을 수행하며 동시에 암산 능력을 갖추었는지 종합 평가합니다.
+                            {isEn
+                              ? 'The grocery memory test evaluates the working memory capacity of the hippocampus and frontal lobes. It comprehensively assesses the ability to remember 8 items, perform mathematical calculation distractors, and complete mental arithmetic tasks.'
+                              : '마트 장보기 기억력 테스트는 해마와 전두엽의 작업기억 능력을 측정합니다. 8개 물건을 정확히 인지하고 사칙연산 방해 작업을 수행하며 동시에 암산 능력을 갖추었는지 종합 평가합니다.'}
                           </p>
                         </div>
                         {isSimpleView && (
                           <div className="absolute inset-0 flex items-center justify-center bg-slate-50/10 backdrop-blur-[0.5px]">
-                            <span className="text-[10px] text-indigo-700 font-black">🔒 상세 기억력 가이드는 전문 상담 시 개방됩니다.</span>
+                            <span className="text-[10px] text-indigo-700 font-black">🔒 {isEn ? 'Detailed memory guide will be unlocked during counseling.' : '상세 기억력 가이드는 전문 상담 시 개방됩니다.'}</span>
                           </div>
                         )}
                       </div>
@@ -773,7 +795,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
               <div className="absolute -right-10 -top-10 w-40 h-40 bg-rose-100 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
               <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2 relative z-10">
                 <i className="fas fa-smile-beam text-rose-500"></i>
-                입체 안면 노화 분석 {isSimpleView && <span className="text-xs text-rose-500 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-md font-bold">50% 미리보기</span>}
+                {isEn ? 'Face Aging Analysis' : '입체 안면 노화 분석'} {isSimpleView && <span className="text-xs text-rose-500 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-md font-bold">{isEn ? '50% Preview' : '50% 미리보기'}</span>}
               </h3>
               <div className="space-y-4 relative z-10">
                 {safeReport.faceAnalysis.skinTone && (
@@ -782,7 +804,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                     <i className="fas fa-sun text-rose-500 text-sm"></i>
                   </div>
                   <div>
-                    <h5 className="text-base font-bold text-slate-850">피부 톤 및 밝기</h5>
+                    <h5 className="text-base font-bold text-slate-850">{isEn ? 'Skin Tone & Brightness' : '피부 톤 및 밝기'}</h5>
                     <p className="text-sm font-medium text-slate-700 leading-relaxed">{sanitize(safeReport.faceAnalysis.skinTone)}</p>
                   </div>
                 </div>
@@ -792,7 +814,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                     <i className="fas fa-water text-rose-500 text-sm"></i>
                   </div>
                   <div>
-                    <h5 className="text-base font-bold text-slate-855">피부 탄력도</h5>
+                    <h5 className="text-base font-bold text-slate-855">{isEn ? 'Skin Elasticity' : '피부 탄력도'}</h5>
                     <p className="text-sm font-medium text-slate-700 leading-relaxed">{sanitize(safeReport.faceAnalysis.elasticity)}</p>
                   </div>
                 </div>
@@ -804,17 +826,17 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                         <i className="fas fa-wave-square text-rose-500 text-sm"></i>
                       </div>
                       <div>
-                        <h5 className="text-base font-bold text-slate-855">주름 및 굴곡</h5>
+                        <h5 className="text-base font-bold text-slate-855">{isEn ? 'Wrinkles & Contours' : '주름 및 굴곡'}</h5>
                         <p className="text-sm font-medium text-slate-700 leading-relaxed">{sanitize(safeReport.faceAnalysis.wrinkles)}</p>
                       </div>
                     </div>
                     <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                      <h5 className="text-sm font-bold text-slate-500 uppercase mb-2">안면 종합 평가</h5>
+                      <h5 className="text-sm font-bold text-slate-500 uppercase mb-2">{isEn ? 'Face Comprehensive Evaluation' : '안면 종합 평가'}</h5>
                       <p className="text-base text-slate-800 font-bold">{sanitize(safeReport.faceAnalysis.summary)}</p>
                     </div>
                     {safeReport.faceAnalysis.recommendation && (
                       <div className="mt-4 p-4 bg-rose-50 rounded-xl border border-rose-100">
-                        <h5 className="text-sm font-bold text-rose-500 uppercase mb-2">맞춤형 개선 솔루션</h5>
+                        <h5 className="text-sm font-bold text-rose-500 uppercase mb-2">{isEn ? 'Personalized Improvement Solution' : '맞춤형 개선 솔루션'}</h5>
                         <p className="text-base text-rose-800 font-bold">{sanitize(safeReport.faceAnalysis.recommendation)}</p>
                       </div>
                     )}
@@ -823,7 +845,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                     <div className="absolute inset-0 flex items-center justify-center z-10">
                       <div className="bg-rose-500/80 backdrop-blur-sm px-5 py-2.5 rounded-xl border border-rose-400/30 flex items-center gap-2 shadow-lg">
                         <i className="fas fa-lock text-rose-100 text-xs"></i>
-                        <span className="text-xs text-white font-bold">상세 결과는 전문 상담 신청 후 공개</span>
+                        <span className="text-xs text-white font-bold">{isEn ? 'Detailed results will be unlocked after scheduling counseling' : '상세 결과는 전문 상담 신청 후 공개'}</span>
                       </div>
                     </div>
                   )}
@@ -841,20 +863,20 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
           {/* 3바디 균형 분석 */}
           <div className="text-center mb-10">
             <span className="text-cyan-400 text-sm font-bold uppercase tracking-[0.3em]">3BODY ANALYSIS</span>
-            <h3 className="text-4xl font-black mt-3">3바디 균형 분석</h3>
-            <p className="text-slate-300 text-base mt-3 font-medium">신체(Physical) · 에너지(Energy) · 두뇌(Brain)의 통합 밸런스 상태</p>
+            <h3 className="text-4xl font-black mt-3">{isEn ? '3-Body Balance Analysis' : '3바디 균형 분석'}</h3>
+            <p className="text-slate-300 text-base mt-3 font-medium">{isEn ? 'Integrated balance of Physical, Energy, and Brain' : '신체(Physical) · 에너지(Energy) · 두뇌(Brain)의 통합 밸런스 상태'}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
             {[
-              { key: 'body', icon: '🏃', title: 'PHYSICAL BODY (신체 활력 및 중심축)', color: 'from-emerald-500 to-teal-600', data: threeBody.body },
-              { key: 'mind', icon: '💚', title: 'ENERGY BODY (정서 및 기 에너지 밸런스)', color: 'from-violet-500 to-purple-600', data: threeBody.mind },
-              { key: 'brain', icon: '🧠', title: 'INFORMATION BODY (두뇌 인지 및 정보 처리력)', color: 'from-amber-500 to-orange-600', data: threeBody.brain }
+              { key: 'body', icon: '🏃', title: isEn ? 'PHYSICAL BODY (Physical Vitality & Core)' : 'PHYSICAL BODY (신체 활력 및 중심축)', color: 'from-emerald-500 to-teal-600', data: threeBody.body },
+              { key: 'mind', icon: '💚', title: isEn ? 'ENERGY BODY (Emotional & Energy Balance)' : 'ENERGY BODY (정서 및 기 에너지 밸런스)', color: 'from-violet-500 to-purple-600', data: threeBody.mind },
+              { key: 'brain', icon: '🧠', title: isEn ? 'INFORMATION BODY (Brain Cognition & Focus)' : 'INFORMATION BODY (두뇌 인지 및 정보 처리력)', color: 'from-amber-500 to-orange-600', data: threeBody.brain }
             ].map(item => (
               <div key={item.key} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-6 text-center">
                 <div className="text-5xl mb-4">{item.icon}</div>
                 <h4 className="font-bold text-xl mb-3">{item.title}</h4>
                 <div className={`text-5xl font-black bg-gradient-to-r ${item.color} bg-clip-text text-transparent mb-4`}>
-                  {item.data?.score || 0}점
+                  {item.data?.score || 0}{isEn ? ' pts' : '점'}
                 </div>
                 <div className="h-3 bg-white/10 rounded-full overflow-hidden mb-4">
                   <div className={`h-full bg-gradient-to-r ${item.color} rounded-full transition-all duration-1000`} style={{ width: `${item.data?.score || 0}%` }} />
@@ -868,14 +890,19 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
           <div className="mt-10 pt-10 border-t border-white/10">
             <div className="text-center mb-8">
               <span className="text-amber-400 text-sm font-bold uppercase tracking-[0.3em]">7CODE ENERGY</span>
-              <h3 className="text-3xl font-black mt-3">7코드 에너지 분석</h3>
-              <p className="text-slate-300 text-base mt-2 font-medium">당신의 에너지 흐름을 7가지 코드로 분석합니다</p>
+              <h3 className="text-3xl font-black mt-3">{isEn ? '7-Code Energy Analysis' : '7코드 에너지 분석'}</h3>
+              <p className="text-slate-300 text-base mt-2 font-medium">{isEn ? 'Analyzing your energy flow through 7 key codes' : '당신의 에너지 흐름을 7가지 코드로 분석합니다'}</p>
             </div>
             
             <div className="space-y-4">
               {sevenCodeList.map(item => {
+                const activeWeakestCode = getWeakestFromReport();
                 const isWeakest = item.id === activeWeakestCode;
                 const grade = getChakraGrade(item.score);
+                
+                const activeCodeNames = isEn ? SEVEN_CODE_NAMES_EN : SEVEN_CODE_NAMES;
+                const labelText = activeCodeNames[item.id]?.name || item.label;
+
                 return (
                   <div key={item.id} className={`bg-white/5 rounded-2xl p-5 border transition-all ${isWeakest ? 'border-amber-400/80 bg-white/10 ring-1 ring-amber-400/30 shadow-md' : 'border-white/10'}`}>
                     <div className="flex items-center gap-5">
@@ -885,10 +912,10 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-2">
                           <span className="font-bold text-base text-white flex items-center gap-2">
-                            {item.label}
+                            {labelText}
                             {isWeakest && (
                               <span className="text-[9px] font-black text-amber-800 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
-                                🚨 최약
+                                🚨 {isEn ? 'Weakest' : '최약'}
                               </span>
                             )}
                           </span>
@@ -896,7 +923,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                             <span className="px-2 py-0.5 bg-black/45 border text-[10px] font-black text-amber-400 border-amber-900/30 rounded-md">
                               {grade.text}
                             </span>
-                            <span className="text-base font-black text-white ml-1">{item.score}점</span>
+                            <span className="text-base font-black text-white ml-1">{item.score}{isEn ? ' pts' : '점'}</span>
                           </div>
                         </div>
                         <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-2">
@@ -922,82 +949,30 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
         </section>
 
         {/* 3바디 7코드 점검 핵심 분석 */}
-        <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 text-left shadow-lg relative overflow-hidden">
-          <div className="absolute right-0 top-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-          <h3 className="text-lg font-black text-amber-400 mb-3 flex items-center gap-2">
-            <span>💡</span> 오늘 점검 핵심 분석 (최약 코드 충전 가이드)
-          </h3>
-          <p className="text-sm font-semibold text-slate-300 leading-relaxed mb-4">
-            회원님의 전체 7개 에너지 축 중 현재 가장 활성화가 필요한 곳은 <strong className="text-white bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">{codeInfo.name}</strong>입니다.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-950/50 rounded-2xl border border-slate-800">
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">에너지 약화 증상</span>
-              <p className="text-xs text-slate-400 font-medium leading-relaxed">{codeInfo.symptom}</p>
-            </div>
-            <div className="relative">
-              <div className={`p-4 bg-indigo-950/20 rounded-2xl border border-indigo-900/30 ${isSimpleView ? 'filter blur-[6px] opacity-40 select-none pointer-events-none' : ''}`}>
-                <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block mb-1">데일리 충전 솔루션</span>
-                <p className="text-xs text-indigo-200 font-medium leading-relaxed">{codeInfo.hint}</p>
-              </div>
-              {isSimpleView && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="bg-indigo-600/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-indigo-400/30 flex items-center gap-2">
-                    <i className="fas fa-lock text-indigo-200 text-xs"></i>
-                    <span className="text-xs text-indigo-100 font-bold">상세 점검 시 공개</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* 나의 건강 니즈 맞춤 에너지 솔루션 */}
-        {safeReport.needsSolution && (safeReport.needsSolution.physical || safeReport.needsSolution.emotional || safeReport.needsSolution.cognitive) && (
-          <section className="bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-[40px] p-8 md:p-12 border border-amber-200/50 text-left relative overflow-hidden">
-            <div className="absolute -right-16 -top-16 w-48 h-48 bg-amber-300/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-rose-300/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10">
-              <div className="text-center mb-10">
-                <span className="text-amber-600 text-sm font-bold uppercase tracking-[0.3em]">PERSONALIZED ENERGY SOLUTION</span>
-                <h3 className="text-3xl font-black text-slate-900 mt-3">🌟 나의 건강 니즈 맞춤 에너지 솔루션</h3>
-                <p className="text-amber-800/70 text-base font-medium mt-3">회원님의 관심 건강 니즈에 맞춘 몸·마음·뇌 차원의 통합 에너지 솔루션</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                {safeReport.needsSolution.physical && (
-                  <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-emerald-200/50 hover:shadow-xl transition-all">
-                    <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center text-2xl shadow-md mb-4">🏃</div>
-                    <h4 className="text-lg font-black text-slate-800 mb-1">몸(Body) 차원</h4>
-                    <p className="text-xs font-bold text-emerald-600 mb-3">신체 에너지 순환 · 정렬 회복</p>
-                    <p className="text-sm font-medium text-slate-700 leading-relaxed">{sanitize(safeReport.needsSolution.physical)}</p>
-                  </div>
-                )}
-                {safeReport.needsSolution.emotional && (
-                  <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-violet-200/50 hover:shadow-xl transition-all">
-                    <div className="w-14 h-14 bg-gradient-to-br from-violet-400 to-purple-500 rounded-2xl flex items-center justify-center text-2xl shadow-md mb-4">💜</div>
-                    <h4 className="text-lg font-black text-slate-800 mb-1">마음(Mind) 차원</h4>
-                    <p className="text-xs font-bold text-violet-600 mb-3">감정 에너지 충전 · 내면 조율</p>
-                    <p className="text-sm font-medium text-slate-700 leading-relaxed">{sanitize(safeReport.needsSolution.emotional)}</p>
-                  </div>
-                )}
-                {safeReport.needsSolution.cognitive && (
-                  <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 shadow-lg border border-amber-200/50 hover:shadow-xl transition-all">
-                    <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-2xl shadow-md mb-4">🧠</div>
-                    <h4 className="text-lg font-black text-slate-800 mb-1">뇌(Brain) 차원</h4>
-                    <p className="text-xs font-bold text-amber-600 mb-3">뇌파 조율 · 의식 성장 훈련</p>
-                    <p className="text-sm font-medium text-slate-700 leading-relaxed">{sanitize(safeReport.needsSolution.cognitive)}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-        )}
+        {(() => {
+          const activeWeakestCode = getWeakestFromReport();
+          const activeCodeNames = isEn ? SEVEN_CODE_NAMES_EN : SEVEN_CODE_NAMES;
+          const codeInfo = activeCodeNames[activeWeakestCode] || activeCodeNames[4];
+          return (
+            <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 text-left shadow-lg relative overflow-hidden">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+              <h3 className="text-lg font-black text-amber-400 mb-3 flex items-center gap-2">
+                <span>💡</span> {isEn ? "Today's Core Analysis (Weakest Code Charge Guide)" : "오늘 점검 핵심 분석 (최약 코드 충전 가이드)"}
+              </h3>
+              <p className="text-sm font-semibold text-slate-300 leading-relaxed mb-4">
+                {isEn
+                  ? <>Out of your 7 energy codes, the one requiring activation is <strong className="text-white bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">{codeInfo.name}</strong>.</>
+                  : <>회원님의 전체 7개 에너지 축 중 현재 가장 활성화가 필요한 곳은 <strong className="text-white bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">{codeInfo.name}</strong>입니다.</>}
+              </p>
+            </section>
+          );
+        })()}
 
         {/* 에너지 MBTI 기질 상태 */}
         <section className="text-left">
           <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
             <i className="fas fa-magic text-indigo-505"></i>
-            🔮 에너지 MBTI 기질 상태
+            🔮 {isEn ? 'Energy MBTI Status' : '에너지 MBTI 기질 상태'}
           </h3>
           <EnergyMbtiWebCard 
             mbtiCode={mbtiCode} 
@@ -1014,10 +989,19 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
             <div className="w-14 h-14 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <i className="fas fa-question-circle text-2xl animate-pulse text-indigo-400"></i>
             </div>
-            <h4 className="text-white text-xl font-black mb-3">맞춤 관리 및 전문 상담 신청</h4>
+            <h4 className="text-white text-xl font-black mb-3">{isEn ? 'Apply for Personalized Coaching & Counseling' : '맞춤 관리 및 전문 상담 신청'}</h4>
             <p className="text-slate-300 text-sm leading-relaxed mb-6 font-medium">
-              최근 에너지가 저하된 약한 코드인 <strong>{codeInfo.name}</strong>({codeInfo.region})에 대해 <strong>1:1 맞춤형 훈련 관리</strong>를 받고 싶으시거나, <strong>깊은 전문 상담</strong>을 원하십니까?<br />
-              원하시는 관리/상담을 신청하시면 상세 결과 분석 리포트, 3바디 통합 솔루션 가이드 및 종합 평가 리포트가 완전히 개방됩니다.
+              {isEn ? (
+                <>
+                  Would you like 1:1 coaching or consulting for your weakest energy area, <strong>{codeInfo.name}</strong> ({codeInfo.region})?<br />
+                  Apply to fully unlock the detailed report, 3-body solution guides, and comprehensive review.
+                </>
+              ) : (
+                <>
+                  최근 에너지가 저하된 약한 코드인 <strong>{codeInfo.name}</strong>({codeInfo.region})에 대해 <strong>1:1 맞춤형 훈련 관리</strong>를 받고 싶으시거나, <strong>깊은 전문 상담</strong>을 원하십니까?<br />
+                  원하시는 관리/상담을 신청하시면 상세 결과 분석 리포트, 3바디 통합 솔루션 가이드 및 종합 평가 리포트가 완전히 개방됩니다.
+                </>
+              )}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -1030,7 +1014,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                 }}
                 className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black py-4 px-6 rounded-2xl transition-all shadow-lg active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-sm"
               >
-                <span>🌱 1:1 맞춤 관리 신청</span>
+                <span>{isEn ? '🌱 Apply for 1:1 Coaching' : '🌱 1:1 맞춤 관리 신청'}</span>
                 <i className="fas fa-chevron-right text-xs"></i>
               </button>
               <button
@@ -1043,16 +1027,12 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                 }}
                 className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black py-4 px-6 rounded-2xl transition-all shadow-lg active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-sm"
               >
-                <span>💬 깊은 전문 상담 신청</span>
+                <span>{isEn ? '💬 Apply for In-depth Counseling' : '💬 깊은 전문 상담 신청'}</span>
                 <i className="fas fa-chevron-right text-xs"></i>
               </button>
             </div>
           </div>
         )}
-
-        {/* ========================================================
-            6. 상세 솔루션 영역 (Solution - 상세 개방 시에만 노출)
-           ======================================================== */}
         {!isSimpleView && (
           <>
             <div id="detailed-section-top" className="scroll-mt-10" />
@@ -1173,16 +1153,25 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
             <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-8 rounded-[40px] text-white flex flex-col md:flex-row items-center justify-between gap-6 max-w-4xl mx-auto mt-8 text-left">
               <div className="text-left">
                 <h4 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 via-white to-indigo-200 mb-2">
-                  📈 다음 측정 시 변화를 추적하세요
+                  📈 {isEn ? 'Track changes on your next assessment' : '다음 측정 시 변화를 추적하세요'}
                 </h4>
                 <p className="text-indigo-200 text-xs font-semibold leading-relaxed mb-4">
-                  오늘 측정된 종합 밸런스 나이는 <strong className="text-amber-400">{safeReport.comprehensiveAge || safeReport.physicalAge || 0}세</strong>입니다.<br/>
-                  모바일 앱(출시 예정)에 연동해 두시면 다음 측정 결과와 정밀 비교 그래프를 받아보실 수 있습니다.
+                  {isEn ? (
+                    <>
+                      Your integrated balance age is <strong className="text-amber-400">{safeReport.comprehensiveAge || safeReport.physicalAge || 0} years</strong>.<br/>
+                      Link with our mobile app (coming soon) to track historical progress and comparison charts.
+                    </>
+                  ) : (
+                    <>
+                      오늘 측정된 종합 밸런스 나이는 <strong className="text-amber-400">{safeReport.comprehensiveAge || safeReport.physicalAge || 0}세</strong>입니다.<br/>
+                      모바일 앱(출시 예정)에 연동해 두시면 다음 측정 결과와 정밀 비교 그래프를 받아보실 수 있습니다.
+                    </>
+                  )}
                 </p>
                 <div className="text-[10px] text-slate-500 font-bold flex items-center gap-1.5">
-                  <span>📱 모바일 App 지원 예정</span>
+                  <span>{isEn ? '📱 Mobile App coming soon' : '📱 모바일 App 지원 예정'}</span>
                   <span>•</span>
-                  <span>스마트 이력 관리 서비스 예정</span>
+                  <span>{isEn ? 'Smart progress tracking service planned' : '스마트 이력 관리 서비스 예정'}</span>
                 </div>
               </div>
               
@@ -1195,10 +1184,19 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
                 </div>
                 <div className="text-left text-slate-800">
                   <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-0.5">CodeMap App</span>
-                  <span className="text-sm font-black text-slate-900 block leading-tight">코드맵 앱 출시 예정 (준비 중)</span>
+                  <span className="text-sm font-black text-slate-900 block leading-tight">{isEn ? 'CodeMap App (Coming Soon)' : '코드맵 앱 출시 예정 (준비 중)'}</span>
                   <span className="text-[10.5px] text-slate-500 font-medium block mt-1.5 leading-snug">
-                    정밀 이력 관리용 앱이 곧 출시됩니다.<br/>
-                    출시 후 스토어에서 만나보실 수 있습니다.
+                    {isEn ? (
+                      <>
+                        Historical tracking app is coming soon.<br/>
+                        You will be able to find it in the App Store upon release.
+                      </>
+                    ) : (
+                      <>
+                        정밀 이력 관리용 앱이 곧 출시됩니다.<br/>
+                        출시 후 스토어에서 만나보실 수 있습니다.
+                      </>
+                    )}
                   </span>
                 </div>
               </div>
@@ -1212,19 +1210,25 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
         {/* ⚠️ 법적 면책 고지 (의료법 준수) */}
         <div className="mt-8 mb-2 px-6 py-4 bg-amber-50 border border-amber-200 rounded-2xl text-center print:block">
           <p className="text-amber-800 text-xs font-bold mb-1">
-            ⚠️ {BRAND_NAME} 이용 안내 (법적 면책 고지)
+            ⚠️ {BRAND_NAME} {isEn ? 'Wellness Information & Disclaimer' : '이용 안내 (법적 면책 고지)'}
           </p>
           <p className="text-amber-700 text-[10.5px] leading-relaxed">
-            본 결과는 생체 에너지 및 체형 균형 상태를 파악하여 자가 관리를 돕기 위한 <strong>웰니스 스크리닝 지표</strong>입니다.{' '}
-            의료기기법에 따른 의료기기 진단 또는 의료법상의 의료행위가 <strong>아닙니다</strong>.<br />
-            본 리포트는 질병의 예방, 의학적 진단·처방·치료를 대체하지 않습니다.{' '}
-            근골격계 및 인지 반응 상의 신계적인 의학적 통증이나 정밀 진단이 필요하신 경우 전문 의료기관의 진료를 받아보시길 강력히 권장합니다.
+            {isEn ? (
+              'This screening is a wellness guide to evaluate posture and energy flow for self-care. It is NOT medical diagnosis, advice, or therapy under medical laws. It does not replace medical consultation. For diagnostic concerns or persistent pain, consult a healthcare provider.'
+            ) : (
+              <>
+                본 결과는 생체 에너지 및 체형 균형 상태를 파악하여 자가 관리를 돕기 위한 <strong>웰니스 스크리닝 지표</strong>입니다.{' '}
+                의료기기법에 따른 의료기기 분석 또는 의료법상의 의료행위가 <strong>아닙니다</strong>.<br />
+                본 리포트는 질병의 예방, 의학적 분석·조율·치료를 대체하지 않습니다.{' '}
+                근골격계 및 인지 반응 상의 신계적인 의학적 통증이나 정밀 소견이나 검진이 필요하신 경우 전문 의료기관의 진료를 받아보시길 강력히 권장합니다.
+              </>
+            )}
           </p>
         </div>
 
         {/* 예상 설명 시간 정보 표시 */}
         <div className="text-center text-slate-400 text-xs font-bold mt-2">
-          ⏱️ 핵심 설명 예상 시간 약 3분
+          {isEn ? '⏱️ Est. explanation time: ~3 mins' : '⏱️ 핵심 설명 예상 시간 약 3분'}
         </div>
 
       </div>
