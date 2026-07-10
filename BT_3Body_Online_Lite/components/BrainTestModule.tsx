@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { t } from '../i18n';
 import { AssessmentStep, BrainTestData } from '../types';
 import { speak } from '../services/ttsService';
 import * as tf from '@tensorflow/tfjs-core';
@@ -1255,19 +1256,19 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
               <div className="text-left space-y-2 text-white/70 text-xs">
                 {testType === AssessmentStep.BRAIN_REACTION && (
                   <>
-                    <p>🟢 <strong className="text-emerald-400">초록불</strong> → 오른손을 빠르게 들어올리세요</p>
-                    <p>🔵 <strong className="text-blue-400">파란불</strong> → 왼손을 빠르게 들어올리세요</p>
-                    <p>⚪ <strong className="text-white">흰색불</strong> → 양손을 모두 들어올리세요!</p>
-                    <p>🔴 <strong className="text-rose-400">빨간불</strong> → 움직이지 마세요!</p>
-                    <p className="mt-3 text-amber-300 font-bold bg-amber-500/20 px-2 py-1 rounded">⚠️ 주의: 나중에는 화살표 방향이 무작위로 나옵니다. 방향에 속지 말고 색상에만 반응하세요!</p>
-                    <p className="mt-1">📊 총 10회 진행</p>
+                    <p>🟢 <strong className="text-emerald-400">{t("초록불")}</strong> {t("→ 오른손을 빠르게 들어올리세요")}</p>
+                    <p>🔵 <strong className="text-blue-400">{t("파란불")}</strong> {t("→ 왼손을 빠르게 들어올리세요")}</p>
+                    <p>⚪ <strong className="text-white">{t("흰색불")}</strong> {t("→ 양손을 모두 들어올리세요!")}</p>
+                    <p>🔴 <strong className="text-rose-400">{t("빨간불")}</strong> {t("→ 움직이지 마세요!")}</p>
+                    <p className="mt-3 text-amber-300 font-bold bg-amber-500/20 px-2 py-1 rounded">{t("⚠️ 주의: 나중에는 화살표 방향이 무작위로 나옵니다. 방향에 속지 말고 색상에만 반응하세요!")}</p>
+                    <p className="mt-1">{t("📊 총 10회 진행")}</p>
                   </>
                 )}
 
                 {testType === AssessmentStep.BRAIN_MEMORY && (
                   <>
-                    <p>🛒 마트에서 살 물건 <strong className="text-amber-400">6개</strong>를 기억하세요</p>
-                    <p>💰 6개 물건의 <strong className="text-rose-400">값을 계산</strong>해주세요</p>
+                    <p>{t("🛒 마트에서 살 물건")} <strong className="text-amber-400">{t("6개")}</strong>{t("를 기억하세요")}</p>
+                    <p>{t("💰 6개 물건의")} <strong className="text-rose-400">{t("값을 계산")}</strong>{t("해주세요")}</p>
                   </>
                 )}
               </div>
@@ -1287,7 +1288,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
               {/* 상단 안내 */}
               <div className="pt-6 px-4 text-center">
                 <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 mx-auto max-w-xs">
-                  <h3 className="text-white font-black text-lg mb-1">📷 포즈 확인 중</h3>
+                  <h3 className="text-white font-black text-lg mb-1">{t("📷 포즈 확인 중")}</h3>
                   <p className="text-white/70 text-xs">
                     {'카메라에 상반신이 보이도록 서주세요'}
                   </p>
@@ -1314,7 +1315,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                   {/* 선택적 키포인트 (교차/마트) */}
                   {testType === AssessmentStep.BRAIN_MEMORY && (
                     <div className="border-t border-white/10 pt-2 mt-2">
-                      <p className="text-white/40 text-[10px] font-bold mb-1">추가 감지 (안보여도 OK)</p>
+                      <p className="text-white/40 text-[10px] font-bold mb-1">{t("추가 감지 (안보여도 OK)")}</p>
                       <div className="grid grid-cols-2 gap-1">
                         {Object.entries(OPTIONAL_KEYPOINTS).map(([key, label]) => (
                           <div key={key} className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 rounded ${
@@ -1356,7 +1357,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
               {/* 상단 안내 */}
               <div className="pt-6 px-4 text-center">
                 <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 mx-auto max-w-xs">
-                  <h3 className="text-white font-black text-lg mb-1">✋ 손 인식 확인</h3>
+                  <h3 className="text-white font-black text-lg mb-1">{t("✋ 손 인식 확인")}</h3>
                   <p className="text-white/70 text-xs">
                     {handCheckStep === 'right' && '오른손을 머리 위로 들어보세요'}
                     {handCheckStep === 'left' && '왼손을 머리 위로 들어보세요'}
@@ -1440,7 +1441,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
           {phase === 'countdown' && (
             <div className="text-center">
               <div className="text-9xl font-black text-white drop-shadow-2xl animate-pulse">{countdown || '시작!'}</div>
-              <p className="text-xl text-white/80 mt-4 font-bold">준비하세요...</p>
+              <p className="text-xl text-white/80 mt-4 font-bold">{t("준비하세요...")}</p>
             </div>
           )}
 
@@ -1483,8 +1484,8 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
 
                 {/* 좌우 안내 표시 */}
                 <div className="flex justify-center gap-8 text-white/50 text-xs font-bold">
-                  <span className={signalColor === 'blue' ? 'text-blue-400 scale-125 transition-all' : ''}>👈 왼손 (파란색)</span>
-                  <span className={signalColor === 'green' ? 'text-emerald-400 scale-125 transition-all' : ''}>(초록색) 오른손 👉</span>
+                  <span className={signalColor === 'blue' ? 'text-blue-400 scale-125 transition-all' : ''}>{t("👈 왼손 (파란색)")}</span>
+                  <span className={signalColor === 'green' ? 'text-emerald-400 scale-125 transition-all' : ''}>{t("(초록색) 오른손 👉")}</span>
                 </div>
 
                 <p className={`text-xl font-bold drop-shadow-md ${
@@ -1530,7 +1531,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                   <div className={`w-full ${isPortraitMode ? 'max-w-sm' : 'max-w-4xl'}`}>
                     {/* 안내 + 타이머 */}
                     <div className={`flex items-center justify-between mb-4 bg-black/50 backdrop-blur-sm border border-white/10 ${isPortraitMode ? 'rounded-2xl px-4 py-3' : 'rounded-3xl px-8 py-6'}`}>
-                      <span className={`text-white font-bold ${isPortraitMode ? 'text-sm' : 'text-2xl'}`}>🛒 물건 6개와 총 금액을 기억하세요</span>
+                      <span className={`text-white font-bold ${isPortraitMode ? 'text-sm' : 'text-2xl'}`}>{t("🛒 물건 6개와 총 금액을 기억하세요")}</span>
                       <span className={`font-black ml-3 ${isPortraitMode ? 'text-2xl' : 'text-4xl'} ${martShowingCountdown <= 5 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`}>
                         ⏱️ {martShowingCountdown}초
                       </span>
@@ -1617,7 +1618,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                     <div className={`bg-gradient-to-br from-amber-600/40 to-orange-600/40 border-amber-400/50 backdrop-blur-xl rounded-2xl border-2 transition-all ${isPortraitMode ? 'p-3' : 'p-4 max-w-6xl w-full flex flex-col'}`}>
                       <div className="flex items-center gap-3">
                         <span className={isPortraitMode ? 'text-2xl' : 'text-3xl'}>🛒</span>
-                        <span className={`text-white font-black flex-1 ${isPortraitMode ? 'text-sm' : 'text-xl'}`}>장바구니</span>
+                        <span className={`text-white font-black flex-1 ${isPortraitMode ? 'text-sm' : 'text-xl'}`}>{t("장바구니")}</span>
                         <span className={`text-amber-300 font-black ${isPortraitMode ? 'text-base' : 'text-2xl'}`}>{cartItems.length}/{MART_ITEMS_TO_REMEMBER}</span>
                       </div>
                       
@@ -1627,7 +1628,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                         {cartItems.length === 0 ? (
                           <div className={`w-full flex flex-col items-center justify-center opacity-40 ${isPortraitMode ? 'py-1' : 'py-2 gap-3'}`}>
                             <span className={isPortraitMode ? 'hidden' : 'text-4xl'}>👆</span>
-                            <span className={`text-white font-bold text-center ${isPortraitMode ? 'text-xs' : 'text-lg'}`}>물건을 터치해서 담아주세요</span>
+                            <span className={`text-white font-bold text-center ${isPortraitMode ? 'text-xs' : 'text-lg'}`}>{t("물건을 터치해서 담아주세요")}</span>
                           </div>
                         ) : cartItems.map(id => { 
                           const it = MART_ITEMS.find(i => i.id === id); 
@@ -1655,7 +1656,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                       <span className="text-3xl">🧮</span>
                       <div className={`text-lg font-black px-3 py-1 rounded-full ${mathTimeLeft <= 10 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/10 text-white'}`}>⏱️ {mathTimeLeft}초</div>
                     </div>
-                    <h3 className="text-white font-black text-lg mb-2">살 물건의 총 금액은?</h3>
+                    <h3 className="text-white font-black text-lg mb-2">{t("살 물건의 총 금액은?")}</h3>
                     <div className="flex flex-wrap gap-1 justify-center mb-4">
                       {martItemsToRemember.map(item => <span key={item.id} className="bg-amber-500/20 rounded-xl px-3 py-2 text-2xl shadow-inner">{item.emoji}</span>)}
                     </div>
@@ -1684,7 +1685,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
           {phase === 'result' && (
             <div className="text-center space-y-4 max-w-sm bg-black/60 backdrop-blur-sm rounded-3xl p-8 mx-4">
               <div className="text-4xl mb-1">🧠</div>
-              <h2 className="text-2xl font-black text-white">테스트 완료!</h2>
+              <h2 className="text-2xl font-black text-white">{t("테스트 완료!")}</h2>
               
               <div className="space-y-3">
                 {testType === AssessmentStep.BRAIN_REACTION && (
@@ -1694,7 +1695,7 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                       <div className="text-4xl font-black text-white">{resultData.reactionTimeMs}ms</div>
                     </div>
                     <div className="bg-white/10 rounded-2xl p-3">
-                      <span className="text-white/60 text-xs font-bold">AI 측정 오답</span>
+                      <span className="text-white/60 text-xs font-bold">{t("AI 측정 오답")}</span>
                       <div className="text-xl font-black text-white">{resultData.reactionErrors}회</div>
                     </div>
                     {/* 원장님 수동 오답 수정 */}
@@ -1717,16 +1718,16 @@ const BrainTestModule: React.FC<BrainTestModuleProps> = ({ testType, onComplete,
                 {testType === AssessmentStep.BRAIN_MEMORY && (
                   <>
                     <div className="bg-white/10 rounded-2xl p-4">
-                      <span className="text-white/60 text-xs font-bold">기억력 정답</span>
+                      <span className="text-white/60 text-xs font-bold">{t("기억력 정답")}</span>
                       <div className="text-4xl font-black text-white">{resultData.memoryCorrect}/{MART_ITEMS_TO_REMEMBER}개</div>
                       <p className="text-white/40 text-xs mt-1">틀린 개수: {MART_ITEMS_TO_REMEMBER - (resultData.memoryCorrect || 0)}개 (감점)</p>
                     </div>
                     <div className="bg-white/10 rounded-2xl p-3">
-                      <span className="text-white/60 text-xs font-bold">가격 계산</span>
+                      <span className="text-white/60 text-xs font-bold">{t("가격 계산")}</span>
                       <div className="text-xl font-black text-white">{resultData.mathCorrect ? '✅ 정답' : '❌ 오답'}</div>
                     </div>
                     <div className={`rounded-2xl p-4 ${(resultData.memoryCorrect || 0) >= 5 && resultData.mathCorrect ? 'bg-emerald-500/20 border border-emerald-500/30' : (resultData.memoryCorrect || 0) >= 3 ? 'bg-amber-500/20 border border-amber-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
-                      <span className="text-white/60 text-xs font-bold">종합 평가</span>
+                      <span className="text-white/60 text-xs font-bold">{t("종합 평가")}</span>
                       <div className="text-2xl font-black text-white">
                         {(resultData.memoryCorrect || 0) >= 5 && resultData.mathCorrect ? '🌟 우수' : (resultData.memoryCorrect || 0) >= 3 ? '👍 보통' : '💪 노력 필요'}
                       </div>

@@ -96,6 +96,12 @@ export const usePoseEstimation = (
     };
   }, []);
 
+  const poseInterval = perfInfo?.poseInterval;
+  const poseInputSize = perfInfo?.poseInputSize;
+  const drawSkeleton = perfInfo?.drawSkeleton;
+  const videoWidth = perfInfo?.videoWidth;
+  const videoHeight = perfInfo?.videoHeight;
+
   useEffect(() => {
     if (!isActive || type === 'none' || !isModelLoaded || !perfInfo) {
       if (timeoutRef.current) {
@@ -106,7 +112,7 @@ export const usePoseEstimation = (
     }
 
     let isMounted = true;
-    let adaptiveInterval = perfInfo.poseInterval;
+    let adaptiveInterval = poseInterval || 500;
 
     // 리셋
     setReps(0);
@@ -278,9 +284,19 @@ export const usePoseEstimation = (
         ctx.restore();
     };
 
+    const updateValidation = (isValid: boolean, missingParts: string[]) => {
+      setValidation(prev => {
+        const isSameValid = prev.isValid === isValid;
+        const isSameParts = prev.missingParts.length === missingParts.length &&
+          prev.missingParts.every((val, index) => val === missingParts[index]);
+        if (isSameValid && isSameParts) return prev;
+        return { isValid, missingParts };
+      });
+    };
+
     const analyzeMovement = (poses: poseDetection.Pose[]) => {
       if (poses.length === 0) {
-        setValidation({isValid: false, missingParts: ['사람이 감지되지 않았습니다.']});
+        updateValidation(false, ['사람이 감지되지 않았습니다.']);
         return;
       }
       const pose = poses[0];
@@ -313,28 +329,28 @@ export const usePoseEstimation = (
         if (type === 'side') {
           // 측면: 한쪽 어깨 + 한쪽 엉덩이만 있으면 OK (총 몸통 3개 이상)
           if (hasShoulder && hasHip && visibleBodyParts.length >= 3) {
-            setValidation({isValid: true, missingParts: []});
+            updateValidation(true, []);
           } else {
             const missing: string[] = [];
             if (!hasShoulder) missing.push('어깨');
             if (!hasHip) missing.push('엉덩이');
             if (visibleBodyParts.length < 3) missing.push('전신');
-            setValidation({isValid: false, missingParts: [`${missing.join(', ')}이(가) 보이지 않습니다. 옆으로 서서 전신을 보여주세요.`]});
+            updateValidation(false, [`${missing.join(', ')}이(가) 보이지 않습니다. 옆으로 서서 전신을 보여주세요.`]);
           }
         } else {
           // 정면/팔올리기/유연성: 양쪽 어깨 + 양쪽 엉덩이 필수, 총 6개 이상
           if (hasLeftShoulder && hasRightShoulder && hasLeftHip && hasRightHip && visibleBodyParts.length >= 6) {
-            setValidation({isValid: true, missingParts: []});
+            updateValidation(true, []);
           } else {
             const missing: string[] = [];
             if (!hasLeftShoulder || !hasRightShoulder) missing.push('양쪽 어깨');
             if (!hasLeftHip || !hasRightHip) missing.push('양쪽 엉덩이');
             if (visibleBodyParts.length < 6) missing.push(`전신(현재 ${visibleBodyParts.length}개 감지)`);
-            setValidation({isValid: false, missingParts: [`${missing.join(', ')}이(가) 보이지 않습니다. 뒤로 물러서서 전신을 보여주세요.`]});
+            updateValidation(false, [`${missing.join(', ')}이(가) 보이지 않습니다. 뒤로 물러서서 전신을 보여주세요.`]);
           }
         }
       } else {
-        setValidation({isValid: true, missingParts: []});
+        updateValidation(true, []);
       }
       
       if (type === 'squat') {
@@ -757,7 +773,7 @@ export const usePoseEstimation = (
         timeoutRef.current = null;
       }
     };
-  }, [isActive, type, perfInfo, isModelLoaded]);
+  }, [isActive, type, isModelLoaded, poseInterval, poseInputSize, drawSkeleton, videoWidth, videoHeight]);
 
   // 최종 자세 점수 계산
   // 페널티 누적치를 반영, 스쿼트/푸시업 아닐경우 또는 페널티 없으면 100점

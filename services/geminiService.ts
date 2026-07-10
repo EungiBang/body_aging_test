@@ -33,16 +33,72 @@ const callGeminiProxy = async (
   contents: any,
   config?: Record<string, any>
 ): Promise<{ text: string | null; inlineData: any }> => {
-  const res = await fetch('/api/gemini', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, contents, config }),
-  });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error?.message || errData.error || `Gemini proxy error (${res.status})`);
+  // [네트워크 점검] 오프라인 상태일 경우 즉시 한국어 에러 예외 발생
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new Error("현재 기기가 인터넷에 연결되어 있지 않습니다. 오프라인 상태이거나 네트워크 연결(랜선, Wi-Fi)을 점검해 주세요.");
   }
-  return res.json();
+
+  const apiKey = getActiveApiKey();
+
+  if (apiKey) {
+    // [Client-side Direct Call] 로컬스토리지에 개인 API Key가 설정되어 있는 경우 직접 호출하여 서버 타임아웃 우회
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const requestBody: any = {
+      contents: Array.isArray(contents) ? contents : [contents],
+    };
+
+    if (config) {
+      requestBody.generationConfig = {};
+      if (config.responseMimeType) requestBody.generationConfig.responseMimeType = config.responseMimeType;
+      if (config.responseSchema) requestBody.generationConfig.responseSchema = config.responseSchema;
+      if (config.responseModalities) requestBody.generationConfig.responseModalities = config.responseModalities;
+      if (config.speechConfig) requestBody.generationConfig.speechConfig = config.speechConfig;
+    }
+
+    try {
+      const res = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error?.message || data.error || `Gemini API error (${res.status})`);
+      }
+
+      const candidate = data.candidates?.[0];
+      const part = candidate?.content?.parts?.[0];
+      return {
+        text: part?.text || null,
+        inlineData: part?.inlineData || null
+      };
+    } catch (e: any) {
+      if (e.message === 'Failed to fetch') {
+        throw new Error("구글 AI 분석 서버와의 다이렉트 통신에 실패했습니다. (Failed to fetch) 네트워크 연결 및 방화벽 설정을 확인해 주세요.");
+      }
+      throw e;
+    }
+  } else {
+    // [Server-side Proxy Call] API 키가 없는 경우 서버리스 프록시 경유
+    try {
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, contents, config }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || errData.error || `Gemini proxy error (${res.status})`);
+      }
+      return res.json();
+    } catch (e: any) {
+      if (e.message === 'Failed to fetch') {
+        throw new Error("AI 분석 서버와 통신 실패 (Failed to fetch). 기기의 인터넷 연결이 끊겼거나 불안정합니다. 네트워크 설정을 확인하신 후 재시도 하거나, 설정에서 개별 Gemini API Key를 등록하여 직접 통신을 시도해 보세요.");
+      }
+      throw e;
+    }
+  }
 };
 
 // --- 환경 점검 (SystemCheckOverlay에서 사용) ---
@@ -123,7 +179,7 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
   const isKneeAssisted = false;
 
   // --- 뇌 나이 및 7코드 데이터 추출 ---
-  const reactionImg = images.find(i => i.step === 'BRAIN_REACTION');
+  const reactionImg = images.find(i => (i.step as string) === 'BRAIN_REACTION');
   const hasReactionTest = !!reactionImg; // 라이트 버전에서는 false
   const reactionTimeMs = hasReactionTest ? (reactionImg?.brainTestData?.reactionTimeMs ?? reactionImg?.reps ?? 500) : 0;
   const reactionErrors = hasReactionTest ? (reactionImg?.brainTestData?.reactionErrors ?? 0) : 0;
@@ -152,8 +208,8 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
   const kyphosisAngle = sideImg?.postureData?.kyphosisAngle ?? 'N/A';
 
   // --- 팔 올리기 및 유연성 실시간 데이터 추출 ---
-  const armRaiseImg = images.find(i => i.step === 'ARM_RAISE_TEST');
-  const flexImg = images.find(i => i.step === 'FLEXIBILITY_TEST');
+  const armRaiseImg = images.find(i => (i.step as string) === 'ARM_RAISE_TEST');
+  const flexImg = images.find(i => (i.step as string) === 'FLEXIBILITY_TEST');
   const armRaiseData = armRaiseImg?.postureData;
   const flexData = flexImg?.postureData;
   const hasArmRaise = !!armRaiseImg;

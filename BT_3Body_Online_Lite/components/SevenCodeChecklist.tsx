@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { t } from '../i18n';
 import { SEVEN_CODE_KEYWORDS, KeywordMap } from '../constants/sevenCodeKeywords';
 
 interface Props {
@@ -86,7 +87,7 @@ export const SevenCodeChecklist: React.FC<Props> = ({ onNext, onPrev }) => {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 max-w-2xl mx-auto">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-white mb-4">7-CODE 건강 점검</h2>
+        <h2 className="text-3xl font-bold text-white mb-4">{t("7-CODE 건강 점검")}</h2>
         <p className="text-gray-300">
           다음 중 현재 나에게 해당되거나 평소 자주 겪는 증상을 모두 선택해주세요.
         </p>

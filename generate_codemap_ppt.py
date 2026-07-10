@@ -74,7 +74,7 @@ def style_table_header(table, col_count):
         p.font.bold = True
 
 def load_data_from_excel():
-    excel_file = 'BTC_코드맵_점검_통계보고서_수정.xlsx'
+    excel_file = 'BTC_코드맵_점검_통계보고서.xlsx'
     if not os.path.exists(excel_file):
         print(f"[오류] {excel_file} 파일이 없습니다.")
         return None
@@ -99,6 +99,8 @@ def load_data_from_excel():
             current_region = str(val_region).strip()
 
         if val_branch:
+            if current_region in ['본사', '미지정']:
+                continue
             raw_data.append({
                 'region': current_region,
                 'branch': str(val_branch).strip(),
@@ -376,7 +378,7 @@ def generate_presentation():
     region_groups = [
         {
             "title": "서울 및 경기 북부 권역 세부 현황",
-            "regions": ["본사", "서울강북1", "서울강북2", "서울강북3", "서울강남1", "서울강남2"]
+            "regions": ["서울강북1", "서울강북2", "서울강남1", "서울강남2"]
         },
         {
             "title": "경기 남부 및 인천 권역 세부 현황",
@@ -507,7 +509,7 @@ def generate_presentation():
                     p_line.space_after = Pt(2)
 
     # PPT 파일 저장
-    output_ppt = 'BTC_지점별_코드맵_점검현황.pptx'
+    output_ppt = 'BTC_지점별_코드맵_점검현황_최종최종.pptx'
     prs.save(output_ppt)
     print(f"\n==================================================")
     print(f"[완료] 파워포인트 보고서 생성 완료: {output_ppt}")

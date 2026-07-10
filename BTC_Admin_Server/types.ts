@@ -1,15 +1,22 @@
 export enum AssessmentStep {
   INTRO = 'INTRO',
   USER_INFO = 'USER_INFO',
+  SEVEN_CODE_CHECK = 'SEVEN_CODE_CHECK',
+  USER_NEEDS = 'USER_NEEDS',
 
   POSTURE_FRONT = 'POSTURE_FRONT',
   POSTURE_SIDE = 'POSTURE_SIDE',
   BALANCE_TEST = 'BALANCE_TEST',
   BRAIN_MEMORY = 'BRAIN_MEMORY',
+  BRAIN_REACTION = 'BRAIN_REACTION',
   FACE_ANALYSIS = 'FACE_ANALYSIS',
   READY_FOR_ANALYSIS = 'READY_FOR_ANALYSIS',
   ANALYZING = 'ANALYZING',
-  REPORT = 'REPORT'
+  REPORT = 'REPORT',
+  KFACE = 'KFACE',
+  KTAROT = 'KTAROT',
+  ARM_RAISE_TEST = 'ARM_RAISE_TEST',
+  FLEXIBILITY_TEST = 'FLEXIBILITY_TEST'
 }
 
 export interface PhysiognomyMetrics {
@@ -85,6 +92,7 @@ export interface UserInfo {
   resultDelivery?: 'none' | 'sms' | 'kakao';
   memberType: 'new' | 'existing';
   previousRecordId?: string;  // 재측정 시 이전 기록 ID
+  isAgreed?: boolean;         // 약관 동의 여부 추가
 }
 
 export interface PostureMetric {
@@ -216,6 +224,11 @@ export interface MemberRecord {
   report: BodyReport;
   images: CapturedImage[];
   ownerUid?: string; // 로컬 DB 사용 시 필수 아님
+  age?: number;      // 타로 분석 등 이전 기록 활용용 추가
+  gender?: 'male' | 'female' | 'other'; // 추가
+  sourceType?: 'PC' | 'LITE';           // 추가
+  eventCode?: string;                  // 추가
+  measurementVersion?: string;         // 추가
   
   // 클라우드 동기화용 메타데이터 (선택적)
   branchId?: string;

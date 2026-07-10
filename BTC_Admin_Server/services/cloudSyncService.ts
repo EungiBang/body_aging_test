@@ -59,6 +59,60 @@ export const syncMemberToCloud = async (
 };
 
 /**
+ * AI 피드백을 클라우드에 동기화합니다.
+ */
+export const syncFeedbackToCloud = async (record: any) => {
+  console.log(`[CloudSync] syncFeedbackToCloud 시작`, { id: record.id, type: record.feedbackType });
+  try {
+    const rawDevice = localStorage.getItem('currentDevice');
+    let branchId = 'unknown';
+    let hardwareId = 'unknown';
+    let regionId = 'unknown';
+    
+    if (rawDevice) {
+      try {
+        const device = JSON.parse(rawDevice);
+        branchId = device.branchId || 'unknown';
+        hardwareId = device.id || 'unknown';
+        regionId = device.regionId || 'unknown';
+      } catch (e) {
+        // parsing error
+      }
+    }
+
+    const docData = {
+      ...record,
+      branchId,
+      hardwareId,
+      regionId,
+      syncedAt: serverTimestamp()
+    };
+
+    // undefined 필드를 재귀적으로 제거 (Firestore는 undefined를 허용하지 않음)
+    const removeUndefined = (obj: any): any => {
+      if (obj === null || obj === undefined) return null;
+      if (typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(removeUndefined);
+      const cleaned: any = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (v !== undefined) cleaned[k] = removeUndefined(v);
+      }
+      return cleaned;
+    };
+    const cleanedData = removeUndefined(docData);
+
+    const feedbackRef = doc(db, 'ai_feedbacks_v1', record.id);
+    await setDoc(feedbackRef, cleanedData, { merge: true });
+    console.log(`[CloudSync] Firestore setDoc 성공: ai_feedbacks_v1/${record.id}`);
+    
+    return true;
+  } catch (e) {
+    console.error(`[CloudSync] syncFeedbackToCloud 실패: ${record.id}`, e);
+    return false;
+  }
+};
+
+/**
  * AI 학습(Few-Shot)을 위해 클라우드(Firestore)에서 최신 피드백을 가져옵니다.
  */
 export const fetchFeedbacksFromCloud = async (feedbackType: 'body' | 'face' | 'tarot', maxLimit = 100): Promise<any[]> => {

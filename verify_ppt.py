@@ -2,7 +2,7 @@
 from pptx import Presentation
 
 def verify():
-    file_path = 'BTC_지점별_코드맵_점검현황.pptx'
+    file_path = 'BTC_지점별_코드맵_점검현황_최종최종.pptx'
     print(f"Loading {file_path} for verification...")
     prs = Presentation(file_path)
     

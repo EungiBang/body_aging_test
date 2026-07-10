@@ -124,14 +124,14 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
   const isKneeAssisted = false;
 
   // --- 뇌 나이 및 7코드 데이터 추출 ---
-  const reactionImg = images.find(i => i.step === 'BRAIN_REACTION');
+  const reactionImg = images.find(i => i.step === ('BRAIN_REACTION' as any));
   const reactionTimeMs = reactionImg?.brainTestData?.reactionTimeMs ?? reactionImg?.reps ?? 500;
   const reactionErrors = reactionImg?.brainTestData?.reactionErrors ?? 0;
 
   const memoryImg = images.find(i => i.step === 'BRAIN_MEMORY');
   const memorySpan = memoryImg?.brainTestData?.memoryCorrect ?? memoryImg?.reps ?? 0;
 
-  const sevenCodeImg = images.find(i => i.step === 'SEVEN_CODE_CHECK');
+  const sevenCodeImg = images.find(i => i.step === ('SEVEN_CODE_CHECK' as any));
   const sevenCodeKeywords = sevenCodeImg?.sevenCodeKeywords ?? [];
   const weakestCode = sevenCodeImg?.weakestCode ?? 1;
 
@@ -152,8 +152,8 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
   const kyphosisAngle = sideImg?.postureData?.kyphosisAngle ?? 'N/A';
 
   // --- 팔 올리기 및 유연성 실시간 데이터 추출 ---
-  const armRaiseImg = images.find(i => i.step === 'ARM_RAISE_TEST');
-  const flexImg = images.find(i => i.step === 'FLEXIBILITY_TEST');
+  const armRaiseImg = images.find(i => i.step === ('ARM_RAISE_TEST' as any));
+  const flexImg = images.find(i => i.step === ('FLEXIBILITY_TEST' as any));
   const armRaiseData = armRaiseImg?.postureData;
   const flexData = flexImg?.postureData;
 
@@ -359,7 +359,7 @@ export const analyzeHealth = async (userInfo: UserInfo, images: CapturedImage[])
     );
     fewShotBlock = buildFewShotPrompt(similarCases);
     if (fewShotBlock) {
-      console.log(`[Few-Shot] ${similarCases.length}건의 유사 사례를 프롬프트에 주입합니다.`);
+      console.log(`[Few-Shot] ${similarCases.positive.length + similarCases.negative.length}건의 유사 사례를 프롬프트에 주입합니다.`);
     }
   } catch (e) {
     console.warn('[Few-Shot] 사례 검색 실패 (무시):', e);

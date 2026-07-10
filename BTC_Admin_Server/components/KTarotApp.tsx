@@ -12,6 +12,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 interface KTarotAppProps {
+  userInfo?: UserInfo;
   onClose: () => void;
   onBack?: () => void;
 }
@@ -24,7 +25,7 @@ const KTarotApp: React.FC<KTarotAppProps> = ({ onClose, onBack }) => {
   const [branchId, setBranchId] = useState<string>('');
   
   // 상태 변수들
-  const [userInfo, setUserInfo] = useState<UserInfo>({ name: '', age: 30, gender: 'female', isAgreed: true });
+  const [userInfo, setUserInfo] = useState<UserInfo>({ name: '', age: 30, gender: 'female', isAgreed: true, memberType: 'new' });
   const [concern, setConcern] = useState<string>('');
   const [selectedMaster, setSelectedMaster] = useState<string>('');
   const [drawnCards, setDrawnCards] = useState<{ past: CheonbugyeongCharacter; present: CheonbugyeongCharacter; future: CheonbugyeongCharacter } | null>(null);
@@ -80,7 +81,7 @@ const KTarotApp: React.FC<KTarotAppProps> = ({ onClose, onBack }) => {
       setUserInfo(record.report.userInfo);
     } else {
       // report에 userInfo가 없는 예전 기록일 경우 대비 (추정)
-      setUserInfo({ name: record.name, age: record.age, gender: record.gender, isAgreed: true });
+      setUserInfo({ name: record.name, age: record.age || 30, gender: record.gender || 'female', isAgreed: true, memberType: 'new' });
     }
     setStep('concern_input');
   };
@@ -439,7 +440,11 @@ const KTarotApp: React.FC<KTarotAppProps> = ({ onClose, onBack }) => {
               <TarotFeedbackPanel
                 userInfo={userInfo}
                 concern={concern}
-                cards={drawnCards}
+                cards={drawnCards ? {
+                  past: `${drawnCards.past.char} (${drawnCards.past.reading})`,
+                  present: `${drawnCards.present.char} (${drawnCards.present.reading})`,
+                  future: `${drawnCards.future.char} (${drawnCards.future.reading})`
+                } : { past: '', present: '', future: '' }}
                 reportData={reportData}
               />
             )}

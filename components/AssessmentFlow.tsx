@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { AssessmentStep, CapturedImage, BodyReport, UserInfo, MemberRecord, BrainTestData } from '../types';
 import pkg from '../package.json';
 import CameraModule from './CameraModule';
-import { analyzeHealth } from '../services/geminiService';
+import { analyzeHealth, getActiveApiKey, setCustomApiKey, isUsingCustomKey } from '../services/geminiService';
 import { speak, initAudio } from '../services/ttsService';
 import ReportDashboard from './ReportDashboard';
 import UserInfoForm from './UserInfoForm';
@@ -67,6 +67,19 @@ const AssessmentFlow: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean, message: string, showRetry?: boolean }>({ isOpen: false, message: '', showRetry: false });
   const [toast, setToast] = useState<{ isVisible: boolean, message: string, type: 'success' | 'error' | 'info' }>({ isVisible: false, message: '', type: 'success' });
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [showKeyInput, setShowKeyInput] = useState(false);
+
+  useEffect(() => {
+    if (errorModal.isOpen) {
+      setApiKeyInput(getActiveApiKey() || '');
+      if (errorModal.message.includes('Failed to fetch') || errorModal.message.includes('인터넷') || errorModal.message.includes('통신')) {
+        setShowKeyInput(true);
+      } else {
+        setShowKeyInput(false);
+      }
+    }
+  }, [errorModal.isOpen]);
   const [hasStarted, setHasStarted] = useState(false);
   const [showSysCheck, setShowSysCheck] = useState(false);
   const [repInputModal, setRepInputModal] = useState<{ isOpen: boolean, step: AssessmentStep | null, dataUrl: string, formScore?: number, kneeAssisted?: boolean, postureData?: any }>({ isOpen: false, step: null, dataUrl: '' });
@@ -1724,32 +1737,88 @@ const AssessmentFlow: React.FC = () => {
         }}
       >
         {errorModal.showRetry && (
-          <div className="mt-6 space-y-2">
-            <button 
-              onClick={retryAnalysis}
-              className="w-full px-4 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg text-sm"
-            >
-              🔄 즉시 재분석 (기존 데이터 유지)
-            </button>
-            <button 
-              onClick={() => {
-                setErrorModal({ isOpen: false, message: '', showRetry: false });
-                setStep(AssessmentStep.READY_FOR_ANALYSIS);
-              }}
-              className="w-full px-4 py-3 bg-slate-700 text-white font-bold rounded-2xl hover:bg-slate-600 transition-all text-sm"
-            >
-              📋 측정 확인 화면으로 돌아가기
-            </button>
-            <button 
-              onClick={() => {
-                setErrorModal({ isOpen: false, message: '', showRetry: false });
-                setStep(AssessmentStep.INTRO);
-                setCapturedImages([]);
-              }}
-              className="w-full px-4 py-2 bg-transparent text-slate-400 font-bold rounded-2xl hover:text-white transition-all text-xs"
-            >
-              처음부터 다시 촬영
-            </button>
+          <div className="mt-6 space-y-4">
+            {/* API Key 직접 입력 UI (타임아웃 및 네트워크 차단 우회용) */}
+            <div className="p-4 bg-slate-800 rounded-2xl border border-slate-700 text-left">
+              <button 
+                type="button"
+                onClick={() => setShowKeyInput(!showKeyInput)}
+                className="flex items-center justify-between w-full text-xs font-bold text-indigo-300 hover:text-indigo-200 transition-colors cursor-pointer"
+              >
+                <span>🔑 {isUsingCustomKey() ? '등록된 API Key 수정하기' : '개별 Gemini API Key 등록 (오프라인/우회)'}</span>
+                <i className={`fas ${showKeyInput ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
+              </button>
+              
+              {showKeyInput && (
+                <div className="mt-3 space-y-2.5">
+                  <p className="text-[10px] text-slate-400 leading-normal">
+                    구글 Gemini API Key를 등록하면 서버 타임아웃이나 네트워크 오류를 우회하여 브라우저에서 직접 AI 분석을 수행합니다.
+                  </p>
+                  <input
+                    type="password"
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="w-full px-3 py-2 text-xs font-mono bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomApiKey(apiKeyInput.trim());
+                        setToast({ isVisible: true, message: apiKeyInput.trim() ? "API Key가 저장되었습니다. 재분석을 시도합니다." : "API Key가 삭제되었습니다.", type: 'success' });
+                        setShowKeyInput(false);
+                        retryAnalysis();
+                      }}
+                      className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
+                    >
+                      저장 후 재분석 시도
+                    </button>
+                    {isUsingCustomKey() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomApiKey('');
+                          setApiKeyInput('');
+                          setToast({ isVisible: true, message: "등록된 API Key가 삭제되었습니다.", type: 'info' });
+                        }}
+                        className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <button 
+                onClick={retryAnalysis}
+                className="w-full px-4 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg text-sm cursor-pointer"
+              >
+                🔄 즉시 재분석 (기존 데이터 유지)
+              </button>
+              <button 
+                onClick={() => {
+                  setErrorModal({ isOpen: false, message: '', showRetry: false });
+                  setStep(AssessmentStep.READY_FOR_ANALYSIS);
+                }}
+                className="w-full px-4 py-3 bg-slate-700 text-white font-bold rounded-2xl hover:bg-slate-600 transition-all text-sm cursor-pointer"
+              >
+                📋 측정 확인 화면으로 돌아가기
+              </button>
+              <button 
+                onClick={() => {
+                  setErrorModal({ isOpen: false, message: '', showRetry: false });
+                  setStep(AssessmentStep.INTRO);
+                  setCapturedImages([]);
+                }}
+                className="w-full px-4 py-2 bg-transparent text-slate-400 font-bold rounded-2xl hover:text-white transition-all text-xs cursor-pointer"
+              >
+                처음부터 다시 촬영
+              </button>
+            </div>
           </div>
         )}
       </Modal>

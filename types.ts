@@ -89,6 +89,7 @@ export interface UserInfo {
   memberType: 'new' | 'existing';
   previousRecordId?: string;  // 재측정 시 이전 기록 ID
   healthNeeds?: string[];     // 건강 니즈 선택 목록
+  isAgreed?: boolean;         // 약관 동의 여부 추가
 }
 
 export interface PostureMetric {
@@ -240,6 +241,8 @@ export interface MemberRecord {
   report: BodyReport;
   images: CapturedImage[];
   ownerUid?: string; // 로컬 DB 사용 시 필수 아님
+  age?: number;      // 타로 분석 등 이전 기록 활용용 추가
+  gender?: 'male' | 'female' | 'other'; // 추가
   
   // 클라우드 동기화용 메타데이터 (선택적)
   branchId?: string;

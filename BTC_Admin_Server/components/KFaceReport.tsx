@@ -30,6 +30,8 @@ export default function KFaceReport({ report: rawReport, imageSrc, onClose }: KF
     advice: safeString(rawReport?.advice, '긍정적인 마음가짐이 좋은 에너지를 만듭니다.'),
     animalMorphology: {
       type: safeString(rawReport?.animalMorphology?.type, '물형 분석 대기 중'),
+      englishType: safeString(rawReport?.animalMorphology?.englishType, 'unknown'),
+      description: safeString(rawReport?.animalMorphology?.description, '분석 중...'),
       visualCharacteristics: safeString(rawReport?.animalMorphology?.visualCharacteristics, '특징을 분석하고 있습니다.'),
       geometricBasis: safeString(rawReport?.animalMorphology?.geometricBasis, '데이터 분석 중'),
       detailedAnalysis: safeString(rawReport?.animalMorphology?.detailedAnalysis, '상세 분석 데이터가 부족합니다.'),
@@ -63,7 +65,8 @@ export default function KFaceReport({ report: rawReport, imageSrc, onClose }: KF
     },
     lifeStrategy: {
       career: safeString(rawReport?.lifeStrategy?.career, '꾸준한 노력으로 성취를 이룹니다.'),
-      wealth: safeString(rawReport?.lifeStrategy?.wealth, '재물운이 점진적으로 상승합니다.')
+      wealth: safeString(rawReport?.lifeStrategy?.wealth, '재물운이 점진적으로 상승합니다.'),
+      relationship: safeString(rawReport?.lifeStrategy?.relationship, '좋은 인연들과 함께할 것입니다.')
     }
   };
 

@@ -1,3 +1,4 @@
+// 온라인 라이트 버전의 측정 단계 흐름 정의
 export enum AssessmentStep {
   INTRO = 'INTRO',
   USER_INFO = 'USER_INFO',
@@ -5,9 +6,6 @@ export enum AssessmentStep {
   POSTURE_FRONT = 'POSTURE_FRONT',
   POSTURE_SIDE = 'POSTURE_SIDE',
   BALANCE_TEST = 'BALANCE_TEST',
-  ARM_RAISE_TEST = 'ARM_RAISE_TEST',
-  FLEXIBILITY_TEST = 'FLEXIBILITY_TEST',
-  BRAIN_REACTION = 'BRAIN_REACTION',
   BRAIN_MEMORY = 'BRAIN_MEMORY',
   FACE_ANALYSIS = 'FACE_ANALYSIS',
   SEVEN_CODE_CHECK = 'SEVEN_CODE_CHECK',
@@ -42,10 +40,11 @@ export interface PhysiognomyReport {
   summary: string;
   score: number;
   confidenceScore: number;
-  samjeongAnalysis: string;
-  personality: string;
-  wealthAndCareer: string;
-  animalMorphology: {
+  faceAgeEstimate?: number;
+  samjeongAnalysis?: string;
+  personality?: string;
+  wealthAndCareer?: string;
+  animalMorphology?: {
     type: string;
     englishType: string;
     description: string;
@@ -55,30 +54,30 @@ export interface PhysiognomyReport {
     geometricBasis: string;
     animalMorphologyBlend: { type: string; matchPercentage: number; characteristic: string; }[];
   };
-  energy3Body7Code: {
+  energy3Body7Code?: {
     threeBodyAnalysis: string;
     sevenCodeDetailed: { name: string; region: string; bodyPart: string; state: 'Positive' | 'Negative' | 'Neutral'; interpretation: string; score: number; }[];
   };
-  brightEnergy: { score: number; description: string; };
-  traditionalAnalysis: { 
-    forehead: string;
-    eyebrows: string;
-    eyes: string; 
-    cheekbones: string;
-    nose: string; 
-    mouth: string; 
-    jaw: string;
-    ears: string;
-    skin: string; 
+  brightEnergy?: { score: number; description: string; };
+  traditionalAnalysis?: { 
+    forehead?: string;
+    eyebrows?: string;
+    eyes?: string; 
+    cheekbones?: string;
+    nose?: string; 
+    mouth?: string; 
+    jaw?: string;
+    ears?: string;
+    skin?: string; 
   };
-  lifeStrategy: { career: string; wealth: string; relationship: string; };
-  comprehensiveEvaluation: {
-    health: string;
-    wealthAndSuccess: string;
-    loveAndRelationship: string;
-    threeBodySynthesis: string; // 3바디 7코드 관점의 최종 마스터 총평
+  lifeStrategy?: { career: string; wealth: string; relationship: string; };
+  comprehensiveEvaluation?: {
+    health?: string;
+    wealthAndSuccess?: string;
+    loveAndRelationship?: string;
+    threeBodySynthesis?: string; 
   };
-  advice: string;
+  advice?: string;
 }
 
 export interface UserInfo {
@@ -86,9 +85,11 @@ export interface UserInfo {
   gender: 'male' | 'female' | 'other';
   age: number;
   phone?: string;
+  birthDate?: string;
   resultDelivery?: 'none' | 'sms' | 'kakao';
   memberType: 'new' | 'existing';
   previousRecordId?: string;  // 재측정 시 이전 기록 ID
+  healthNeeds?: string[];     // 건강 니즈 선택 목록
 }
 
 export interface PostureMetric {
@@ -143,6 +144,14 @@ export interface BodyReport {
   comprehensiveAge: number;  // 종합 건강 나이
   overallScore: number;
   bodyTypeAnalysis: string; // 추가: 전체 체형 형태학적 분석 (예: Sway Back 등)
+  bodyAlignmentAnalysis?: {
+    issue: string;
+    severity: string;
+    measuredValue: string;
+    normalRange: string;
+    impact: string;
+    recommendation?: string;
+  }[];
   postureMetrics: PostureMetric[];
   strengthMetrics: StrengthMetric[];
   agingMetrics: AgingMetric[];
@@ -172,7 +181,7 @@ export interface BodyReport {
     code6: { score: number; label: string; description: string; evidence: string[] };
     code7: { score: number; label: string; description: string; evidence: string[] };
   };
-  kwangmyungChakra: {
+  kwangmyungChakra?: {
     needLevel: string;
     reason: string;
     expectedBenefit: string;
@@ -196,11 +205,18 @@ export interface BodyReport {
     }[];
     programEffect: string;        // 프로그램 효과 평가
   };
+  // 건강 니즈 맞춤 에너지 솔루션 (Gemini AI 생성)
+  needsSolution?: {
+    physical?: string;   // 몸 차원 솔루션
+    emotional?: string;  // 마음 차원 솔루션
+    cognitive?: string;  // 뇌 차원 솔루션
+  };
 }
 
 export interface CapturedImage {
   step: AssessmentStep;
   dataUrl: string;
+  originalDataUrl?: string; // Gemini 분석용 원본 이미지 (오버레이 없는)
   reps?: number;
   duration?: number;
   brainTestData?: BrainTestData;
@@ -210,6 +226,20 @@ export interface CapturedImage {
   sevenCodeKeywords?: string[]; // 사용자가 11단계에서 다중 선택한 7코드 키워드
   weakestCode?: number;         // 11단계에서 도출된 가장 약한 BHP 코드 (1~7)
   postureData?: any;
+  type?: string;
+}
+
+/**
+ * 측정 시점의 알고리즘 버전 메타데이터.
+ * 어떤 버전의 점수 산출 로직으로 측정되었는지 추적합니다.
+ */
+export interface MeasurementVersion {
+  assessmentProfileId: string;       // 'BTC-2026Q3-LITE'
+  assessmentProfileVersion: string;  // '5.0.8L'
+  appliedTestVersions: Record<string, string>; // { brainMemory: '4.0', balance: '3.0', ... }
+  platform: 'PC' | 'LITE';
+  appVersion: string;                // package.json version
+  locale: string;                    // 'ko-KR' | 'en-US' | 'ja-JP'
 }
 
 export interface MemberRecord {
@@ -224,6 +254,28 @@ export interface MemberRecord {
   branchId?: string;
   hardwareId?: string;
   regionId?: string;
+  timestamp?: number;
+  sourceType?: 'PC' | 'LITE';
+  eventCode?: string; // 연합 행사 코드 추가
+  measurementVersion?: MeasurementVersion; // 측정 알고리즘 버전 추적
+}
+
+export interface WaitingMember {
+  id: string; // 고유 ID (wait- 접두사 + timestamp)
+  name: string;
+  phone: string;
+  age: number;
+  gender: 'male' | 'female' | 'other';
+  memberType: 'new' | 'existing';
+  birthDate?: string;
+  sevenCodeKeywords?: string[]; // 1단계 사전 접수 시 선택한 7코드 키워드
+  weakestCode?: number; // 추가: 7코드 취약 번호
+  branchId: string; // 접수한 기기의 지점 ID
+  eventCode?: string; // 연합 행사 코드 (있을 때만)
+  status: 'waiting' | 'measuring' | 'completed';
+  createdAt: number; // 접수 시각 타임스탬프
+  isStarred?: boolean; // 추가: 집중 상담 별표 여부
+  healthNeeds?: string[]; // 추가: 건강 니즈 선택 목록
 }
 
 // ─── 피드백 학습 시스템 타입 ────────────────────────────────────────────────
@@ -234,6 +286,8 @@ export interface DiagnosticFeedback {
   tarotRating?: 'very_satisfied' | 'satisfied' | 'normal' | 'dissatisfied' | 'very_dissatisfied';
   notes?: string;
   submittedAt: string;
+  correctedOverallScore?: number;
+  correctedPhysicalAge?: number;
 }
 
 export interface FeedbackRecord {
@@ -266,7 +320,7 @@ export interface BranchAuth {
   adminName: string;
   contact: string;
   installer: string;
-  authCode: string; // 지점 인증 코드 (본사 배포)
+  authCode: string; // "BTC15771785"
   verifiedAt: string;
   machineId?: string; // 통계 카운트를 위한 고유 문서 ID
   hardwareId?: string; // 불법 복제 방지를 위한 물리적 보드 UUID

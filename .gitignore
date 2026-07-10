@@ -14,8 +14,11 @@ dist-electron
 *.local
 
 # Environment variables (보안)
-.env
-.env.vercel.*
+.env*
+
+# AI 작업 기억 파일
+.agents/memory/
+
 
 # Editor directories and files
 .vscode/*

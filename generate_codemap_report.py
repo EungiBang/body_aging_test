@@ -27,12 +27,57 @@ def build_excel_report():
     print(f"로드된 전체 회원 레코드: {len(members)}건")
     print(f"로드된 지역: {len(regions)}개, 지점: {len(branches)}개")
 
-    # 2. 분석 완료된 회원 필터링 (report가 존재하고 id가 pending-으로 시작하지 않는 레코드)
+    # 지역명 구하기 헬퍼 함수 (서울강북3을 서울강북2로 자동 통합)
+    def get_region_name(r_id):
+        name = regions.get(r_id, {}).get('name', '')
+        if not name:
+            name = r_id.replace('region_', '') if r_id else '미지정'
+        if name == '서울강북3':
+            return '서울강북2'
+        return name
+
+    # 지점명 기준 지점 매핑 정보 생성 (eventCode 복원용)
+    branch_by_name = {}
+    for b_id, b in branches.items():
+        b_name = b.get('name', '').strip()
+        if b_name:
+            branch_by_name[b_name] = { 'id': b_id, **b }
+    branch_by_name['신입경영홍보실'] = { 'id': 'shinip_PR', 'name': '신입경영홍보실', 'regionId': 'region_본사' }
+
+    import re
+    def parse_branch_from_event(event_code):
+        if not event_code or not isinstance(event_code, str):
+            return None
+        match = re.match(r'^EVT_(.+?)_\d{6}_[A-Z0-9]+$', event_code)
+        if match:
+            return match.group(1).strip()
+        return None
+
+    def get_real_branch_and_region(m):
+        original_b_id = m.get('branchId', '')
+        original_r_id = m.get('regionId', '')
+        ev_code = m.get('eventCode') or m.get('report', {}).get('userInfo', {}).get('eventCode')
+        
+        event_b_name = parse_branch_from_event(ev_code)
+        if event_b_name:
+            target_branch = branch_by_name.get(event_b_name)
+            if target_branch:
+                # 지점과 지역 모두 합동코드의 실제 행사 지점 정보로 일관성 있게 리턴
+                return target_branch['id'], target_branch['regionId']
+        return original_b_id, original_r_id
+
+
+
+    # 2. 분석 완료된 회원 필터링 (report가 존재하고 id가 pending-으로 시작하지 않으며, 본사/미지정 지역이 아닌 레코드)
     analyzed_members = []
     for m in members:
         m_id = m.get('id', '')
         report = m.get('report')
         if report and not m_id.startswith('pending-'):
+            b_id, r_id = get_real_branch_and_region(m) # 복원 헬퍼 적용
+            region_name = get_region_name(r_id)
+            if region_name in ['본사', '미지정']:
+                continue
             analyzed_members.append(m)
 
     print(f"분석 완료 회원 (사용자 언급 4,793명 조건): {len(analyzed_members)}건")
@@ -50,7 +95,7 @@ def build_excel_report():
         ui = r.get('userInfo', {}) if isinstance(r, dict) else {}
         gender = ui.get('gender', '')
         age = str(ui.get('age', ''))
-        branch_id = m.get('branchId', '')
+        branch_id, _ = get_real_branch_and_region(m) # 복원 헬퍼 적용
 
         # (이름, 지점 ID, 나이, 성별)을 고유 판정 키로 지정
         key = (name, branch_id, age, gender)
@@ -69,16 +114,13 @@ def build_excel_report():
     stats = {}
 
     for m in analyzed_members:
-        r_id = m.get('regionId', '')
-        b_id = m.get('branchId', '')
+        b_id, r_id = get_real_branch_and_region(m) # 복원 헬퍼 적용
 
-        # 지역명 구하기
-        region_name = regions.get(r_id, {}).get('name', '')
-        if not region_name:
-            region_name = r_id.replace('region_', '') if r_id else '미지정'
+        # 지역명 구하기 (통합 헬퍼 적용)
+        region_name = get_region_name(r_id)
         
         # 지점명 구하기
-        branch_name = branches.get(b_id, {}).get('name', '')
+        branch_name = '신입경영홍보실' if b_id == 'shinip_PR' else branches.get(b_id, {}).get('name', '')
         if not branch_name:
             branch_name = '미지정 지점'
 
@@ -91,14 +133,12 @@ def build_excel_report():
 
     # 고유 회원 정보를 기반으로 지점별 고유 점검인원수 추가
     for m in unique_members:
-        r_id = m.get('regionId', '')
-        b_id = m.get('branchId', '')
+        b_id, r_id = get_real_branch_and_region(m) # 복원 헬퍼 적용
 
-        region_name = regions.get(r_id, {}).get('name', '')
-        if not region_name:
-            region_name = r_id.replace('region_', '') if r_id else '미지정'
+        # 지역명 구하기 (통합 헬퍼 적용)
+        region_name = get_region_name(r_id)
         
-        branch_name = branches.get(b_id, {}).get('name', '')
+        branch_name = '신입경영홍보실' if b_id == 'shinip_PR' else branches.get(b_id, {}).get('name', '')
         if not branch_name:
             branch_name = '미지정 지점'
 
@@ -245,7 +285,7 @@ def build_excel_report():
     # --- 시트 2: 고유 회원 리스트 생성 ---
     headers_list = [
         "연번", "회원ID", "이름", "성별", "나이", 
-        "회원 구분", "최종 점검일", "지역", "지점", 
+        "회원 구분", "최종 점검일", "지역", "지점", "합동코드",
         "종합점수", "신체나이", "뇌나이", "마음나이", 
         "얼굴나이", "종합건강나이", "대표 취약코드"
     ]
@@ -260,10 +300,9 @@ def build_excel_report():
 
     # 고유 회원 데이터 정렬 (지역명 -> 지점명 -> 이름 순)
     def sort_key(member):
-        r_id = member.get('regionId', '')
-        b_id = member.get('branchId', '')
-        r_name = regions.get(r_id, {}).get('name', r_id)
-        b_name = branches.get(b_id, {}).get('name', b_id)
+        b_id, r_id = get_real_branch_and_region(member) # 복원 헬퍼 적용
+        r_name = get_region_name(r_id)
+        b_name = '신입경영홍보실' if b_id == 'shinip_PR' else branches.get(b_id, {}).get('name', b_id)
         name = member.get('name', '')
         return (r_name, b_name, name)
 
@@ -273,10 +312,9 @@ def build_excel_report():
         r_num = seq + 1
         ws_list.row_dimensions[r_num].height = 18
 
-        r_id = m.get('regionId', '')
-        b_id = m.get('branchId', '')
-        region_name = regions.get(r_id, {}).get('name', r_id.replace('region_', '') if r_id else '미지정')
-        branch_name = branches.get(b_id, {}).get('name', '미지정')
+        b_id, r_id = get_real_branch_and_region(m) # 복원 헬퍼 적용
+        region_name = get_region_name(r_id)
+        branch_name = '신입경영홍보실' if b_id == 'shinip_PR' else branches.get(b_id, {}).get('name', '미지정')
 
         report = m.get('report', {})
         ui = report.get('userInfo', {}) if isinstance(report, dict) else {}
@@ -321,6 +359,7 @@ def build_excel_report():
         weakest_code_str = f"{weakest_code_idx}코드" if weakest_code_idx else "N/A"
 
         # 데이터 쓰기
+        event_code = m.get('eventCode') or (m.get('report', {}).get('userInfo', {}).get('eventCode') if isinstance(m.get('report'), dict) else '') or '없음'
         row_vals = [
             seq,
             m.get('id', ''),
@@ -331,6 +370,7 @@ def build_excel_report():
             test_date,
             region_name,
             branch_name,
+            event_code, # 합동코드 추가
             overall_score,
             physical_age,
             brain_age,
@@ -345,12 +385,12 @@ def build_excel_report():
             cell.font = data_font
             cell.border = thin_border
             
-            # 컬럼별 정렬 설정 (컬럼 수 축소에 따른 조정)
-            if col_idx in [1, 2, 4, 6, 7, 8, 9, 16]: # 연번, ID, 성별, 구분, 날짜, 지역, 지점, 취약코드
+            # 컬럼별 정렬 설정 (합동코드 추가에 따른 조정)
+            if col_idx in [1, 2, 4, 6, 7, 8, 9, 10, 17]: # 연번, ID, 성별, 구분, 날짜, 지역, 지점, 합동코드, 취약코드
                 cell.alignment = data_align_center
             elif col_idx == 3: # 이름
                 cell.alignment = data_align_left
-            else: # 나이 및 점수 등 숫자형 데이터 (5: 나이, 10~15: 각종 점수 및 나이 지표)
+            else: # 나이 및 점수 등 숫자형 데이터 (5: 나이, 11~16: 각종 점수 및 나이 지표)
                 cell.alignment = data_align_right
                 if isinstance(val, (int, float)):
                     cell.number_format = '#,##0'

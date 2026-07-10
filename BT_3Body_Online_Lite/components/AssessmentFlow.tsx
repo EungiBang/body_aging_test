@@ -57,21 +57,13 @@ const AssessmentFlow: React.FC = () => {
   const [toast, setToast] = useState<{ isVisible: boolean, message: string, type: 'success' | 'error' | 'info' }>({ isVisible: false, message: '', type: 'success' });
   const [hasStarted, setHasStarted] = useState(false);
   const [showSysCheck, setShowSysCheck] = useState(false);
-  const [repInputModal, setRepInputModal] = useState<{ isOpen: boolean, step: AssessmentStep | null, dataUrl: string, formScore?: number, kneeAssisted?: boolean, postureData?: any }>({ isOpen: false, step: null, dataUrl: '' });
-  const [repCount, setRepCount] = useState<string>('');
-  const [manualRepPosture, setManualRepPosture] = useState<string>('보통');
+
   // 균형 테스트 수동 입력 모달
   const [balanceInputModal, setBalanceInputModal] = useState<{ isOpen: boolean, dataUrl: string, aiFootDrops: number, aiSwayScore: number }>({ isOpen: false, dataUrl: '', aiFootDrops: 0, aiSwayScore: 0 });
   const [manualFootDrops, setManualFootDrops] = useState<string>('0');
   const [manualSwayLevel, setManualSwayLevel] = useState<string>('3'); // 1~5 scale
 
-  // 팔 올리기 수동 확인 모달
-  const [armRaiseInputModal, setArmRaiseInputModal] = useState<{ isOpen: boolean, dataUrl: string, postureData: any }>({ isOpen: false, dataUrl: '', postureData: null });
-  const [manualArmRaiseGrade, setManualArmRaiseGrade] = useState<string>('');
 
-  // 유연성 수동 확인 모달
-  const [flexInputModal, setFlexInputModal] = useState<{ isOpen: boolean, dataUrl: string, postureData: any }>({ isOpen: false, dataUrl: '', postureData: null });
-  const [manualFlexGrade, setManualFlexGrade] = useState<string>('');
 
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [pendingRecordId, setPendingRecordId] = useState<string | null>(null);
@@ -102,31 +94,26 @@ const AssessmentFlow: React.FC = () => {
   const getStepGuidance = (currentStep: AssessmentStep | 'HISTORY' | 'INTRO') => {
     switch (currentStep) {
       case AssessmentStep.INTRO:
-        return "AI 신체 균형 및 건강 상태 측정 시스템입니다.";
+        return t("AI 신체 균형 및 건강 상태 측정 시스템입니다.");
       case AssessmentStep.USER_INFO:
-        return "측정 대상자의 정보를 입력해 주세요.";
+        return t("측정 대상자의 정보를 입력해 주세요.");
       case AssessmentStep.POSTURE_FRONT:
-        return "정면 전체 몸이 나오도록 서주세요.";
+        return t("정면 전체 몸이 나오도록 서주세요.");
       case AssessmentStep.POSTURE_SIDE:
-        return "옆으로 서서 몸의 중심을 맞춰주세요.";
+        return t("옆으로 서서 몸의 중심을 맞춰주세요.");
       case AssessmentStep.BALANCE_TEST:
-        return "눈을 감고 한 발로 서서 균형을 유지하세요.";
-      case AssessmentStep.ARM_RAISE_TEST:
-        return "팔을 최대한 높이 들어 올려 주세요.";
-      case AssessmentStep.FLEXIBILITY_TEST:
-        return "무릎을 펴고 상체를 숙여 주세요.";
-      case AssessmentStep.BRAIN_REACTION:
-        return "화면의 지시에 따라 올바른 손을 빠르게 들어 올려주세요.";
+        return t("눈을 감고 한 발로 서서 균형을 유지하세요.");
+
       case AssessmentStep.BRAIN_MEMORY:
-        return "10초 동안 장볼 물건들을 기억하고, 손으로 골라 담아주세요.";
+        return t("10초 동안 장볼 물건들을 기억하고, 손으로 골라 담아주세요.");
       case AssessmentStep.FACE_ANALYSIS:
-        return "안경과 마스크는 벗어주세요. 조명을 더 밝게 해도 좋습니다. 얼굴을 카메라에 가까이 대고 정면을 응시하세요.";
+        return t("안경과 마스크는 벗어주세요. 조명을 더 밝게 해도 좋습니다. 얼굴을 카메라에 가까이 대고 정면을 응시하세요.");
       case AssessmentStep.SEVEN_CODE_CHECK:
-        return "해당하는 문항을 선택해 주세요.";
+        return t("해당하는 문항을 선택해 주세요.");
       case AssessmentStep.ANALYZING:
-        return "통합 AI 리포트를 생성 중입니다.";
+        return t("통합 AI 리포트를 생성 중입니다.");
       case AssessmentStep.REPORT:
-        return "측정 결과를 확인해 보세요.";
+        return t("측정 결과를 확인해 보세요.");
       default:
         return "";
     }
@@ -142,20 +129,10 @@ const AssessmentFlow: React.FC = () => {
       setStep('HISTORY');
     };
     const handleNavKFace = () => {
-      if (!userInfo) {
-        setTargetStepAfterUserInfo(AssessmentStep.KFACE);
-        setStep(AssessmentStep.USER_INFO);
-        return;
-      }
-      setStep(AssessmentStep.KFACE);
+      alert(t('common.kfaceComingSoon', 'K-관상 서비스는 준비 중입니다.'));
     };
     const handleNavKTarot = () => {
-      if (!userInfo) {
-        setTargetStepAfterUserInfo(AssessmentStep.KTAROT);
-        setStep(AssessmentStep.USER_INFO);
-        return;
-      }
-      setStep(AssessmentStep.KTAROT);
+      alert(t('common.ktarotComingSoon', 'K타로 서비스는 준비 중입니다.'));
     };
 
     window.addEventListener('nav:home', handleNavHome);
@@ -177,8 +154,7 @@ const AssessmentFlow: React.FC = () => {
 
   const testSteps = [
     AssessmentStep.POSTURE_FRONT, AssessmentStep.POSTURE_SIDE,
-    AssessmentStep.BALANCE_TEST, AssessmentStep.ARM_RAISE_TEST, AssessmentStep.FLEXIBILITY_TEST,
-    AssessmentStep.BRAIN_REACTION, AssessmentStep.BRAIN_MEMORY,
+    AssessmentStep.BALANCE_TEST, AssessmentStep.BRAIN_MEMORY,
     AssessmentStep.FACE_ANALYSIS, AssessmentStep.SEVEN_CODE_CHECK, AssessmentStep.ANALYZING
   ];
   useEffect(() => {
@@ -284,8 +260,7 @@ const AssessmentFlow: React.FC = () => {
 
     // 사후 검증: 1, 2, 4, 5단계(정지 촬영)에서만 전신 체크
     const requiresValidation = [
-      AssessmentStep.POSTURE_FRONT, AssessmentStep.POSTURE_SIDE,
-      AssessmentStep.ARM_RAISE_TEST, AssessmentStep.FLEXIBILITY_TEST
+      AssessmentStep.POSTURE_FRONT, AssessmentStep.POSTURE_SIDE
     ].includes(step as AssessmentStep);
 
     if (requiresValidation) {
@@ -346,21 +321,21 @@ const AssessmentFlow: React.FC = () => {
               const currentStep = step;
               let postureError = '';
               
-              // === 직립 확인: 유연성(숙임) 제외 ===
-              if (currentStep !== AssessmentStep.FLEXIBILITY_TEST) {
+              // === 직립 확인 ===
+              if (true) {
                 const shoulderY = ((lSh?.y || 0) + (rSh?.y || 0)) / (lSh && rSh ? 2 : 1);
                 const hipY = ((lHp?.y || 0) + (rHp?.y || 0)) / (lHp && rHp ? 2 : 1);
                 
                 if (shoulderY > 0 && hipY > 0) {
                   // 어깨가 엉덩이보다 아래에 있으면 → 앉거나 누워있음
                   if (shoulderY > hipY) {
-                    postureError = '바르게 서 있지 않습니다. 일어서서 촬영해 주세요.';
+                    postureError = t('바르게 서 있지 않습니다. 일어서서 촬영해 주세요.');
                   }
-                  // 어깨~엉덩이 거리가 너무 작으면 → 상체만 보이거나 너무 구부림 (팔 올리기는 상체만 보여도 허용)
+                  // 어깨~엉덩이 거리가 너무 작으면 → 상체만 보이거나 너무 구부림
                   const torsoHeight = Math.abs(hipY - shoulderY);
                   const imgH = canvas.height;
-                  if (torsoHeight < imgH * 0.08 && currentStep !== AssessmentStep.ARM_RAISE_TEST) {
-                    postureError = '상체가 너무 구부러져 있습니다. 바르게 서 주세요.';
+                  if (torsoHeight < imgH * 0.08) {
+                    postureError = t('상체가 너무 구부러져 있습니다. 바르게 서 주세요.');
                   }
                 }
               }
@@ -373,7 +348,7 @@ const AssessmentFlow: React.FC = () => {
                 const hasRightHp = rHp && (rHp.score || 0) > 0.3;
                 
                 if (!hasLeftSh || !hasRightSh || !hasLeftHp || !hasRightHp) {
-                  postureError = '정면이 아닙니다. 카메라를 정면으로 바라보고 서 주세요.';
+                  postureError = t('정면이 아닙니다. 카메라를 정면으로 바라보고 서 주세요.');
                 } else {
                   // 양쪽 어깨 너비가 좌우 대칭인지 (한쪽으로 돌아서면 너비차 큼)
                   const shoulderWidth = Math.abs((lSh?.x || 0) - (rSh?.x || 0));
@@ -381,7 +356,7 @@ const AssessmentFlow: React.FC = () => {
                   if (shoulderWidth > 0 && hipWidth > 0) {
                     // 어깨 너비가 엉덩이의 20% 미만이면 측면일 가능성
                     if (shoulderWidth < hipWidth * 0.4) {
-                      postureError = '정면이 아닌 것 같습니다. 카메라를 정면으로 바라봐 주세요.';
+                      postureError = t('정면이 아닌 것 같습니다. 카메라를 정면으로 바라봐 주세요.');
                     }
                   }
                 }
@@ -567,15 +542,15 @@ const AssessmentFlow: React.FC = () => {
 
               // 합성된 이미지로 교체
               const analyzedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-              setPreviewData(prev => prev ? { ...prev, dataUrl: analyzedDataUrl, validationResult: { passed: true, message: `AI가 ${visibleCount}개 관절을 인식했습니다. 분석에 적합합니다.` } } : null);
+              setPreviewData(prev => prev ? { ...prev, dataUrl: analyzedDataUrl, validationResult: { passed: true, message: `${t("AI가")} ${visibleCount}${t("개 관절을 인식했습니다. 분석에 적합합니다.")}` } } : null);
             } else {
-              setPreviewData(prev => prev ? { ...prev, validationResult: { passed: false, message: '전신이 충분히 나오지 않았습니다. 뒤로 물러나서 재촬영해 주세요.' } } : null);
-              speak("전신이 충분히 나오지 않았습니다. 재촬영해 주세요.");
+              setPreviewData(prev => prev ? { ...prev, validationResult: { passed: false, message: t('전신이 충분히 나오지 않았습니다. 뒤로 물러나서 재촬영해 주세요.') } } : null);
+              speak(t("전신이 충분히 나오지 않았습니다. 재촬영해 주세요."));
             }
           } else {
             // Thunder 모델도 감지하지 못할 경우, 강제로 수동 패스할 수 있도록 안내 (차단하지 않음)
-            setPreviewData(prev => prev ? { ...prev, validationResult: { passed: false, message: 'AI가 사람을 명확히 인식하지 못했습니다. 사진이 정상이면 수동으로 다음 단계로 넘어가세요.' } } : null);
-            speak("사람이 명확히 감지되지 않았습니다. 사진을 확인하고 수동으로 넘어가거나 재촬영해 주세요.");
+            setPreviewData(prev => prev ? { ...prev, validationResult: { passed: false, message: t('AI가 사람을 명확히 인식하지 못했습니다. 사진이 정상이면 수동으로 다음 단계로 넘어가세요.') } } : null);
+            speak(t("사람이 명확히 감지되지 않았습니다. 사진을 확인하고 수동으로 넘어가거나 재촬영해 주세요."));
           }
         } catch (err) {
           console.error('Post-capture validation error:', err);
@@ -625,21 +600,7 @@ const AssessmentFlow: React.FC = () => {
       return;
     }
 
-    // 팔 올리기 단계 (수동 확인 모달)
-    if (step === AssessmentStep.ARM_RAISE_TEST) {
-      const defaultGrade = postureData?.armRaiseGrade || '보통 (135도)';
-      setManualArmRaiseGrade(defaultGrade);
-      setArmRaiseInputModal({ isOpen: true, dataUrl: originalDataUrl, postureData });
-      return;
-    }
 
-    // 유연성 단계 (수동 확인 모달)
-    if (step === AssessmentStep.FLEXIBILITY_TEST) {
-      const defaultGrade = postureData?.flexGrade || '보통 (정강이 중간)';
-      setManualFlexGrade(defaultGrade);
-      setFlexInputModal({ isOpen: true, dataUrl: originalDataUrl, postureData });
-      return;
-    }
     
     proceedToNextStep(step as AssessmentStep, originalDataUrl, reps, footDrops, swayScore, formScore, eyesClosedVal, kneeAssisted, postureData);
   };
@@ -647,7 +608,7 @@ const AssessmentFlow: React.FC = () => {
   // 미리보기에서 '재촬영' → 미리보기 닫고 현재 단계 유지
   const retakeCapture = () => {
     setPreviewData(null);
-    speak("다시 촬영합니다. 준비해 주세요.");
+    speak(t("다시 촬영합니다. 준비해 주세요."));
   };
 
   const proceedToNextStep = (currentStep: AssessmentStep, dataUrl: string, reps?: number, footDrops?: number, swayScore?: number, formScore?: number, eyesClosedVal?: boolean, kneeAssisted?: boolean, postureData?: any, brainTestData?: BrainTestData) => {
@@ -670,10 +631,10 @@ const AssessmentFlow: React.FC = () => {
 
     if (nextStep === AssessmentStep.SEVEN_CODE_CHECK) {
       setStep(AssessmentStep.SEVEN_CODE_CHECK);
-      speak("마지막 측정 11단계, 7코드 건강 점검입니다. 화면에 나타나는 문항 중 본인에게 해당하는 것을 선택해 주세요.");
+      speak(t("마지막 측정 6단계, 7코드 건강 점검입니다. 화면에 나타나는 문항 중 본인에게 해당하는 것을 선택해 주세요."));
     } else if (nextStep === AssessmentStep.READY_FOR_ANALYSIS) {
       setStep(nextStep as AssessmentStep);
-      speak("모든 측정이 완료되었습니다. 화면의 분석 시작 버튼을 눌러주세요.");
+      speak(t("모든 측정이 완료되었습니다. 화면의 분석 시작 버튼을 눌러주세요."));
     } else if (nextStep === AssessmentStep.ANALYZING) {
       runAnalysis(newImages);
     } else {
@@ -693,28 +654,10 @@ const AssessmentFlow: React.FC = () => {
     setCapturedImages(newImages);
     
     setStep(AssessmentStep.READY_FOR_ANALYSIS);
-    speak("모든 측정이 완료되었습니다. 화면의 분석 시작 버튼을 눌러주세요.");
+    speak(t("모든 측정이 완료되었습니다. 화면의 분석 시작 버튼을 눌러주세요."));
   };
 
-  const handleRepSubmit = () => {
-    if (!repInputModal.step) return;
-    const reps = parseInt(repCount, 10) || 0;
-    const { step: modalStep, dataUrl, formScore: fs, kneeAssisted: ka, postureData: pd } = repInputModal;
-    setRepInputModal({ isOpen: false, step: null, dataUrl: '' });
-    setRepCount('');
 
-    let manualFormScore = fs || 80;
-    if (manualRepPosture === '완벽') manualFormScore = 100;
-    else if (manualRepPosture === '우수') manualFormScore = 85;
-    else if (manualRepPosture === '보통') manualFormScore = 60;
-    else if (manualRepPosture === '보완필요') manualFormScore = 40;
-
-    const pdWithManual = { ...pd, manualPosture: manualRepPosture };
-
-    // formScore, kneeAssisted, postureData를 함께 전달하여 유실 방지
-    proceedToNextStep(modalStep!, dataUrl, reps, undefined, undefined, manualFormScore, undefined, ka, pdWithManual);
-    setManualRepPosture('보통');
-  };
 
   // 균형 테스트 수동 입력 완료
   const handleBalanceSubmit = () => {
@@ -726,28 +669,12 @@ const AssessmentFlow: React.FC = () => {
     proceedToNextStep(AssessmentStep.BALANCE_TEST, balanceInputModal.dataUrl, undefined, fd, convertedSwayScore, undefined, eyesClosed);
   };
 
-  // 팔 올리기 수동 검증 완료
-  const handleArmRaiseSubmit = () => {
-    const { dataUrl, postureData } = armRaiseInputModal;
-    // 사용자가 모달에서 수정한 등급을 postureData에 덮어씀
-    const updatedPostureData = { ...postureData, armRaiseGrade: manualArmRaiseGrade };
-    setArmRaiseInputModal({ isOpen: false, dataUrl: '', postureData: null });
-    proceedToNextStep(AssessmentStep.ARM_RAISE_TEST, dataUrl, undefined, undefined, undefined, undefined, undefined, undefined, updatedPostureData);
-  };
 
-  // 유연성 수동 검증 완료
-  const handleFlexSubmit = () => {
-    const { dataUrl, postureData } = flexInputModal;
-    // 사용자가 수정한 등급을 postureData에 덮어씀
-    const updatedPostureData = { ...postureData, flexGrade: manualFlexGrade };
-    setFlexInputModal({ isOpen: false, dataUrl: '', postureData: null });
-    proceedToNextStep(AssessmentStep.FLEXIBILITY_TEST, dataUrl, undefined, undefined, undefined, undefined, undefined, undefined, updatedPostureData);
-  };
 
   const runAnalysis = async (images: CapturedImage[]) => {
     if (!userInfo) return;
     setStep(AssessmentStep.ANALYZING);
-    speak("이 분석은 브레인트레이닝센터와 연구원, 대학교 등 전문가들이 연구, 개발하였고, 최신 AI 기술을 접목하여 개발한 프로그램입니다. 본 시스템은 건강 관리에 도움을 주고자 자세, 동작, 기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다. 데이터 분석에 약 1분 정도 소요됩니다.");
+    speak(t("이 분석은 브레인트레이닝센터와 연구원, 대학교 등 전문가들이 연구, 개발하였고, 최신 AI 기술을 접목하여 개발한 프로그램입니다. 본 시스템은 건강 관리에 도움을 주고자 자세, 동작, 기억력 등을 측정하는 웰니스 프로그램으로서, 의료적 진단과는 무관합니다. 데이터 분석에 약 1분 정도 소요됩니다."));
     setIsAnalyzing(true);
     try {
       // For AI analysis, we send slightly larger images than storage but still resized for speed
@@ -758,7 +685,7 @@ const AssessmentFlow: React.FC = () => {
 
       const result = await analyzeHealth(userInfo, aiOptimizedImages);
       setReport(result);
-      speak("분석 결과 리포트가 생성되었습니다. 결과를 확인해 보세요.");
+      speak(t("분석 결과 리포트가 생성되었습니다. 결과를 확인해 보세요."));
       
       // Attempt to save to history, but don't crash if it fails
       // pending 레코드 삭제 후 최종 report로 저장
@@ -776,8 +703,8 @@ const AssessmentFlow: React.FC = () => {
       setErrorModal({ 
         isOpen: true, 
         message: isQuotaError 
-          ? "현재 AI 분석 요청이 너무 많아 일시적으로 처리가 지연되고 있습니다. 잠시 후 '분석 재시작' 버튼을 누르시면 안전하게 저장된 사진들로 다시 분석을 진행합니다."
-          : "AI 분석 서버와 통신 중 일시적인 오류가 발생했습니다. (촬영하신 8단계 사진과 데이터는 기기에 안전하게 저장되어 있습니다.) 아래 '분석 재시작' 버튼을 눌러주시면 처음부터 다시 촬영할 필요 없이 즉시 분석을 재개합니다.",
+          ? t("현재 AI 분석 요청이 너무 많아 일시적으로 처리가 지연되고 있습니다. 잠시 후 '분석 재시작' 버튼을 누르시면 안전하게 저장된 사진들로 다시 분석을 진행합니다.")
+          : t("AI 분석 서버와 통신 중 일시적인 오류가 발생했습니다. (촬영하신 6단계 사진과 데이터는 기기에 안전하게 저장되어 있습니다.) 아래 '분석 재시작' 버튼을 눌러주시면 처음부터 다시 촬영할 필요 없이 즉시 분석을 재개합니다."),
         showRetry: true
       });
       // Stay on ANALYZING step or show a state where they can retry
@@ -1080,10 +1007,10 @@ const AssessmentFlow: React.FC = () => {
               </div>
 
               <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 via-white to-indigo-200 mb-2 tracking-tight drop-shadow-sm">
-                BTC 3바디 AI 측정 센터
+                {t("BTC 3바디 AI 측정 센터")}
               </h2>
               <p className="text-indigo-300/80 mb-10 text-sm font-medium italic">
-                AI 신체 균형 &amp; 건강 상태 측정 시스템
+                {t("AI 신체 균형 & 건강 상태 측정 시스템")}
               </p>
 
               <div className="flex flex-col gap-4 mb-2 filter drop-shadow-xl">
@@ -1094,13 +1021,13 @@ const AssessmentFlow: React.FC = () => {
                   }}
                   className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-500 transition-all flex items-center justify-center gap-2"
                 >
-                  신규 측정 시작하기 <i className="fas fa-chevron-right text-xs"></i>
+                  {t("신규 측정 시작하기")} <i className="fas fa-chevron-right text-xs"></i>
                 </button>
                 <button 
                   onClick={() => setStep('HISTORY')}
                   className="w-full bg-slate-800/80 border border-slate-700 text-slate-300 font-bold py-4 rounded-2xl hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
                 >
-                  <i className="fas fa-users"></i> 회원 데이터 관리
+                  <i className="fas fa-users"></i> {t("회원 데이터 관리")}
                 </button>
               </div>
 
@@ -1156,20 +1083,13 @@ const AssessmentFlow: React.FC = () => {
           </div>
         );
 
-      case AssessmentStep.ARM_RAISE_TEST:
-        return renderCameraStep("노화 테스트 02", "팔 들어 올리기", 4, <CameraModule key="arm" onCapture={handleCapture} guidelineType="arm_raise" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
 
-      case AssessmentStep.FLEXIBILITY_TEST:
-        return renderCameraStep("노화 테스트 03", "유연성 테스트", 5, <CameraModule key="flexibility" onCapture={handleCapture} guidelineType="flexibility" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
-
-      case AssessmentStep.BRAIN_REACTION:
-        return <TmtBrainTestModule key={AssessmentStep.BRAIN_REACTION} onComplete={(dataUrl, testData) => proceedToNextStep(AssessmentStep.BRAIN_REACTION, dataUrl, testData.reactionTimeMs, testData.reactionErrors, undefined, undefined, undefined, undefined, undefined, testData)} />;
 
       case AssessmentStep.BRAIN_MEMORY:
         return <BrainTestModule key={AssessmentStep.BRAIN_MEMORY} testType={AssessmentStep.BRAIN_MEMORY} onComplete={(dataUrl, testData) => proceedToNextStep(AssessmentStep.BRAIN_MEMORY, dataUrl, testData.memorySpan, undefined, undefined, undefined, undefined, undefined, undefined, testData)} preferredCameraId={selectedDeviceId} />;
 
       case AssessmentStep.FACE_ANALYSIS:
-        return renderCameraStep("측정 8단계", "안면 피부 노화 측정", 8, <CameraModule key="face" onCapture={handleCapture} guidelineType="face" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
+        return renderCameraStep("측정 5단계", "안면 피부 노화 측정", 5, <CameraModule key="face" onCapture={handleCapture} guidelineType="face" autoCapture={true} preferredDeviceId={selectedDeviceId} onDeviceChange={setSelectedDeviceId} />);
 
       case AssessmentStep.SEVEN_CODE_CHECK:
         return <SevenCodeChecklist onNext={handleSevenCodeComplete} onPrev={() => setStep(AssessmentStep.FACE_ANALYSIS)} />;
@@ -1179,12 +1099,9 @@ const AssessmentFlow: React.FC = () => {
           { step: AssessmentStep.POSTURE_FRONT, icon: '📸', label: '1. 정면 자세', hasImage: true },
           { step: AssessmentStep.POSTURE_SIDE, icon: '📸', label: '2. 측면 자세', hasImage: true },
           { step: AssessmentStep.BALANCE_TEST, icon: '⚖️', label: '3. 균형 테스트', hasImage: true },
-          { step: AssessmentStep.ARM_RAISE_TEST, icon: '🙌', label: '4. 팔 올리기', hasImage: true },
-          { step: AssessmentStep.FLEXIBILITY_TEST, icon: '🤸', label: '5. 유연성', hasImage: true },
-          { step: AssessmentStep.BRAIN_REACTION, icon: '⚡', label: '6. 뇌 반응속도', hasImage: false },
-          { step: AssessmentStep.BRAIN_MEMORY, icon: '🛒', label: '7. 마트 장보기', hasImage: false },
-          { step: AssessmentStep.FACE_ANALYSIS, icon: '😊', label: '8. 얼굴 분석', hasImage: true },
-          { step: AssessmentStep.SEVEN_CODE_CHECK, icon: '🔢', label: '9. 7코드 점검', hasImage: false },
+          { step: AssessmentStep.BRAIN_MEMORY, icon: '🛒', label: '4. 마트 장보기', hasImage: false },
+          { step: AssessmentStep.FACE_ANALYSIS, icon: '😊', label: '5. 얼굴 분석', hasImage: true },
+          { step: AssessmentStep.SEVEN_CODE_CHECK, icon: '🔢', label: '6. 7코드 점검', hasImage: false },
         ];
         return (
           <div className="flex-1 flex flex-col items-center justify-center p-6 bg-slate-900 animate-fade-in overflow-y-auto">
@@ -1394,56 +1311,7 @@ const AssessmentFlow: React.FC = () => {
           </div>
         )}
       </Modal>
-      <Modal 
-        isOpen={repInputModal.isOpen}
-        title="운동 결과 확인 및 피드백"
-        message="AI가 측정한 결과입니다. 정확한 횟수 및 자세 피드백을 수동으로 입력해 주세요."
-        onClose={() => {}} // Prevent closing without input
-      >
-        <div className="mt-4 mb-4">
-          <label className="block text-sm font-bold text-slate-700 mb-2">
-            <i className="fas fa-redo mr-1 text-indigo-500"></i> 운동 횟수
-          </label>
-          <input 
-            type="number" 
-            value={repCount}
-            onChange={(e) => setRepCount(e.target.value)}
-            placeholder="예: 12"
-            className="w-full text-center text-3xl font-black text-slate-800 py-3 bg-white border-2 border-indigo-100 rounded-2xl focus:outline-none focus:border-indigo-500 transition-colors"
-            autoFocus
-          />
-        </div>
 
-        <div className="mb-6">
-          <label className="block text-sm font-bold text-slate-700 mb-2">
-            <i className="fas fa-check-circle mr-1 text-indigo-500"></i> 자세 평가 (AI 감점 반영)
-          </label>
-          <div className="grid grid-cols-4 gap-2">
-            {['완벽', '우수', '보통', '보완필요'].map(posture => (
-              <button
-                key={posture}
-                onClick={() => setManualRepPosture(posture)}
-                className={`py-2 px-1 rounded-xl border-2 text-xs font-bold transition-all ${
-                  manualRepPosture === posture 
-                    ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-sm' 
-                    : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
-                }`}
-              >
-                {posture}
-              </button>
-            ))}
-          </div>
-          <p className="text-[11px] text-slate-400 mt-2 text-center">선택한 자세에 따라 AI 신체나이 계산 시 패널티가 부여됩니다.</p>
-        </div>
-
-        <button 
-          onClick={handleRepSubmit}
-          disabled={!repCount}
-          className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all disabled:opacity-50"
-        >
-          입력 완료
-        </button>
-      </Modal>
 
       {/* 균형 테스트 수동 입력 모달 */}
       <Modal 
@@ -1516,105 +1384,7 @@ const AssessmentFlow: React.FC = () => {
         </button>
       </Modal>
 
-      {/* 팔 올리기 수동 검증 모달 */}
-      <Modal 
-        isOpen={armRaiseInputModal.isOpen}
-        title="팔 들어올리기 결과 확인"
-        message="AI가 측정한 결과입니다. 실제 관찰한 결과로 수정해 주세요."
-        onClose={() => {}}
-      >
-        <div className="mt-4 space-y-5">
-          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-            <div className="text-[11px] font-bold text-slate-400 mb-1">📊 AI 실시간 측정값</div>
-            <div className="flex gap-4 text-sm text-slate-600">
-              <span>평균 각도: <strong className="text-indigo-600">{armRaiseInputModal.postureData?.armAvgAngle}도</strong></span>
-              <span>귀 밀착: <strong className="text-indigo-600">{armRaiseInputModal.postureData?.earProximity}</strong></span>
-            </div>
-            <div className="mt-1 text-xs text-slate-500">
-              팔꿈치: {armRaiseInputModal.postureData?.elbowStraight ? '정상(펴짐)' : '굽어짐 감점'}
-            </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
-              <i className="fas fa-child mr-1 text-indigo-500"></i> 최종 종합 등급 선택
-            </label>
-            <div className="flex flex-col gap-2">
-              {['우수 (180도 완벽)', '양호 (160도)', '보통 (135도)', '미흡 (90도)', '불량 (90도 미만)'].map(grade => (
-                <button
-                  key={grade}
-                  onClick={() => setManualArmRaiseGrade(grade)}
-                  className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all text-left ${
-                    manualArmRaiseGrade.startsWith(grade.split(' ')[0]) 
-                      ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-sm' 
-                      : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200'
-                  }`}
-                >
-                  {grade}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <button 
-          onClick={handleArmRaiseSubmit}
-          className="w-full mt-5 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all"
-        >
-          입력 완료
-        </button>
-      </Modal>
-
-      {/* 유연성 수동 검증 모달 */}
-      <Modal 
-        isOpen={flexInputModal.isOpen}
-        title="유연성(전굴) 결과 확인"
-        message="AI가 측정한 결과입니다. 실제 관찰한 결과로 수정해 주세요."
-        onClose={() => {}}
-      >
-        <div className="mt-4 space-y-5">
-          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-            <div className="text-[11px] font-bold text-slate-400 mb-1">📊 AI 실시간 측정값</div>
-            <div className="flex gap-4 text-sm text-slate-600">
-              <span>손 닿는 곳: <strong className="text-indigo-600">{flexInputModal.postureData?.handPosition}</strong></span>
-              <span>허리 각도: <strong className="text-indigo-600">{flexInputModal.postureData?.waistBendAngle}도</strong></span>
-            </div>
-            <div className="mt-1 text-xs text-slate-500">
-              무릎: {flexInputModal.postureData?.kneeStraight ? '정상(펴짐)' : '굽어짐 감점'}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
-              <i className="fas fa-running mr-1 text-indigo-500"></i> 최종 종합 등급 선택
-            </label>
-            <div className="flex flex-col gap-2">
-              {['최우수 (손바닥 완전 닿음)', '우수 (손끝 닿음)', '보통 (정강이 중간)', '미흡 (정강이 위)', '불량 (무릎 이상)'].map(grade => (
-                <button
-                  key={grade}
-                  onClick={() => setManualFlexGrade(grade)}
-                  className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all text-left ${
-                    manualFlexGrade.startsWith(grade.split(' ')[0]) 
-                      ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-sm' 
-                      : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200'
-                  }`}
-                >
-                  {grade}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-slate-500 mt-3 bg-slate-50 p-2 rounded-lg border border-slate-200">
-              <i className="fas fa-info-circle text-indigo-400 mr-1"></i>
-              무릎 굽힘 정도, 허리 굽힘 정도에 따라 AI 자동 감점이 반영될 수 있습니다.
-            </p>
-          </div>
-        </div>
-        <button 
-          onClick={handleFlexSubmit}
-          className="w-full mt-5 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all"
-        >
-          입력 완료
-        </button>
-      </Modal>
 
       {renderContent()}
       {showSysCheck && (

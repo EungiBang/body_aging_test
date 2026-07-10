@@ -54,7 +54,13 @@ const replaceTerminology = (text: string | undefined | null): string => {
 };
 
 interface ReportDashboardProps {
-  report: BodyReport;
+  report: BodyReport & {
+    energy3Body7Code?: {
+      threeBodyAnalysis: string;
+      sevenCodeDetailed: { name: string; region: string; bodyPart: string; state: 'Positive' | 'Negative' | 'Neutral'; interpretation: string; score: number; }[];
+    };
+    bodyAlignmentAnalysis?: any[];
+  };
   images: CapturedImage[];
   onRestart: () => void;
 }
@@ -582,7 +588,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ report, images, onRes
 
       {/* Brain Test Detail Section */}
       {(() => {
-        const reactionData = images.find(img => img.step === 'BRAIN_REACTION')?.brainTestData;
+        const reactionData = images.find(img => img.step === ('BRAIN_REACTION' as any))?.brainTestData;
         const memoryData = images.find(img => img.step === 'BRAIN_MEMORY')?.brainTestData;
         const hasBrainData = reactionData || memoryData;
         

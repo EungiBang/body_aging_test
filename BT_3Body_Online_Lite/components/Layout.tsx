@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { t } from '../i18n';
 import SettingsModal from './SettingsModal';
 import { startAutoBackup, stopAutoBackup } from '../services/backupService';
 import pkg from '../package.json';
@@ -67,7 +68,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           </div>
           <div>
             <h1 className="font-black text-slate-100 text-base tracking-tight leading-tight drop-shadow-sm">
-              BTC 3바디 7코드 AI건강센터
+              {t("BTC 3바디 7코드 AI건강센터")}
             </h1>
             <p className="text-[10px] font-bold tracking-[0.20em] uppercase"
               style={{ color: '#4f46e5' }}>
@@ -97,12 +98,12 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
               color: '#4f46e5',
               boxShadow: '0 2px 8px rgba(99,102,241,0.08)',
             }}
-            title="메인 화면으로"
+            title={t("메인")}
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(79,70,229,0.10)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.80)')}
           >
             <i className="fas fa-house text-xs" />
-            <span>메인</span>
+            <span>{t("메인")}</span>
           </button>
 
           {/* 회원관리 */}
@@ -115,15 +116,15 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
               color: '#4f46e5',
               boxShadow: '0 2px 8px rgba(99,102,241,0.08)',
             }}
-            title="회원 데이터 관리"
+            title={t("회원관리")}
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(79,70,229,0.10)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.80)')}
           >
             <i className="fas fa-users text-xs" />
-            <span>회원관리</span>
+            <span>{t("회원관리")}</span>
           </button>
 
-          {/* K관상 */}
+          {/* K관상 (임시 중단)
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('nav:kface'))}
             className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold transition-all"
@@ -133,15 +134,16 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
               color: '#9333ea',
               boxShadow: '0 2px 8px rgba(147,51,234,0.08)',
             }}
-            title="AI K-관상"
+            title={t("K관상")}
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(147,51,234,0.10)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.80)')}
           >
             <i className="fas fa-mask text-xs" />
-            <span>K관상</span>
+            <span>{t("K관상")}</span>
           </button>
+          */}
 
-          {/* K타로 */}
+          {/* K타로 (임시 중단)
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('nav:ktarot'))}
             className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold transition-all"
@@ -151,13 +153,14 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
               color: '#d946ef',
               boxShadow: '0 2px 8px rgba(217,70,239,0.08)',
             }}
-            title="AI K-타로"
+            title={t("K타로")}
             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(217,70,239,0.10)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.80)')}
           >
             <i className="fas fa-star-and-crescent text-xs" />
-            <span>K타로</span>
+            <span>{t("K타로")}</span>
           </button>
+          */}
 
           {/* 설정 */}
           <button
