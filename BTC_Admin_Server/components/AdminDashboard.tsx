@@ -24,7 +24,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [regions, setRegions] = useState<Region[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [devices, setDevices] = useState<DeviceLicense[]>([]);
-  const [settings, setSettings] = useState({ autoApproveCode: '', liteAutoApproveCode: '' });
+  const [settings, setSettings] = useState({ 
+    autoApproveCode: '', 
+    liteAutoApproveCode: '',
+    tempLiteAutoApproveCode: '',
+    tempLiteCodeExpiredAt: ''
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<{ dailyStats: any[], branchStats: any[] }>({ dailyStats: [], branchStats: [] });
 
@@ -91,7 +96,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       setRegions(r);
       setBranches(b);
       setDevices(d);
-      setSettings((s as any) || { autoApproveCode: '', liteAutoApproveCode: '' });
+      setSettings((s as any) || { autoApproveCode: '', liteAutoApproveCode: '', tempLiteAutoApproveCode: '', tempLiteCodeExpiredAt: '' });
       setAdminUsers(au);
       setStats(dashStats);
       setAllFeedbacks(feedbacks);
@@ -227,7 +232,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
   const handleSaveSettings = async () => {
     try {
-      await updateSystemSettings(settings.autoApproveCode, settings.liteAutoApproveCode);
+      await updateSystemSettings(
+        settings.autoApproveCode, 
+        settings.liteAutoApproveCode,
+        settings.tempLiteAutoApproveCode,
+        settings.tempLiteCodeExpiredAt
+      );
       alert('설정이 저장되었습니다.');
     } catch (e: any) {
       console.error('설정 저장 실패:', e);
@@ -2206,6 +2216,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         value={settings.liteAutoApproveCode || ''}
                         onChange={e => setSettings({ ...settings, liteAutoApproveCode: e.target.value })}
                       />
+                    </div>
+                  </div>
+
+                  <div className="mb-6 p-6 bg-violet-50 rounded-2xl border border-violet-200">
+                    <h3 className="font-bold text-violet-800 mb-2">🎓 Online LITE 버전 임시 배포 승인 코드</h3>
+                    <p className="text-xs text-violet-600 mb-4 leading-relaxed">
+                      교육 및 테스트용 임시 코드입니다. 만료시간이 지나거나 이 필드를 비워두면 임시 코드로 인증받은 기기들의 사용 권한이 자동으로 즉시 소멸 및 차단됩니다.
+                    </p>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-violet-500 mb-1">임시 승인 코드</label>
+                        <input 
+                          type="text" 
+                          className="w-full p-3 border border-violet-200 rounded-xl bg-white focus:border-violet-400 outline-none"
+                          placeholder="예: TEMPLITE2026"
+                          value={settings.tempLiteAutoApproveCode || ''}
+                          onChange={e => setSettings({ ...settings, tempLiteAutoApproveCode: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-violet-500 mb-1">만료 일시</label>
+                        <input 
+                          type="datetime-local" 
+                          className="w-full p-3 border border-violet-200 rounded-xl bg-white focus:border-violet-400 outline-none"
+                          value={settings.tempLiteCodeExpiredAt || ''}
+                          onChange={e => setSettings({ ...settings, tempLiteCodeExpiredAt: e.target.value })}
+                        />
+                      </div>
                     </div>
                   </div>
 

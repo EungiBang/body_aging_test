@@ -27,6 +27,7 @@ export interface DeviceLicense {
   createdAt: any;
   lastActive: any;
   deviceType?: 'pc' | 'lite'; // 기기 타입 식별자 추가
+  isTemporary?: boolean; // 임시 교육용 기기 식별자 추가
 }
 
 // 4. 관리자 전용 제어 함수
@@ -158,16 +159,32 @@ export const getSystemSettings = async () => {
   const docRef = doc(db, 'system_settings', 'config');
   const snap = await getDoc(docRef);
   if (snap.exists()) {
-    return snap.data() as { autoApproveCode?: string; liteAutoApproveCode?: string };
+    return snap.data() as { 
+      autoApproveCode?: string; 
+      liteAutoApproveCode?: string;
+      tempLiteAutoApproveCode?: string;
+      tempLiteCodeExpiredAt?: string;
+    };
   }
-  return { autoApproveCode: '', liteAutoApproveCode: '' };
+  return { autoApproveCode: '', liteAutoApproveCode: '', tempLiteAutoApproveCode: '', tempLiteCodeExpiredAt: '' };
 };
 
-export const updateSystemSettings = async (autoApproveCode: string, liteAutoApproveCode?: string) => {
+export const updateSystemSettings = async (
+  autoApproveCode: string, 
+  liteAutoApproveCode?: string,
+  tempLiteAutoApproveCode?: string,
+  tempLiteCodeExpiredAt?: string
+) => {
   const docRef = doc(db, 'system_settings', 'config');
   const updateData: any = { autoApproveCode: autoApproveCode || '' };
   if (liteAutoApproveCode !== undefined) {
     updateData.liteAutoApproveCode = liteAutoApproveCode || '';
+  }
+  if (tempLiteAutoApproveCode !== undefined) {
+    updateData.tempLiteAutoApproveCode = tempLiteAutoApproveCode || '';
+  }
+  if (tempLiteCodeExpiredAt !== undefined) {
+    updateData.tempLiteCodeExpiredAt = tempLiteCodeExpiredAt || '';
   }
   await setDoc(docRef, updateData, { merge: true });
 };
@@ -227,6 +244,27 @@ export const checkDeviceStatus = async (hardwareId: string, appVersion?: string)
   if (snap.exists()) {
     const deviceData = { id: snap.id, ...snap.data() } as DeviceLicense;
 
+    // ★ 임시 교육 기기 만료 여부 검증
+    if (deviceData.isTemporary) {
+      const settings = await getSystemSettings();
+      let isExpired = false;
+      
+      if (!settings.tempLiteAutoApproveCode) {
+        isExpired = true;
+      } else if (settings.tempLiteCodeExpiredAt) {
+        const expireTime = new Date(settings.tempLiteCodeExpiredAt).getTime();
+        if (Date.now() > expireTime) {
+          isExpired = true;
+        }
+      }
+      
+      if (isExpired) {
+        console.warn(`[Auth] 임시 기기 ${hardwareId}의 사용 기간이 만료되었습니다.`);
+        await deleteDoc(docRef);
+        return null;
+      }
+    }
+
     // ★ 핵심: 연결된 지점이 실제로 존재하는지 검증
     if (deviceData.branchId) {
       const branchRef = doc(db, 'branches', deviceData.branchId);
@@ -266,13 +304,30 @@ export const requestDeviceRegistration = async (
   appVersion?: string
 ): Promise<{ success: boolean; status: 'active' | 'pending'; error?: string }> => {
   
-  // 1. 배포 코드 확인 (LITE 전용 코드만 허용, PC 코드와 완전 분리)
+  // 1. 배포 코드 확인
   const settings = await getSystemSettings();
-  const liteCode = settings.liteAutoApproveCode;
-  const isCodeValid = liteCode && liteCode === inputCode;
   
-  if (!isCodeValid) {
-    return { success: false, status: 'pending', error: '유효하지 않은 배포 코드입니다.' };
+  // 정식 코드 검증
+  const isNormalCodeValid = settings.liteAutoApproveCode && settings.liteAutoApproveCode === inputCode;
+  
+  // 임시 코드 검증
+  let isTempCodeValid = false;
+  let isTemporary = false;
+  if (settings.tempLiteAutoApproveCode && settings.tempLiteAutoApproveCode === inputCode) {
+    if (settings.tempLiteCodeExpiredAt) {
+      const expireTime = new Date(settings.tempLiteCodeExpiredAt).getTime();
+      if (Date.now() < expireTime) {
+        isTempCodeValid = true;
+        isTemporary = true;
+      }
+    } else {
+      isTempCodeValid = true;
+      isTemporary = true;
+    }
+  }
+  
+  if (!isNormalCodeValid && !isTempCodeValid) {
+    return { success: false, status: 'pending', error: '유효하지 않은 LITE 전용 배포 코드입니다.' };
   }
 
   // 2. 지점 정보 확인 및 라이트 버전 할당량 체크
@@ -304,7 +359,8 @@ export const requestDeviceRegistration = async (
     status: 'active',
     appVersion: appVersion || 'unknown',
     createdAt: serverTimestamp(),
-    lastActive: serverTimestamp()
+    lastActive: serverTimestamp(),
+    isTemporary: isTemporary
   };
 
   await setDoc(doc(db, 'lite_devices', hardwareId), newDevice);
