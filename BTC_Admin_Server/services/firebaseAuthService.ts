@@ -102,7 +102,16 @@ export const getAdminUsers = async (): Promise<AdminUser[]> => {
   const q = query(collection(db, 'admin_users'));
   const snapshot = await getDocs(q);
   const admins: AdminUser[] = [];
-  snapshot.forEach((doc) => admins.push({ id: doc.id, ...doc.data() } as AdminUser));
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    // 보안: 클라이언트로 비밀번호 해시 전송 원천 차단 (password 필드 제외)
+    admins.push({
+      id: doc.id,
+      name: data.name,
+      role: data.role,
+      createdAt: data.createdAt
+    } as AdminUser);
+  });
   return admins;
 };
 

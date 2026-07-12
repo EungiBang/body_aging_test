@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, query, orderBy, onSnapshot, updateDoc, doc, limit } from 'firebase/firestore';
-import { db } from '../firebase';
 import { ErrorLog } from '../services/ErrorLogger';
+// 에러 로그 접근을 서버 경유(봉합선 liteAdmin)로 이관. 실시간 onSnapshot → 주기 폴링, updateDoc → setErrorLogStatus.
+import { listErrorLogs, setErrorLogStatus } from '../services/liteAdmin';
+
+const POLL_INTERVAL_MS = 15000; // 15초 폴링(기존 실시간 구독 대체)
 
 interface AdminErrorMonitorProps {
   branches: { id: string; name: string }[];
@@ -20,35 +22,38 @@ export const AdminErrorMonitor: React.FC<AdminErrorMonitorProps> = ({ branches, 
   useEffect(() => {
     // Create audio for alert
     audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); // short alert ping
-    
-    const q = query(
-      collection(db, 'error_logs'),
-      orderBy('timestamp', 'desc'),
-      limit(100)
-    );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedLogs: ErrorLog[] = [];
-      snapshot.forEach(document => {
-        fetchedLogs.push({ id: document.id, ...document.data() } as ErrorLog);
-      });
+    let active = true;
 
-      // Play sound if there are new unresolved errors
-      const newErrorsCount = fetchedLogs.filter(l => l.status === 'new').length;
-      if (newErrorsCount > prevLogsCountRef.current && audioRef.current) {
-        audioRef.current.play().catch(e => console.error('Audio play prevented:', e));
+    // 서버(/api/admin-errorlog)에서 최근 에러 로그를 가져와 갱신. 실시간 구독 대신 주기 폴링.
+    const fetchLogs = async () => {
+      try {
+        const fetchedLogs = await listErrorLogs();
+        if (!active) return;
+
+        // Play sound if there are new unresolved errors
+        const newErrorsCount = fetchedLogs.filter(l => l.status === 'new').length;
+        if (newErrorsCount > prevLogsCountRef.current && audioRef.current) {
+          audioRef.current.play().catch(e => console.error('Audio play prevented:', e));
+        }
+        prevLogsCountRef.current = newErrorsCount;
+
+        setLogs(fetchedLogs);
+      } catch (e) {
+        console.error('에러 로그 조회 실패:', e);
       }
-      prevLogsCountRef.current = newErrorsCount;
+    };
 
-      setLogs(fetchedLogs);
-    });
-
-    return () => unsubscribe();
+    fetchLogs();
+    const timer = setInterval(fetchLogs, POLL_INTERVAL_MS);
+    return () => { active = false; clearInterval(timer); };
   }, []);
 
   const handleStatusChange = async (id: string, newStatus: 'new' | 'viewed' | 'resolved') => {
     try {
-      await updateDoc(doc(db, 'error_logs', id), { status: newStatus });
+      await setErrorLogStatus(id, newStatus);
+      // 낙관적 갱신: 다음 폴링 전에도 UI에 즉시 반영.
+      setLogs(prev => prev.map(l => l.id === id ? { ...l, status: newStatus } : l));
     } catch (e) {
       alert('상태 변경 실패');
     }

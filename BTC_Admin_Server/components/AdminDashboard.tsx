@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { 
+// 타입(AdminUser/Region/Branch/DeviceLicense)은 여전히 firebaseAuthService가 원본(값 함수는 전부 liteAdmin으로 이관됨).
+import { AdminUser, Region, Branch, DeviceLicense } from '../services/firebaseAuthService';
+// 관리자 데이터 접근은 전부 봉합선(liteAdmin) 경유. P1: adminLogin · P2a: devices/config/users · P2b: stats/members · P2c: events/errorlog/feedbacks.
+import {
+  adminLogin,
   getRegions, getBranches, getAllDevices, updateDeviceStatus, deleteDevice,
   saveBranch, saveRegion, deleteBranch, deleteRegion, getSystemSettings, updateSystemSettings,
-  adminLogin, getAdminUsers, saveAdminUser, deleteAdminUser, AdminUser,
-  Region, Branch, DeviceLicense, getAllFeedbacks 
-} from '../services/firebaseAuthService';
-import { fetchAllMembers, fetchMembersFromCloud, deleteMemberFromCloud, fetchAllEvents } from '../services/cloudSyncService';
+  getAdminUsers, saveAdminUser, deleteAdminUser,
+  getUsageStatus, updateDailyLimit,
+  getDashboardStats, fetchAllMembers, fetchMembersFromCloud, deleteMemberFromCloud,
+  fetchAllEvents, getAllFeedbacks,
+} from '../services/liteAdmin';
 import { MemberRecord } from '../types';
-import { getDashboardStats } from '../services/statsService';
-import { updateDailyLimit, getUsageStatus, UsageStatus } from '../services/usageLimitService';
+// UsageStatus 타입 원본은 usageLimitService(비개발자 파일). 함수(getUsageStatus/updateDailyLimit)는 liteAdmin으로 이관.
+import { UsageStatus } from '../services/usageLimitService';
 import * as xlsx from 'xlsx';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { AdminErrorMonitor } from './AdminErrorMonitor';
@@ -73,11 +78,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   // AI Feedbacks State
   const [allFeedbacks, setAllFeedbacks] = useState<any[]>([]);
   const [feedbacksLoading, setFeedbacksLoading] = useState(false);
+  const [rankPeriod, setRankPeriod] = useState<'today' | 'week' | 'month'>('month');
+
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [r, b, d, s, au, dashStats, feedbacks] = await Promise.all([
-        getRegions(), getBranches(), getAllDevices(), getSystemSettings(), getAdminUsers(), getDashboardStats(), getAllFeedbacks()
+      const [r, b, d, s, au, dashStats, feedbacks, members] = await Promise.all([
+        getRegions(),
+        getBranches(),
+        getAllDevices(),
+        getSystemSettings(),
+        getAdminUsers(),
+        getDashboardStats(),
+        getAllFeedbacks(),
+        fetchAllMembers()
       ]);
       setRegions(r);
       setBranches(b);
@@ -86,6 +100,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       setAdminUsers(au);
       setStats(dashStats);
       setAllFeedbacks(feedbacks);
+      setCloudMembers(members);
 
       const usages: Record<string, UsageStatus> = {};
       await Promise.all(b.map(async (branch) => {
@@ -565,12 +580,130 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
           <>
             {/* Overview Tab */}
             {activeTab === 'overview' && (() => {
-              // 1. 오늘의 점검 현황 계산
-              const todayActiveBranches = branches.filter(b => (branchUsages[b.id]?.kfaceUsed || 0) + (branchUsages[b.id]?.ktarotUsed || 0) > 0);
-              const todayActiveRegionsCount = new Set(todayActiveBranches.map(b => b.regionId)).size;
-              const todayTestedCount = todayActiveBranches.reduce((sum, b) => sum + (branchUsages[b.id]?.kfaceUsed || 0) + (branchUsages[b.id]?.ktarotUsed || 0), 0);
+              // 날짜 기준 계산
+              const today = new Date();
+              const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
 
-              // 2. 지역별 설치 완료 지점 현황 계산
+              const yesterday = new Date();
+              yesterday.setDate(today.getDate() - 1);
+              const yesterdayStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()).getTime();
+              const yesterdayEnd = todayStart;
+
+              // 이번 주 (월요일 시작 기준)
+              const getStartOfWeek = (d: Date): Date => {
+                const date = new Date(d);
+                const day = date.getDay();
+                const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                const start = new Date(date.setDate(diff));
+                start.setHours(0, 0, 0, 0);
+                return start;
+              };
+              const startOfWeek = getStartOfWeek(today);
+              const startOfWeekTime = startOfWeek.getTime();
+
+              // 이번 달
+              const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+              const startOfMonthTime = startOfMonth.getTime();
+
+              // 멤버 날짜 파싱 헬퍼
+              const getMemberTime = (m: MemberRecord): number => {
+                if (m.lastTestDate) {
+                  const t = new Date(m.lastTestDate).getTime();
+                  if (!isNaN(t)) return t;
+                }
+                if (m.report?.date) {
+                  const t = new Date(m.report.date).getTime();
+                  if (!isNaN(t)) return t;
+                }
+                return 0;
+              };
+
+              // 1. 기간별 점검자 계산
+              let todayTestedCount = 0;
+              let yesterdayTestedCount = 0;
+              let thisMonthTestedCount = 0;
+
+              const todayActiveBranchesSet = new Set<string>();
+              const todayActiveRegionsSet = new Set<string>();
+
+              cloudMembers.forEach(m => {
+                const mTime = getMemberTime(m);
+                if (mTime === 0) return;
+
+                if (mTime >= todayStart) {
+                  todayTestedCount++;
+                  if (m.branchId) todayActiveBranchesSet.add(m.branchId);
+                  if (m.regionId) todayActiveRegionsSet.add(m.regionId);
+                } else if (mTime >= yesterdayStart && mTime < yesterdayEnd) {
+                  yesterdayTestedCount++;
+                }
+
+                if (mTime >= startOfMonthTime) {
+                  thisMonthTestedCount++;
+                }
+              });
+
+              // 2. 랭킹 기간 선택에 따른 집계
+              const rankFiltered = cloudMembers.filter(m => {
+                const mTime = getMemberTime(m);
+                if (mTime === 0) return false;
+                if (rankPeriod === 'today') return mTime >= todayStart;
+                if (rankPeriod === 'week') return mTime >= startOfWeekTime;
+                return mTime >= startOfMonthTime;
+              });
+
+              const branchCounts: Record<string, number> = {};
+              const regionCounts: Record<string, number> = {};
+
+              rankFiltered.forEach(m => {
+                if (m.branchId) branchCounts[m.branchId] = (branchCounts[m.branchId] || 0) + 1;
+                if (m.regionId) regionCounts[m.regionId] = (regionCounts[m.regionId] || 0) + 1;
+              });
+
+              const branchRankList = branches.map(b => {
+                const count = branchCounts[b.id] || 0;
+                const region = regions.find(r => r.id === b.regionId);
+                return {
+                  ...b,
+                  count,
+                  regionName: region ? region.name : '알 수 없음'
+                };
+              }).sort((a, b) => b.count - a.count);
+
+              const regionRankList = regions.map(r => {
+                const count = regionCounts[r.id] || 0;
+                return {
+                  ...r,
+                  count
+                };
+              }).sort((a, b) => b.count - a.count);
+
+              // 3. 위험 지점 및 지역 (이번 달 실적 기준 저조한 곳)
+              const activeBranchIds = new Set(devices.filter(d => d.status === 'active').map(d => d.branchId));
+              
+              // 기기는 있으나 실적이 극히 저조(이번달 2건 이하)인 곳
+              const dangerBranches = branches.filter(b => activeBranchIds.has(b.id)).map(b => {
+                const count = branchCounts[b.id] || 0;
+                const region = regions.find(r => r.id === b.regionId);
+                return {
+                  ...b,
+                  count,
+                  regionName: region ? region.name : '알 수 없음'
+                };
+              }).sort((a, b) => a.count - b.count)
+              .filter(b => b.count <= 2);
+
+              // 실적이 매우 저조한 지역 (이번달 5건 이하)
+              const dangerRegions = regions.map(r => {
+                const count = regionCounts[r.id] || 0;
+                return {
+                  ...r,
+                  count
+                };
+              }).sort((a, b) => a.count - b.count)
+              .filter(r => r.count <= 5);
+
+              // 4. 설치(활성) 지점 현황 계산 (하단 배치용)
               const installedByRegion = regions.map(r => {
                 const branchesInRegion = branches.filter(b => b.regionId === r.id);
                 const installedCount = branchesInRegion.filter(b => devices.some(d => d.branchId === b.id && d.status === 'active')).length;
@@ -579,67 +712,67 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
               return (
                 <div className="h-full flex flex-col gap-6">
-                  {/* Today's Briefing */}
-                  <div className="bg-white p-6 rounded-2xl border border-indigo-100 shadow-md flex flex-col md:flex-row items-center justify-between gap-6 border-l-4 border-l-indigo-500">
+                  {/* Today's Realtime Briefing */}
+                  <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border-l-8 border-indigo-500 text-white">
                     <div className="flex items-center gap-4 w-full md:w-auto">
-                      <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 text-2xl shrink-0">
-                        <i className="fas fa-bolt"></i>
+                      <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center text-indigo-400 text-3xl shrink-0">
+                        <i className="fas fa-bolt animate-pulse"></i>
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-slate-800">오늘의 실시간 점검 브리핑</h3>
-                        <p className="text-sm text-slate-500 mt-1">현재 전국 지점에서 수행 중인 AI 측정 현황입니다.</p>
+                        <h3 className="text-xl font-black">오늘의 실시간 점검 브리핑</h3>
+                        <p className="text-sm text-slate-300 mt-1">Firestore 회원DB 기준 실시간 오늘 점검 통계입니다.</p>
                       </div>
                     </div>
-                    <div className="flex gap-4 md:gap-8 w-full md:w-auto justify-around bg-slate-50 md:bg-transparent p-4 md:p-0 rounded-xl">
+                    <div className="flex gap-4 md:gap-8 w-full md:w-auto justify-around bg-white/5 md:bg-transparent p-4 md:p-0 rounded-xl">
                       <div className="text-center">
-                        <div className="text-xs font-bold text-slate-500 mb-1">활동 지역</div>
-                        <div className="text-3xl font-black text-indigo-600">{todayActiveRegionsCount}<span className="text-sm font-bold text-slate-400 ml-1">곳</span></div>
+                        <div className="text-xs font-bold text-slate-400 mb-1">활동 지역</div>
+                        <div className="text-3xl font-black text-indigo-400">{todayActiveRegionsSet.size}<span className="text-sm font-bold text-slate-500 ml-1">곳</span></div>
                       </div>
-                      <div className="w-px h-10 bg-slate-200 hidden md:block mt-2"></div>
+                      <div className="w-px h-10 bg-white/10 hidden md:block mt-2"></div>
                       <div className="text-center">
-                        <div className="text-xs font-bold text-slate-500 mb-1">활동 지점</div>
-                        <div className="text-3xl font-black text-blue-600">{todayActiveBranches.length}<span className="text-sm font-bold text-slate-400 ml-1">개</span></div>
+                        <div className="text-xs font-bold text-slate-400 mb-1">활동 지점</div>
+                        <div className="text-3xl font-black text-blue-400">{todayActiveBranchesSet.size}<span className="text-sm font-bold text-slate-500 ml-1">개</span></div>
                       </div>
-                      <div className="w-px h-10 bg-slate-200 hidden md:block mt-2"></div>
+                      <div className="w-px h-10 bg-white/10 hidden md:block mt-2"></div>
                       <div className="text-center">
-                        <div className="text-xs font-bold text-slate-500 mb-1">오늘 총 점검자</div>
-                        <div className="text-3xl font-black text-emerald-600">{todayTestedCount}<span className="text-sm font-bold text-slate-400 ml-1">명</span></div>
+                        <div className="text-xs font-bold text-slate-400 mb-1">오늘 총 점검자</div>
+                        <div className="text-3xl font-black text-emerald-400">{todayTestedCount}<span className="text-sm font-bold text-slate-500 ml-1">명</span></div>
                       </div>
                     </div>
                   </div>
 
                   {/* Summary Cards */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4">
-                      <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xl"><i className="fas fa-building"></i></div>
+                    <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+                      <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-xl shadow-inner"><i className="fas fa-calendar-day"></i></div>
                       <div>
-                        <div className="text-slate-500 text-xs font-bold mb-1">총 등록 지점</div>
-                        <div className="text-2xl font-black text-slate-800">{branches.length}<span className="text-sm font-normal text-slate-500 ml-1">곳</span></div>
+                        <div className="text-slate-500 text-xs font-bold mb-1">오늘 점검자</div>
+                        <div className="text-2xl font-black text-emerald-600">{todayTestedCount}<span className="text-sm font-normal text-slate-500 ml-1">명</span></div>
                       </div>
                     </div>
-                    <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4">
-                      <div className="w-12 h-12 bg-cyan-100 text-cyan-600 rounded-full flex items-center justify-center text-xl"><i className="fas fa-desktop"></i></div>
+                    <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+                      <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xl shadow-inner"><i className="fas fa-history"></i></div>
                       <div>
-                        <div className="text-slate-500 text-xs font-bold mb-1">설치된 총 PC</div>
-                        <div className="text-2xl font-black text-slate-800">{devices.length}<span className="text-sm font-normal text-slate-500 ml-1">대</span></div>
+                        <div className="text-slate-500 text-xs font-bold mb-1">어제 점검자</div>
+                        <div className="text-2xl font-black text-blue-600">{yesterdayTestedCount}<span className="text-sm font-normal text-slate-500 ml-1">명</span></div>
                       </div>
                     </div>
-                    <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4">
-                      <div className="w-12 h-12 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-xl"><i className="fas fa-clipboard-check"></i></div>
+                    <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+                      <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xl shadow-inner"><i className="fas fa-calendar-alt"></i></div>
                       <div>
-                        <div className="text-slate-500 text-xs font-bold mb-1">누적 검사 건수</div>
-                        <div className="text-2xl font-black text-slate-800">{stats.dailyStats.reduce((sum, s) => sum + s.count, 0)}<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
+                        <div className="text-slate-500 text-xs font-bold mb-1">이번 달 점검자</div>
+                        <div className="text-2xl font-black text-indigo-600">{thisMonthTestedCount}<span className="text-sm font-normal text-slate-500 ml-1">명</span></div>
                       </div>
                     </div>
-                    <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4">
-                      <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-xl"><i className="fas fa-calendar-day"></i></div>
+                    <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+                      <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xl shadow-inner"><i className="fas fa-database"></i></div>
                       <div>
-                        <div className="text-slate-500 text-xs font-bold mb-1">오늘 DB 저장 건수</div>
-                        <div className="text-2xl font-black text-slate-800">{stats.dailyStats.length > 0 ? stats.dailyStats[stats.dailyStats.length - 1].count : 0}<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
+                        <div className="text-slate-500 text-xs font-bold mb-1">누적 점검 건수</div>
+                        <div className="text-2xl font-black text-purple-600">{cloudMembers.length}<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* AI 피드백 현황 섹션 */}
                   {allFeedbacks.length > 0 && (
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
@@ -667,19 +800,125 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     </div>
                   )}
 
-                  {/* 지역별 설치 현황 */}
+                  {/* 랭킹 섹션 */}
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6"><i className="fas fa-map-marked-alt text-teal-500 mr-2"></i>지역별 설치(활성) 지점 현황</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                      {installedByRegion.map(item => (
-                        <div key={item.regionName} className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
-                          <div className="font-bold text-slate-700 mb-2 truncate w-full" title={item.regionName}>{item.regionName}</div>
-                          <div className="text-2xl font-black text-teal-600">{item.installed}<span className="text-xs text-slate-400 ml-1">/ {item.total}</span></div>
-                          <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
-                            <div className="bg-teal-500 h-1.5 rounded-full transition-all duration-1000" style={{ width: `${item.total > 0 ? (item.installed / item.total) * 100 : 0}%` }}></div>
-                          </div>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                      <h3 className="text-lg font-black text-slate-800 flex items-center">
+                        <i className="fas fa-trophy text-amber-500 mr-2"></i>지역별 / 지점별 점검 랭킹
+                      </h3>
+                      <div className="bg-slate-100 p-1 rounded-xl flex gap-1 border border-slate-200">
+                        <button onClick={() => setRankPeriod('today')} className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-colors ${rankPeriod === 'today' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>오늘</button>
+                        <button onClick={() => setRankPeriod('week')} className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-colors ${rankPeriod === 'week' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>이번 주</button>
+                        <button onClick={() => setRankPeriod('month')} className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-colors ${rankPeriod === 'month' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>이번 달</button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* 지점별 랭킹 */}
+                      <div className="bg-slate-50/50 border border-slate-100 p-5 rounded-2xl">
+                        <div className="text-sm font-bold text-slate-700 mb-4 flex items-center justify-between">
+                          <span>🏢 지점별 순위 (상위 7개)</span>
+                          <span className="text-xs text-slate-400 font-normal">측정량 많은 순</span>
                         </div>
-                      ))}
+                        <div className="space-y-3">
+                          {branchRankList.slice(0, 7).map((item, idx) => {
+                            const maxVal = Math.max(...branchRankList.map(b => b.count), 1);
+                            const badges = ['👑 1위', '🥈 2위', '🥉 3위'];
+                            return (
+                              <div key={item.id} className="flex items-center gap-3">
+                                <div className="w-12 text-xs font-bold text-slate-400 shrink-0">
+                                  {idx < 3 ? <span className="text-indigo-600 font-extrabold">{badges[idx]}</span> : `  ${idx + 1}위`}
+                                </div>
+                                <div className="w-24 text-sm font-bold text-slate-700 truncate shrink-0" title={item.name}>{item.name}</div>
+                                <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden relative">
+                                  <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-4 rounded-full transition-all duration-700" style={{ width: `${(item.count / maxVal) * 100}%` }}></div>
+                                </div>
+                                <div className="w-16 text-right shrink-0 text-sm font-black text-slate-700">{item.count}<span className="text-xs font-normal text-slate-400 ml-0.5">명</span></div>
+                              </div>
+                            );
+                          })}
+                          {branchRankList.filter(b => b.count > 0).length === 0 && (
+                            <div className="text-center py-8 text-slate-400 text-xs">해당 기간 내 점검 내역이 없습니다.</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 지역별 랭킹 */}
+                      <div className="bg-slate-50/50 border border-slate-100 p-5 rounded-2xl">
+                        <div className="text-sm font-bold text-slate-700 mb-4 flex items-center justify-between">
+                          <span>📍 지역별 순위 (상위 7개)</span>
+                          <span className="text-xs text-slate-400 font-normal">지역 통합 측정량</span>
+                        </div>
+                        <div className="space-y-3">
+                          {regionRankList.slice(0, 7).map((item, idx) => {
+                            const maxVal = Math.max(...regionRankList.map(r => r.count), 1);
+                            const badges = ['👑 1위', '🥈 2위', '🥉 3위'];
+                            return (
+                              <div key={item.id} className="flex items-center gap-3">
+                                <div className="w-12 text-xs font-bold text-slate-400 shrink-0">
+                                  {idx < 3 ? <span className="text-blue-600 font-extrabold">{badges[idx]}</span> : `  ${idx + 1}위`}
+                                </div>
+                                <div className="w-24 text-sm font-bold text-slate-700 truncate shrink-0" title={item.name}>{item.name}</div>
+                                <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden relative">
+                                  <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-4 rounded-full transition-all duration-700" style={{ width: `${(item.count / maxVal) * 100}%` }}></div>
+                                </div>
+                                <div className="w-16 text-right shrink-0 text-sm font-black text-slate-700">{item.count}<span className="text-xs font-normal text-slate-400 ml-0.5">명</span></div>
+                              </div>
+                            );
+                          })}
+                          {regionRankList.filter(r => r.count > 0).length === 0 && (
+                            <div className="text-center py-8 text-slate-400 text-xs">해당 기간 내 점검 내역이 없습니다.</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 저조 및 위험 지점/지역 섹션 (최하위권) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* 위험 지점 */}
+                    <div className="bg-white p-6 rounded-2xl border border-rose-100 shadow-sm border-l-4 border-l-rose-500 flex flex-col">
+                      <h3 className="text-base font-black text-rose-800 mb-4 flex items-center gap-1.5">
+                        <i className="fas fa-exclamation-triangle text-rose-500"></i> 미점검 및 저조 지점 (위험 지점)
+                      </h3>
+                      <p className="text-xs text-slate-400 mb-4">기기가 활성화(active)되어 있으나 이번 달 실적이 저조(2건 이하)한 지점들입니다.</p>
+                      <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                        {dangerBranches.map(b => (
+                          <div key={b.id} className="flex items-center justify-between p-3 rounded-xl bg-rose-50/50 border border-rose-100/50 hover:bg-rose-50 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700">{b.regionName}</span>
+                              <span className="text-sm font-black text-slate-800">{b.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-rose-600">{b.count > 0 ? `이번 달 ${b.count}건` : '실적 없음 🚨'}</span>
+                            </div>
+                          </div>
+                        ))}
+                        {dangerBranches.length === 0 && (
+                          <div className="text-center py-10 text-slate-400 text-xs font-bold">실적이 저조한 활성 지점이 없습니다. 👍</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 위험 지역 */}
+                    <div className="bg-white p-6 rounded-2xl border border-amber-100 shadow-sm border-l-4 border-l-amber-500 flex flex-col">
+                      <h3 className="text-base font-black text-amber-800 mb-4 flex items-center gap-1.5">
+                        <i className="fas fa-chart-line text-amber-500"></i> 측정 저조 지역 (위험 지역)
+                      </h3>
+                      <p className="text-xs text-slate-400 mb-4">이번 달 총 측정 실적이 5건 이하로 미진한 지역들입니다.</p>
+                      <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                        {dangerRegions.map(r => (
+                          <div key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-50/50 border border-amber-100/50 hover:bg-amber-50 transition-colors">
+                            <span className="text-sm font-black text-slate-800">{r.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-amber-700">{r.count > 0 ? `이번 달 총 ${r.count}건` : '활동 없음 🚨'}</span>
+                            </div>
+                          </div>
+                        ))}
+                        {dangerRegions.length === 0 && (
+                          <div className="text-center py-10 text-slate-400 text-xs font-bold">실적이 저조한 지역이 없습니다. 👍</div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -721,110 +960,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     </div>
                   </div>
 
-                  {/* 운영 인사이트 섹션 */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* 지역별 오늘 활동량 비교 */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                      <h3 className="text-lg font-bold text-slate-800 mb-4"><i className="fas fa-chart-bar text-blue-500 mr-2"></i>지역별 오늘 점검 현황</h3>
-                      <div className="space-y-2 max-h-[320px] overflow-y-auto">
-                        {(() => {
-                          const regionTodayStats = regions.map(r => {
-                            const rBranches = branches.filter(b => b.regionId === r.id);
-                            const todayCount = rBranches.reduce((sum, b) => sum + (branchUsages[b.id]?.kfaceUsed || 0) + (branchUsages[b.id]?.ktarotUsed || 0), 0);
-                            const cumCount = rBranches.reduce((sum, b) => {
-                              const bStat = stats.branchStats.find(s => s.branchId === b.id);
-                              return sum + (bStat?.count || 0);
-                            }, 0);
-                            return { name: r.name, todayCount, cumCount, branchCount: rBranches.length };
-                          }).filter(r => r.branchCount > 0).sort((a, b) => b.todayCount - a.todayCount);
-                          const maxToday = Math.max(...regionTodayStats.map(r => r.todayCount), 1);
-                          return regionTodayStats.map(r => (
-                            <div key={r.name} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
-                              <div className="w-20 text-sm font-bold text-slate-700 truncate shrink-0" title={r.name}>{r.name}</div>
-                              <div className="flex-1 bg-slate-100 rounded-full h-5 overflow-hidden">
-                                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-5 rounded-full flex items-center justify-end pr-2 transition-all duration-700" style={{ width: `${Math.max((r.todayCount / maxToday) * 100, r.todayCount > 0 ? 15 : 0)}%` }}>
-                                  {r.todayCount > 0 && <span className="text-[10px] font-bold text-white">{r.todayCount}</span>}
-                                </div>
-                              </div>
-                              <div className="text-xs text-slate-400 w-16 text-right shrink-0">누적 {r.cumCount}</div>
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* 관리 주의 지점 (설치완료 but 미사용) */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                      <h3 className="text-lg font-bold text-slate-800 mb-4"><i className="fas fa-exclamation-circle text-amber-500 mr-2"></i>관리 주의 지점</h3>
-                      <div className="space-y-1 max-h-[320px] overflow-y-auto">
-                        {(() => {
-                          // 기기가 active이지만 오늘 사용량 0인 지점
-                          const installedButIdle = branches.filter(b => {
-                            const hasActive = devices.some(d => d.branchId === b.id && d.status === 'active');
-                            const todayUse = (branchUsages[b.id]?.kfaceUsed || 0) + (branchUsages[b.id]?.ktarotUsed || 0);
-                            return hasActive && todayUse === 0;
-                          });
-                          // 누적 사용량이 0인 지점 (설치만 해두고 한 번도 안 쓴 곳)
-                          const neverUsed = installedButIdle.filter(b => {
-                            const bStat = stats.branchStats.find(s => s.branchId === b.id);
-                            return !bStat || bStat.count === 0;
-                          });
-                          const idleOnly = installedButIdle.filter(b => {
-                            const bStat = stats.branchStats.find(s => s.branchId === b.id);
-                            return bStat && bStat.count > 0;
-                          });
-                          return (
-                            <>
-                              {neverUsed.length > 0 && (
-                                <div className="mb-3">
-                                  <div className="text-xs font-bold text-rose-600 mb-2 flex items-center gap-1">
-                                    <i className="fas fa-ban"></i> 설치 후 미사용 ({neverUsed.length}곳)
-                                  </div>
-                                  {neverUsed.map(b => (
-                                    <div key={b.id} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-rose-50/50 mb-1">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs text-rose-400">{regions.find(r => r.id === b.regionId)?.name}</span>
-                                        <span className="text-sm font-bold text-rose-700">{b.name}</span>
-                                      </div>
-                                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 font-bold">누적 0건</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              {idleOnly.length > 0 && (
-                                <div>
-                                  <div className="text-xs font-bold text-amber-600 mb-2 flex items-center gap-1">
-                                    <i className="fas fa-clock"></i> 오늘 미활동 ({idleOnly.length}곳)
-                                  </div>
-                                  {idleOnly.slice(0, 10).map(b => {
-                                    const bStat = stats.branchStats.find(s => s.branchId === b.id);
-                                    return (
-                                      <div key={b.id} className="flex items-center justify-between py-1.5 px-3 rounded-lg hover:bg-amber-50/50 mb-1">
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-xs text-slate-400">{regions.find(r => r.id === b.regionId)?.name}</span>
-                                          <span className="text-sm font-bold text-slate-600">{b.name}</span>
-                                        </div>
-                                        <span className="text-[10px] text-slate-400">누적 {bStat?.count || 0}건</span>
-                                      </div>
-                                    );
-                                  })}
-                                  {idleOnly.length > 10 && <div className="text-xs text-slate-400 text-center mt-2">... 외 {idleOnly.length - 10}곳</div>}
-                                </div>
-                              )}
-                              {installedButIdle.length === 0 && (
-                                <div className="text-center py-8 text-slate-400">
-                                  <i className="fas fa-check-circle text-3xl text-emerald-400 mb-3"></i>
-                                  <p className="font-bold">모든 지점이 오늘 활동 중입니다! 🎉</p>
-                                </div>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 지점별 누적 사용량 전체 테이블 */}
+                  {/* 지점별 오늘/누적 점검 현황 전체 테이블 */}
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 className="text-lg font-bold text-slate-800 mb-4"><i className="fas fa-list-ol text-purple-500 mr-2"></i>지점별 오늘/누적 점검 현황 (전체)</h3>
                     <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
@@ -871,6 +1007,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  </div>
+
+                  {/* 지역별 설치 현황 (하단 배치 완료) */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                    <h3 className="text-lg font-bold text-slate-800 mb-6"><i className="fas fa-map-marked-alt text-teal-500 mr-2"></i>지역별 설치(활성) 지점 현황</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {installedByRegion.map(item => (
+                        <div key={item.regionName} className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
+                          <div className="font-bold text-slate-700 mb-2 truncate w-full" title={item.regionName}>{item.regionName}</div>
+                          <div className="text-2xl font-black text-teal-600">{item.installed}<span className="text-xs text-slate-400 ml-1">/ {item.total}</span></div>
+                          <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
+                            <div className="bg-teal-500 h-1.5 rounded-full transition-all duration-1000" style={{ width: `${item.total > 0 ? (item.installed / item.total) * 100 : 0}%` }}></div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -1423,6 +1575,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               const liteCount = currentList.filter(m => (m as any).sourceType === 'LITE').length;
 
               const handleDeleteMember = async (mid: string) => {
+                if (currentAdmin?.role !== 'master') {
+                  alert('마스터 관리자만 회원 데이터를 삭제할 수 있습니다.');
+                  return;
+                }
                 if (!confirm('정말 이 회원을 삭제하시겠습니까? 클라우드에서 영구 삭제됩니다.')) return;
                 const ok = await deleteMemberFromCloud(mid);
                 if (ok) setCloudMembers(prev => prev.filter(m => m.id !== mid));
@@ -1434,6 +1590,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                   const r = m.report;
                   return {
                     '이름': m.name || r?.userInfo?.name || '-',
+                    '연락처': r?.userInfo?.phone || (m as any).phone || (m as any).phoneNumber || '-',
                     '나이': r?.userInfo?.age || '-',
                     '성별': r?.userInfo?.gender === 'male' ? '남' : r?.userInfo?.gender === 'female' ? '여' : '-',
                     '출처': (m as any).sourceType === 'LITE' ? '온라인 LITE' : 'PC',
@@ -1559,6 +1716,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         <thead className="bg-slate-50 sticky top-0 z-10">
                           <tr>
                             <th className="p-3 text-left font-bold text-slate-600">이름</th>
+                            <th className="p-3 text-left font-bold text-slate-600">연락처</th>
                             <th className="p-3 text-center font-bold text-slate-600">나이</th>
                             <th className="p-3 text-center font-bold text-slate-600">성별</th>
                             <th className="p-3 text-center font-bold text-slate-600">출처</th>
@@ -1579,6 +1737,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                             return (
                               <tr key={m.id} className="border-t hover:bg-indigo-50/50 cursor-pointer transition-colors" onClick={() => setSelectedMember(m)}>
                                 <td className="p-3 font-bold text-slate-800">{m.name || r?.userInfo?.name || '-'}</td>
+                                <td className="p-3 text-slate-600">{r?.userInfo?.phone || (m as any).phone || (m as any).phoneNumber || '-'}</td>
                                 <td className="p-3 text-center">{r?.userInfo?.age || '-'}</td>
                                 <td className="p-3 text-center">{r?.userInfo?.gender === 'male' ? '남' : r?.userInfo?.gender === 'female' ? '여' : '-'}</td>
                                 <td className="p-3 text-center">
@@ -1606,7 +1765,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                   <span className={`px-2 py-1 rounded-lg text-xs font-black ${(r?.overallScore || 0) >= 70 ? 'bg-emerald-100 text-emerald-700' : (r?.overallScore || 0) >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>{r?.overallScore || '-'}점</span>
                                 </td>
                                 <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
-                                  <button onClick={() => handleDeleteMember(m.id)} className="text-rose-400 hover:text-rose-600 text-xs font-bold">삭제</button>
+                                  {currentAdmin?.role === 'master' && <button onClick={() => handleDeleteMember(m.id)} className="text-rose-400 hover:text-rose-600 text-xs font-bold">삭제</button>}
                                 </td>
                               </tr>
                             );
@@ -1621,6 +1780,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         <thead className="bg-amber-50 sticky top-0 z-10">
                           <tr>
                             <th className="p-3 text-left font-bold text-amber-700">이름</th>
+                            <th className="p-3 text-left font-bold text-amber-700">연락처</th>
                             <th className="p-3 text-center font-bold text-amber-700">나이</th>
                             <th className="p-3 text-center font-bold text-amber-700">성별</th>
                             <th className="p-3 text-center font-bold text-amber-700">출처</th>
@@ -1640,6 +1800,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                             return (
                               <tr key={m.id} className="border-t border-amber-100 hover:bg-amber-50/50 transition-colors">
                                 <td className="p-3 font-bold text-slate-700">{displayName}</td>
+                                <td className="p-3 text-slate-600">{r?.userInfo?.phone || (m as any).phone || (m as any).phoneNumber || '-'}</td>
                                 <td className="p-3 text-center">{r?.userInfo?.age || '-'}</td>
                                 <td className="p-3 text-center">{r?.userInfo?.gender === 'male' ? '남' : r?.userInfo?.gender === 'female' ? '여' : '-'}</td>
                                 <td className="p-3 text-center">
@@ -1664,7 +1825,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                   <span className="px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 animate-pulse">⏳ 대기중</span>
                                 </td>
                                 <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
-                                  <button onClick={() => handleDeleteMember(m.id)} className="text-rose-400 hover:text-rose-600 text-xs font-bold">삭제</button>
+                                  {currentAdmin?.role === 'master' && <button onClick={() => handleDeleteMember(m.id)} className="text-rose-400 hover:text-rose-600 text-xs font-bold">삭제</button>}
                                 </td>
                               </tr>
                             );
@@ -1708,6 +1869,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                             <div className="bg-slate-50 rounded-xl p-3"><span className="text-xs text-slate-400">측정일</span><div className="font-bold">
                               {selectedMember.lastTestDate ? new Date(selectedMember.lastTestDate).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}
                             </div></div>
+                            <div className="bg-slate-50 rounded-xl p-3 col-span-2"><span className="text-xs text-slate-400">연락처</span><div className="font-bold">{r?.userInfo?.phone || (selectedMember as any).phone || (selectedMember as any).phoneNumber || '-'}</div></div>
                             {selectedMember.eventCode && (
                               <div className="bg-indigo-50 rounded-xl p-3 col-span-2 border border-indigo-100 flex justify-between items-center">
                                 <div>
@@ -2024,7 +2186,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     
                     <div className="flex gap-2">
                       <input 
-                        type="text" 
+                        type="password" 
                         className="flex-1 p-3 border rounded-xl"
                         placeholder="예: BTCOPEN2026"
                         value={settings.autoApproveCode || ''}
@@ -2043,7 +2205,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     
                     <div className="flex gap-2">
                       <input 
-                        type="text" 
+                        type="password" 
                         className="flex-1 p-3 border border-fuchsia-200 rounded-xl bg-white"
                         placeholder="예: BTCLITE2026 (비워두면 PC 코드 공용)"
                         value={settings.liteAutoApproveCode || ''}
@@ -2068,7 +2230,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         <input type="text" placeholder="이름 (직급)" className="flex-1 p-3 border rounded-xl" value={newAdmin.name} onChange={e => setNewAdmin({...newAdmin, name: e.target.value})} />
                       </div>
                       <div className="flex gap-3">
-                        <input type="text" placeholder="비밀번호" className="flex-1 p-3 border rounded-xl" value={newAdmin.password} onChange={e => setNewAdmin({...newAdmin, password: e.target.value})} />
+                        <input type="password" placeholder="비밀번호" className="flex-1 p-3 border rounded-xl" value={newAdmin.password} onChange={e => setNewAdmin({...newAdmin, password: e.target.value})} />
                         <select className="p-3 border rounded-xl bg-white" value={newAdmin.role} onChange={e => setNewAdmin({...newAdmin, role: e.target.value as 'manager'|'master'})}>
                           <option value="manager">일반 관리자</option>
                           <option value="master">마스터 관리자</option>

@@ -1,5 +1,5 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+// 에러 로그 쓰기를 서버 경유(/api/errorlog, best-effort 인증)로 이관. 기존 클라 직접 addDoc 제거.
+import { apiPost } from './apiClient';
 
 export interface ErrorLog {
   id?: string;
@@ -34,16 +34,16 @@ class ErrorLoggerService {
       const deviceInfo = await this.getDeviceInfo();
       const appVersion = localStorage.getItem('lastAppVersion') || '1.0.0';
 
-      const errorPayload: ErrorLog = {
-        ...errorData,
+      // 클라 직접 addDoc → 서버 경유(/api/errorlog). status/timestamp/신원은 서버가 덧붙인다.
+      await apiPost('/api/errorlog', {
+        message: errorData.message,
+        stackTrace: errorData.stackTrace,
+        type: errorData.type,
+        severity: errorData.severity,
+        source: errorData.source,
         deviceInfo,
         appVersion,
-        status: 'new',
-        timestamp: serverTimestamp(),
-      };
-
-      await addDoc(collection(db, 'error_logs'), errorPayload);
-      console.warn('Error successfully reported to central server.', errorPayload);
+      });
     } catch (e) {
       // Fallback: If error logging itself fails, just log to console to prevent infinite loops
       console.error('Failed to send error log to central server:', e);

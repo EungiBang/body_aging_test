@@ -13,6 +13,10 @@ dist-ssr
 dist-electron
 *.local
 
+# 로컬 개발 환경변수 (서비스계정 경로·테스트 config) — 커밋 금지
+.env
+.env.*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
