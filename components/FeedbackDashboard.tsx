@@ -39,9 +39,9 @@ const exportJson = (data: FeedbackRecord[]) => {
 
 const getRatingSummary = (r: FeedbackRecord): 'accurate' | 'partial' | 'inaccurate' | null => {
   let rawRating;
-  if (r.feedbackType === 'face') rawRating = r.feedback.faceRating;
-  else if (r.feedbackType === 'tarot') rawRating = r.feedback.tarotRating;
-  else rawRating = r.feedback.physicalRating;
+  if (r.feedbackType === 'face') rawRating = r.feedback?.faceRating;
+  else if (r.feedbackType === 'tarot') rawRating = r.feedback?.tarotRating;
+  else rawRating = r.feedback?.physicalRating;
 
   if (!rawRating) return null;
   if (rawRating === 'very_satisfied' || rawRating === 'satisfied') return 'accurate';
@@ -56,7 +56,8 @@ const FeedbackDashboard: React.FC = () => {
 
   useEffect(() => {
     getFeedbacks().then(data => {
-      setRecords(data);
+      // 불완전한 문서(feedback/userInfo 누락 — 구/불량 피드백)는 렌더 전에 걸러 크래시 방지
+      setRecords((data || []).filter((r) => r && r.feedback && r.userInfo));
       setLoading(false);
     });
   }, []);
@@ -79,10 +80,10 @@ const FeedbackDashboard: React.FC = () => {
     r => r.feedback.correctedOverallScore !== undefined || r.feedback.correctedPhysicalAge !== undefined
   );
   const scoreDiffs = correctedRecords
-    .filter(r => r.feedback.correctedOverallScore !== undefined)
+    .filter(r => r.feedback.correctedOverallScore !== undefined && r.reportSnapshot)
     .map(r => r.feedback.correctedOverallScore! - r.reportSnapshot.overallScore);
   const ageDiffs = correctedRecords
-    .filter(r => r.feedback.correctedPhysicalAge !== undefined)
+    .filter(r => r.feedback.correctedPhysicalAge !== undefined && r.reportSnapshot)
     .map(r => r.feedback.correctedPhysicalAge! - r.reportSnapshot.physicalAge);
 
   const avgScoreDiff = avg(scoreDiffs);
@@ -327,14 +328,14 @@ const FeedbackDashboard: React.FC = () => {
                   <div className="flex gap-3 text-xs text-slate-500 font-medium">
                     {r.feedback.correctedOverallScore !== undefined && (
                       <span>
-                        점수: <span className="text-slate-400 line-through">{r.reportSnapshot.overallScore}</span>
+                        점수: <span className="text-slate-400 line-through">{r.reportSnapshot?.overallScore}</span>
                         {' → '}
                         <span className="font-black text-indigo-600">{r.feedback.correctedOverallScore}</span>
                       </span>
                     )}
                     {r.feedback.correctedPhysicalAge !== undefined && (
                       <span>
-                        나이: <span className="text-slate-400 line-through">{r.reportSnapshot.physicalAge}세</span>
+                        나이: <span className="text-slate-400 line-through">{r.reportSnapshot?.physicalAge}세</span>
                         {' → '}
                         <span className="font-black text-amber-600">{r.feedback.correctedPhysicalAge}세</span>
                       </span>

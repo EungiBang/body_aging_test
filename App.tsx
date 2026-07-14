@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import AssessmentFlow from './components/AssessmentFlow';
 import BranchAuthScreen from './components/BranchAuthScreen';
-import { checkDeviceStatus } from './services/firebaseAuthService';
+import { checkDeviceAndSignIn, signOutDevice } from './services/liteDevice';
 
 type DeviceState = 'loading' | 'active' | 'pending' | 'revoked' | 'unregistered';
 
@@ -32,6 +32,13 @@ const App: React.FC = () => {
           appVersion = await window.electronAPI.getAppVersion();
         }
 
+        // 개발 편의: dev 빌드에서 VITE_DEV_HARDWARE_ID 가 지정돼 있으면 그 값으로 덮어쓴다.
+        // (브라우저·electron:dev 공통으로, 시드된 테스트 기기로 로그인) — import.meta.env.DEV 게이트라
+        // 설치본/운영 빌드에는 절대 포함되지 않는다.
+        if ((import.meta as any).env?.DEV && (import.meta as any).env?.VITE_DEV_HARDWARE_ID) {
+          hardwareId = (import.meta as any).env.VITE_DEV_HARDWARE_ID;
+        }
+
         // 업그레이드 시 로컬 스토리지에 버전만 갱신 (재인증 요구 안함)
         const lastAppVersion = localStorage.getItem('lastAppVersion');
         if (appVersion !== 'unknown' && lastAppVersion !== appVersion) {
@@ -44,15 +51,12 @@ const App: React.FC = () => {
         }
 
         console.log(`[Auth] checkDeviceStatus 호출 시작: hardwareId=${hardwareId.substring(0, 8)}...`);
-        const device = await withTimeout(checkDeviceStatus(hardwareId, appVersion), 10000, 'checkDeviceStatus');
+        const { status } = await withTimeout(checkDeviceAndSignIn(hardwareId, appVersion), 10000, 'checkDeviceAndSignIn');
         
-        if (!device) {
-          setDeviceState('unregistered');
-          localStorage.removeItem('currentDevice');
-        } else {
-          setDeviceState(device.status);
-          localStorage.setItem('currentDevice', JSON.stringify(device));
-        }
+        setDeviceState(status);
+        // status==='active'면 어댑터가 signInWithCustomToken + currentDevice 캐시를 이미 처리했다.
+        // 그 외(pending/revoked/unregistered)면 캐시를 비운다.
+        if (status !== 'active') localStorage.removeItem('currentDevice');
       } catch (e: any) {
         console.error("[Auth] 인증 확인 실패:", e?.message || e);
         // 타임아웃인 경우 캐시 사용하지 않고 바로 인증 화면 표시
@@ -78,6 +82,20 @@ const App: React.FC = () => {
     };
     
     checkAuth();
+  }, []);
+
+  // 서버 403(기기 해지/삭제/만료) 감지 시 즉시 로그아웃. apiClient가 쏘는 CustomEvent를 받는다.
+  // (원본은 subscribeAuth 상시구독이 없어 라이트와 달리 락이 필요 없다. 재시작 시엔 device-login이 revoked 반환.)
+  useEffect(() => {
+    const onDeauth = (e: Event) => {
+      const code = (e as CustomEvent).detail?.code;
+      const target: DeviceState = code === 'session_expired' ? 'unregistered' : 'revoked';
+      localStorage.removeItem('currentDevice');
+      setDeviceState(target);
+      void signOutDevice();
+    };
+    window.addEventListener('device-deauthorized', onDeauth);
+    return () => window.removeEventListener('device-deauthorized', onDeauth);
   }, []);
 
   if (deviceState === 'loading') {

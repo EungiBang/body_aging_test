@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getActiveApiKey, setCustomApiKey, isUsingCustomKey } from '../services/geminiService';
-import { getBranches } from '../services/firebaseAuthService';
+import { getBranches } from '../services/liteBranchAuth';
 import { getUsageStatus, updateDailyLimit, UsageStatus } from '../services/usageLimitService';
 import { performFullBackup, getLastBackupTime, getLastBackupCount } from '../services/backupService';
 

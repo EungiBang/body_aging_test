@@ -1,9 +1,22 @@
-import { doc, setDoc, getDocs, deleteDoc, query, collection, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+// R2: 회원·피드백 클라우드 동기화를 서버 api(/api/sync, 대량 전체는 /api/admin-members) 뒤로 이관.
+// 브라우저 직접 Firestore(members_v4 / ai_feedbacks_v1) 접근 제거. 로컬우선 계층(localDb)은 손대지 않고,
+// 여기(클라우드 미러 경로)만 서버 경유로 바꾼다. 지점/기기/지역은 서버가 토큰·branches에서 유도(위조 방지).
+// 시그니처는 그대로 유지 → 소비처(localDb/backupService/feedbackService) 무수정. 라이트 cloudSyncService와 같은 패턴.
+//
+// 예외: fetchMembersByRegion(호출처 0, 죽은 코드)만 아직 브라우저 직접 Firestore 조회 유지 → firestore import 존치.
+import { getDocs, query, collection, where } from 'firebase/firestore';
 import { db } from '../firebase';
+import { apiPost } from './apiClient';
 import { MemberRecord } from '../types';
 import logger from '../utils/logger';
 
 const TAG = 'CloudSync';
+
+// 공통 실패 처리: 인증 미통과(401/403)는 warn만(로그 오염 방지), 그 외는 서버로 로깅. 동작 보존 위해 기본값 반환.
+const logSyncFail = (fn: string, e: any) => {
+  if (e && (e.status === 401 || e.status === 403)) console.warn(`[${TAG}] ${fn} 인증 미통과: ${e.status}`);
+  else logger.error(TAG, `${fn} 실패`, e, true);
+};
 
 /**
  * 측정 완료 시 로컬에 저장된 회원을 클라우드(Big Data)에도 동기화합니다.
@@ -11,58 +24,18 @@ const TAG = 'CloudSync';
  */
 export const syncMemberToCloud = async (
   record: MemberRecord,
-  branchId: string,
-  hardwareId: string,
-  regionId?: string
+  branchId: string,   // 서버가 토큰에서 유도 → 전송 안 함(시그니처는 호출부 호환 위해 유지)
+  hardwareId: string, // 동일 — 서버가 토큰 uid로 유도
+  regionId?: string,  // 동일 — 서버가 branches에서 조회
 ) => {
-  logger.debug(TAG, `syncMemberToCloud 시작`, { id: record.id, name: record.name, branchId, hardwareId });
   try {
-    // 용량 초과 방지: 이미지는 제외
+    // 용량 초과(4.5MB) 방지: 이미지는 서버로 보내기 전에 제거(기존 동작 보존).
     const pureRecord = JSON.parse(JSON.stringify(record));
-    const imageCount = pureRecord.images?.length || 0;
     delete pureRecord.images;
-    logger.debug(TAG, `이미지 ${imageCount}건 제외됨`);
-
-    let finalRegionId = regionId;
-
-    // regionId가 없을 경우 branchId를 통해 조회
-    if (!finalRegionId && branchId) {
-      const { getDoc } = await import('firebase/firestore');
-      const branchRef = doc(db, 'branches', branchId);
-      const branchSnap = await getDoc(branchRef);
-      if (branchSnap.exists()) {
-        finalRegionId = branchSnap.data().regionId;
-        logger.debug(TAG, `regionId 조회 완료: ${finalRegionId}`);
-      }
-    }
-
-    const memberRef = doc(db, 'members_v4', record.id);
-    
-    // undefined 값이 들어가면 Firebase에서 에러가 발생하므로, 확실한 값만 할당
-    const docData: any = {
-      ...pureRecord,
-      branchId,
-      hardwareId,
-      syncedAt: serverTimestamp()
-    };
-    if (finalRegionId) {
-      docData.regionId = finalRegionId;
-    }
-
-    // 객체 내의 undefined 필드 제거
-    Object.keys(docData).forEach(key => {
-      if (docData[key] === undefined) {
-        delete docData[key];
-      }
-    });
-
-    logger.apiStart(TAG, `Firestore setDoc: members_v4/${record.id}`);
-    await setDoc(memberRef, docData, { merge: true });
-    logger.apiEnd(TAG, `Firestore setDoc: members_v4/${record.id}`, true);
-    
+    await apiPost('/api/sync', { action: 'syncMember', record: pureRecord });
     return true;
   } catch (e) {
-    logger.error(TAG, `syncMemberToCloud 실패: ${record.id}`, e, true);
+    logSyncFail('syncMemberToCloud', e);
     return false;
   }
 };
@@ -71,103 +44,49 @@ export const syncMemberToCloud = async (
  * AI 피드백을 클라우드에 동기화합니다.
  */
 export const syncFeedbackToCloud = async (record: any) => {
-  logger.debug(TAG, `syncFeedbackToCloud 시작`, { id: record.id, type: record.feedbackType });
   try {
-    const rawDevice = localStorage.getItem('currentDevice');
-    let branchId = 'unknown';
-    let hardwareId = 'unknown';
-    let regionId = 'unknown';
-    
-    if (rawDevice) {
-      try {
-        const device = JSON.parse(rawDevice);
-        branchId = device.branchId || 'unknown';
-        hardwareId = device.id || 'unknown';
-        regionId = device.regionId || 'unknown';
-      } catch (e) {
-        // parsing error
-      }
-    }
-
-    // undefined 값이 들어가면 Firebase에서 에러가 발생하므로, JSON 변환을 통해 필드 제거
-    const pureRecord = JSON.parse(JSON.stringify(record));
-
-    const docData = {
-      ...pureRecord,
-      branchId,
-      hardwareId,
-      regionId,
-      syncedAt: serverTimestamp()
-    };
-
-    const feedbackRef = doc(db, 'ai_feedbacks_v1', record.id);
-    logger.apiStart(TAG, `Firestore setDoc: ai_feedbacks_v1/${record.id}`);
-    await setDoc(feedbackRef, docData, { merge: true });
-    logger.apiEnd(TAG, `Firestore setDoc: ai_feedbacks_v1/${record.id}`, true);
-    
+    // branchId/hardwareId/regionId는 서버가 토큰·branches 조회로 유도(기존엔 localStorage에서 읽어 위조 가능).
+    await apiPost('/api/sync', { action: 'syncFeedback', record });
     return true;
   } catch (e) {
-    logger.error(TAG, `syncFeedbackToCloud 실패: ${record.id}`, e, true);
+    logSyncFail('syncFeedbackToCloud', e);
     return false;
   }
 };
 
 /**
- * AI 학습(Few-Shot)을 위해 클라우드(Firestore)에서 최신 피드백을 가져옵니다.
+ * AI 학습(Few-Shot)을 위해 클라우드에서 최신 피드백을 가져옵니다.
  */
 export const fetchFeedbacksFromCloud = async (feedbackType: 'body' | 'face' | 'tarot', maxLimit = 100): Promise<any[]> => {
-  logger.debug(TAG, `fetchFeedbacksFromCloud 시작: type=${feedbackType}`);
-  const startTime = Date.now();
   try {
-    logger.apiStart(TAG, `Firestore query: ai_feedbacks_v1 where feedbackType==${feedbackType}`);
-    // 복합 인덱스 없이 동작하도록 where만 사용하고 클라이언트에서 정렬
-    const q = query(
-      collection(db, 'ai_feedbacks_v1'),
-      where('feedbackType', '==', feedbackType)
-    );
-    const snap = await getDocs(q);
-    const feedbacks: any[] = [];
-    snap.forEach(doc => {
-      feedbacks.push({ id: doc.id, ...doc.data() });
-    });
-    // 클라이언트 사이드 정렬 (최신순) + limit
-    feedbacks.sort((a, b) => {
-      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-      return dateB.getTime() - dateA.getTime();
-    });
-    const limited = feedbacks.slice(0, maxLimit);
-    const elapsed = Date.now() - startTime;
-    logger.apiEnd(TAG, 'fetchFeedbacksFromCloud', true, { count: limited.length, elapsed: `${elapsed}ms` });
-    return limited;
+    const res = await apiPost<{ list: any[] }>('/api/sync', { action: 'fetchFeedbacks', feedbackType, maxLimit });
+    const feedbacks = res.list || [];
+    // 서버는 복합 인덱스 회피 위해 정렬 없이 반환 → 클라에서 최신순 정렬(기존 동작 보존).
+    feedbacks.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    return feedbacks;
   } catch (e) {
-    const elapsed = Date.now() - startTime;
-    logger.error(TAG, `fetchFeedbacksFromCloud 실패 (${elapsed}ms)`, e, true);
+    logSyncFail('fetchFeedbacksFromCloud', e);
     return [];
   }
 };
 
 /**
  * 관리자 대시보드용: 클라우드의 전체 피드백 데이터를 가져옵니다.
+ * 서버에 "전체" 액션이 없어, 세 타입(body/face/tarot) 풀을 합쳐 전체와 동치로 만든다.
+ * (모든 피드백은 이 셋 중 하나의 feedbackType을 가진다.)
  */
 export const fetchAllFeedbacksFromCloud = async (): Promise<any[]> => {
-  logger.debug(TAG, `fetchAllFeedbacksFromCloud 시작`);
-  const startTime = Date.now();
   try {
-    logger.apiStart(TAG, `Firestore query: ai_feedbacks_v1 (ALL)`);
-    // 전체 통계용이므로 최신순으로 정렬해서 가져옴
-    const q = query(collection(db, 'ai_feedbacks_v1'), orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
-    const feedbacks: any[] = [];
-    snap.forEach(doc => {
-      feedbacks.push({ id: doc.id, ...doc.data() });
-    });
-    const elapsed = Date.now() - startTime;
-    logger.apiEnd(TAG, 'fetchAllFeedbacksFromCloud', true, { count: feedbacks.length, elapsed: `${elapsed}ms` });
-    return feedbacks;
+    const [body, face, tarot] = await Promise.all([
+      fetchFeedbacksFromCloud('body', 100000),
+      fetchFeedbacksFromCloud('face', 100000),
+      fetchFeedbacksFromCloud('tarot', 100000),
+    ]);
+    const all = [...body, ...face, ...tarot];
+    all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    return all;
   } catch (e) {
-    const elapsed = Date.now() - startTime;
-    logger.error(TAG, `fetchAllFeedbacksFromCloud 실패 (${elapsed}ms)`, e, true);
+    logSyncFail('fetchAllFeedbacksFromCloud', e);
     return [];
   }
 };
@@ -176,60 +95,49 @@ export const fetchAllFeedbacksFromCloud = async (): Promise<any[]> => {
  * 지점의 모든 회원 기록을 클라우드에서 가져옵니다. (Cross-PC 동기화용)
  */
 export const fetchMembersFromCloud = async (branchId: string): Promise<MemberRecord[]> => {
-  logger.debug(TAG, `fetchMembersFromCloud 시작: branch=${branchId}`);
-  const startTime = Date.now();
   try {
-    logger.apiStart(TAG, `Firestore query: members_v4 where branchId==${branchId}`);
-    const q = query(collection(db, 'members_v4'), where('branchId', '==', branchId));
-    const snap = await getDocs(q);
-    const members: MemberRecord[] = [];
-    snap.forEach(doc => {
-      members.push({ id: doc.id, ...doc.data() } as MemberRecord);
-    });
-    const elapsed = Date.now() - startTime;
-    logger.apiEnd(TAG, 'fetchMembersFromCloud', true, { count: members.length, elapsed: `${elapsed}ms` });
-    return members;
+    // 서버가 토큰서 지점을 유도하므로 branchId는 관리자 경로용으로만 전달(기기는 무시됨).
+    const res = await apiPost<{ members: MemberRecord[] }>('/api/sync', { action: 'fetchMembersByBranch', branchId });
+    return res.members || [];
   } catch (e) {
-    const elapsed = Date.now() - startTime;
-    logger.error(TAG, `fetchMembersFromCloud 실패 (${elapsed}ms)`, e, true);
+    logSyncFail('fetchMembersFromCloud', e);
     return [];
   }
 };
 
 /**
- * 본사 관리자용: 전체 회원 데이터를 가져옵니다.
+ * 본사 관리자용: 전체 회원 데이터를 가져옵니다. (커서 페이지네이션, 관리자 전용)
  */
 export const fetchAllMembers = async (): Promise<MemberRecord[]> => {
-  logger.debug(TAG, 'fetchAllMembers 시작');
+  logger.debug(TAG, 'fetchAllMembers 시작(페이지 순회)');
   try {
-    logger.apiStart(TAG, 'Firestore query: members_v4 (ALL)');
-    const q = query(collection(db, 'members_v4'));
-    const snap = await getDocs(q);
     const members: MemberRecord[] = [];
-    snap.forEach(d => {
-      members.push({ id: d.id, ...d.data() } as MemberRecord);
-    });
-    // 최신순 정렬
+    let cursor: string | undefined;
+    do {
+      const res = await apiPost<{ members: MemberRecord[]; nextCursor: string | null }>('/api/admin-members', { action: 'list', cursor, limit: 500 });
+      members.push(...((res.members || []) as MemberRecord[]));
+      cursor = res.nextCursor || undefined;
+    } while (cursor);
+    // 최신순 정렬(서버는 문서ID 순으로 페이징하므로 여기서 lastTestDate로 재정렬 — 기존 동작 보존).
     members.sort((a, b) => {
       const da = a.lastTestDate || a.report?.date || '';
       const db2 = b.lastTestDate || b.report?.date || '';
       return db2.localeCompare(da);
     });
-    logger.apiEnd(TAG, 'fetchAllMembers', true, { count: members.length });
     return members;
   } catch (e) {
-    logger.error(TAG, 'fetchAllMembers 실패', e, true);
+    logSyncFail('fetchAllMembers', e);
     return [];
   }
 };
 
 /**
  * 본사 관리자용: 지역별 회원 데이터를 가져옵니다.
+ * (죽은 코드 — 호출처 0. 라이트와 동일하게 직접 Firestore 조회 유지, 삭제 후보.)
  */
 export const fetchMembersByRegion = async (regionId: string): Promise<MemberRecord[]> => {
   logger.debug(TAG, `fetchMembersByRegion 시작: region=${regionId}`);
   try {
-    logger.apiStart(TAG, `Firestore query: members_v4 where regionId==${regionId}`);
     const q = query(collection(db, 'members_v4'), where('regionId', '==', regionId));
     const snap = await getDocs(q);
     const members: MemberRecord[] = [];
@@ -241,7 +149,6 @@ export const fetchMembersByRegion = async (regionId: string): Promise<MemberReco
       const db2 = b.lastTestDate || '';
       return db2.localeCompare(da);
     });
-    logger.apiEnd(TAG, 'fetchMembersByRegion', true, { regionId, count: members.length });
     return members;
   } catch (e) {
     logger.error(TAG, `fetchMembersByRegion 실패: ${regionId}`, e, true);
@@ -253,14 +160,12 @@ export const fetchMembersByRegion = async (regionId: string): Promise<MemberReco
  * 클라우드에서 회원 레코드를 삭제합니다.
  */
 export const deleteMemberFromCloud = async (memberId: string): Promise<boolean> => {
-  logger.debug(TAG, `deleteMemberFromCloud: ${memberId}`);
   try {
-    logger.apiStart(TAG, `Firestore deleteDoc: members_v4/${memberId}`);
-    await deleteDoc(doc(db, 'members_v4', memberId));
-    logger.apiEnd(TAG, `deleteMemberFromCloud`, true);
+    // 서버가 소유권 확인(기기는 자기 지점 문서만). 없는 문서는 서버가 성공 처리(기존 동작 보존).
+    await apiPost('/api/sync', { action: 'deleteMember', memberId });
     return true;
   } catch (e) {
-    logger.error(TAG, `deleteMemberFromCloud 실패: ${memberId}`, e, true);
+    logSyncFail('deleteMemberFromCloud', e);
     return false;
   }
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getRegions, getBranches, requestDeviceRegistration, Region, Branch } from '../services/firebaseAuthService';
+import { getRegions, getBranches, requestDeviceRegistration, Region, Branch } from '../services/liteBranchAuth';
 import pkg from '../package.json';
 
 interface BranchAuthProps {

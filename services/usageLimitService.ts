@@ -1,5 +1,8 @@
-import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
-import { db } from '../firebase';
+// R2: 사용량/한도 접근을 서버 /api/usage 뒤로 이관. 브라우저 Firestore 직결 제거.
+// 서버가 인증 관문(F2)에서 지점 소유권을 강제하고, updateLimit은 관리자(role=admin) 전용.
+// 오프라인/네트워크 실패 시 기존처럼 안전 기본값(0)으로 폴백 — 측정 흐름을 막지 않는다.
+// 시그니처는 그대로 유지 → 소비처(KFaceApp/KTarotApp/SettingsModal) 무수정.
+import { apiPost } from './apiClient';
 
 export interface UsageStatus {
   kfaceLimit: number;
@@ -9,7 +12,7 @@ export interface UsageStatus {
 }
 
 const getTodayString = () => {
-  // 브라우저 로컬 시간 기준 YYYY-MM-DD
+  // 브라우저 로컬 시간 기준 YYYY-MM-DD (서버가 이 값으로 daily_usages 키를 만든다 — 기존 로컬시간 기준 보존)
   const d = new Date();
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -23,33 +26,11 @@ export const getUsageStatus = async (branchId: string): Promise<UsageStatus> => 
   }
 
   try {
-    // 1. Get branch limits
-    const branchRef = doc(db, 'branches', branchId);
-    const branchSnap = await getDoc(branchRef);
-    let kfaceLimit = 0;
-    let ktarotLimit = 0;
-    
-    if (branchSnap.exists()) {
-      const data = branchSnap.data();
-      if (typeof data.kfaceDailyLimit === 'number') kfaceLimit = data.kfaceDailyLimit;
-      if (typeof data.ktarotDailyLimit === 'number') ktarotLimit = data.ktarotDailyLimit;
-    }
-
-    // 2. Get today's usage
-    const todayStr = getTodayString();
-    const usageRef = doc(db, 'daily_usages', `${branchId}_${todayStr}`);
-    const usageSnap = await getDoc(usageRef);
-    
-    let kfaceUsed = 0;
-    let ktarotUsed = 0;
-    
-    if (usageSnap.exists()) {
-      const data = usageSnap.data();
-      kfaceUsed = data.kfaceCount || 0;
-      ktarotUsed = data.ktarotCount || 0;
-    }
-
-    return { kfaceLimit, kfaceUsed, ktarotLimit, ktarotUsed };
+    return await apiPost<UsageStatus>('/api/usage', {
+      action: 'getStatus',
+      branchId,
+      today: getTodayString(),
+    });
   } catch (error) {
     console.warn('사용량 정보를 가져오는데 실패했습니다 (오프라인 등). 기본값을 사용합니다.', error);
     return { kfaceLimit: 0, kfaceUsed: 0, ktarotLimit: 0, ktarotUsed: 0 };
@@ -60,23 +41,12 @@ export const incrementUsage = async (branchId: string, type: 'kface' | 'ktarot')
   if (!branchId) return;
 
   try {
-    const todayStr = getTodayString();
-    const usageRef = doc(db, 'daily_usages', `${branchId}_${todayStr}`);
-    
-    const usageSnap = await getDoc(usageRef);
-    if (!usageSnap.exists()) {
-      await setDoc(usageRef, {
-        kfaceCount: type === 'kface' ? 1 : 0,
-        ktarotCount: type === 'ktarot' ? 1 : 0,
-        date: todayStr,
-        branchId
-      });
-    } else {
-      const field = type === 'kface' ? 'kfaceCount' : 'ktarotCount';
-      await updateDoc(usageRef, {
-        [field]: increment(1)
-      });
-    }
+    await apiPost('/api/usage', {
+      action: 'increment',
+      branchId,
+      type,
+      today: getTodayString(),
+    });
   } catch (error) {
     console.warn('사용량 증가에 실패했습니다:', error);
   }
@@ -84,9 +54,10 @@ export const incrementUsage = async (branchId: string, type: 'kface' | 'ktarot')
 
 export const updateDailyLimit = async (branchId: string, kfaceLimit: number, ktarotLimit: number): Promise<void> => {
   if (!branchId) return;
-  const branchRef = doc(db, 'branches', branchId);
-  await setDoc(branchRef, {
-    kfaceDailyLimit: kfaceLimit,
-    ktarotDailyLimit: ktarotLimit
-  }, { merge: true });
+  await apiPost('/api/usage', {
+    action: 'updateLimit',
+    branchId,
+    kfaceLimit,
+    ktarotLimit,
+  });
 };

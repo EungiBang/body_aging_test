@@ -366,5 +366,6 @@ export interface TarotMaster {
   age: string;
   title: string;
   description: string;
-  prompt: string;
+  // prompt(마스터 페르소나)는 서버(_master-personas.ts)로 이전 — 클라 번들에서 제거(IP 은닉).
+  prompt?: string;
 }

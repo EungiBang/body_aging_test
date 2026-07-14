@@ -1,5 +1,4 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { apiPost } from './apiClient';
 
 export interface ErrorLog {
   id?: string;
@@ -34,16 +33,17 @@ class ErrorLoggerService {
       const deviceInfo = await this.getDeviceInfo();
       const appVersion = localStorage.getItem('lastAppVersion') || '1.0.0';
 
-      const errorPayload: ErrorLog = {
-        ...errorData,
+      // R2: 브라우저 직접 Firestore 접근(addDoc) → 서버 api 경유. status/timestamp는 서버가 채운다.
+      await apiPost('/api/errorlog', {
+        message: errorData.message,
+        stackTrace: errorData.stackTrace,
+        type: errorData.type,
+        severity: errorData.severity,
+        source: errorData.source,
         deviceInfo,
         appVersion,
-        status: 'new',
-        timestamp: serverTimestamp(),
-      };
-
-      await addDoc(collection(db, 'error_logs'), errorPayload);
-      console.warn('Error successfully reported to central server.', errorPayload);
+      });
+      console.warn('Error successfully reported to central server via api.');
     } catch (e) {
       // Fallback: If error logging itself fails, just log to console to prevent infinite loops
       console.error('Failed to send error log to central server:', e);
