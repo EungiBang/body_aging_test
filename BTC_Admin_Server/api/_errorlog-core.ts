@@ -2,8 +2,8 @@
 // 읽기/상태변경: api/admin-errorlog.ts(관리자 전용) — 기존 AdminErrorMonitor의 클라 onSnapshot/updateDoc 대체.
 // 쓰기: api/errorlog.ts(best-effort 인증) — 기존 ErrorLogger.logError의 클라 addDoc 대체.
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { getAdminApp } from './_firebase-admin';
-import type { Identity } from './_auth';
+import { getAdminApp } from './_firebase-admin.js';
+import type { Identity } from './_auth.js';
 
 // 관리자 오류 모니터용 — 최근 에러 로그 조회(timestamp 내림차순, 기본 100건).
 export async function listErrorLogs(max = 100): Promise<any[]> {

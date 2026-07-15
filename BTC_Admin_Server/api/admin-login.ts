@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { adminLogin } from './_admin-core';
-import { applyCors } from './_cors';
+import { adminLogin } from './_admin-core.js';
+import { applyCors } from './_cors.js';
 
 /**
  * Vercel Serverless Function — 관리자 로그인 (인증의 관리자 버전)

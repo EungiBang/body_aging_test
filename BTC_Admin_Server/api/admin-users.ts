@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest } from './_auth';
-import { applyCors } from './_cors';
-import { listAdminUsers, saveAdminUser, changeAdminPassword, deleteAdminUser } from './_admin-users-core';
+import { authenticateRequest } from './_auth.js';
+import { applyCors } from './_cors.js';
+import { listAdminUsers, saveAdminUser, changeAdminPassword, deleteAdminUser } from './_admin-users-core.js';
 
 /**
  * Vercel Serverless Function — 관리자 계정 CRUD (관리자 전용, R2)

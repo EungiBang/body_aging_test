@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest } from './_auth';
-import { applyCors } from './_cors';
-import { logUsage, getDashboardStats } from './_stats-core';
+import { authenticateRequest } from './_auth.js';
+import { applyCors } from './_cors.js';
+import { logUsage, getDashboardStats } from './_stats-core.js';
 
 /**
  * Vercel Serverless Function — 사용량 통계 (R2: 브라우저 직접 Firestore 접근 대체)

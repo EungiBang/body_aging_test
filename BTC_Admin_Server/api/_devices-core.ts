@@ -2,7 +2,7 @@
 // api/devices.ts(배포)와 vite dev 프록시가 공유. 기존 services/firebaseAuthService.ts의
 // getAllDevices/updateDeviceStatus/deleteDevice(클라 직접 접속)를 그대로 Admin SDK로 옮긴 것.
 import { getFirestore } from 'firebase-admin/firestore';
-import { getAdminApp } from './_firebase-admin';
+import { getAdminApp } from './_firebase-admin.js';
 
 export type DeviceType = 'pc' | 'lite';
 

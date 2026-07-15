@@ -101,7 +101,7 @@ export default defineConfig(({ mode }) => {
                     case 'saveBranch': res.statusCode = 200; return res.end(JSON.stringify({ id: await core.saveBranch(p.branch) }));
                     case 'deleteBranch': await core.deleteBranch(p.branchId); res.statusCode = 200; return res.end(JSON.stringify({ ok: true }));
                     case 'getSettings': res.statusCode = 200; return res.end(JSON.stringify(await core.getSystemSettings()));
-                    case 'updateSettings': await core.updateSystemSettings(p.autoApproveCode, p.liteAutoApproveCode); res.statusCode = 200; return res.end(JSON.stringify({ ok: true }));
+                    case 'updateSettings': await core.updateSystemSettings(p.autoApproveCode, p.liteAutoApproveCode, p.tempLiteAutoApproveCode, p.tempLiteCodeExpiredAt); res.statusCode = 200; return res.end(JSON.stringify({ ok: true }));
                     default: res.statusCode = 400; return res.end(JSON.stringify({ error: 'unknown action' }));
                   }
                 } catch (e: any) { res.statusCode = 500; res.end(JSON.stringify({ error: e.message })); }

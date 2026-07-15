@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest } from './_auth';
-import { applyCors } from './_cors';
-import { syncMember, syncFeedback, fetchFeedbacks, deleteMember, listMembersByBranch, listMembersByEventCode } from './_sync-core';
+import { authenticateRequest } from './_auth.js';
+import { applyCors } from './_cors.js';
+import { syncMember, syncFeedback, fetchFeedbacks, deleteMember, listMembersByBranch, listMembersByEventCode } from './_sync-core.js';
 
 /**
  * Vercel Serverless Function — 클라우드 동기화 (R2: 브라우저 직접 Firestore 접근 대체)

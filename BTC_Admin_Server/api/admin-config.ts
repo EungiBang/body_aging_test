@@ -1,17 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest } from './_auth';
-import { applyCors } from './_cors';
+import { authenticateRequest } from './_auth.js';
+import { applyCors } from './_cors.js';
 import {
   listRegions, listBranches, saveRegion, deleteRegion, saveBranch, deleteBranch,
   getSystemSettings, updateSystemSettings,
-} from './_admin-config-core';
+} from './_admin-config-core.js';
 
 /**
  * Vercel Serverless Function — 지역/지점 CRUD + 시스템 설정 (관리자 전용, R2)
  *
  * POST /api/admin-config
  * Body: { action: 'listRegions'|'listBranches'|'saveRegion'|'deleteRegion'|'saveBranch'|'deleteBranch'|'getSettings'|'updateSettings',
- *         region?, branch?, regionId?, branchId?, autoApproveCode?, liteAutoApproveCode? }
+ *         region?, branch?, regionId?, branchId?, autoApproveCode?, liteAutoApproveCode?, tempLiteAutoApproveCode?, tempLiteCodeExpiredAt? }
  * 인증: 관문 통과 + role==='admin' 필수.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'saveBranch': return res.status(200).json({ id: await saveBranch(b.branch) });
       case 'deleteBranch': await deleteBranch(b.branchId); return res.status(200).json({ ok: true });
       case 'getSettings': return res.status(200).json(await getSystemSettings());
-      case 'updateSettings': await updateSystemSettings(b.autoApproveCode, b.liteAutoApproveCode); return res.status(200).json({ ok: true });
+      case 'updateSettings': await updateSystemSettings(b.autoApproveCode, b.liteAutoApproveCode, b.tempLiteAutoApproveCode, b.tempLiteCodeExpiredAt); return res.status(200).json({ ok: true });
       default: return res.status(400).json({ error: 'unknown action' });
     }
   } catch (e: any) {

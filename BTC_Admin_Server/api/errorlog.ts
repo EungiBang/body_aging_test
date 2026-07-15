@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest, type Identity } from './_auth';
-import { applyCors } from './_cors';
-import { writeErrorLog } from './_errorlog-core';
+import { authenticateRequest, type Identity } from './_auth.js';
+import { applyCors } from './_cors.js';
+import { writeErrorLog } from './_errorlog-core.js';
 
 /**
  * Vercel Serverless Function — 에러 로그 쓰기 (R2: 브라우저 직접 addDoc 대체)

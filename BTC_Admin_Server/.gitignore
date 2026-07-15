@@ -32,3 +32,4 @@ release-builds-lite
 release-v1.1
 BTC3BODY*
 .vercel
+.env*

@@ -3,7 +3,7 @@
 // 전체 getDocs)를 서버(Admin SDK)로 옮긴 것. 대량이라 서버 응답 ~4.5MB 제한을 피하려 문서ID 커서로 페이지 단위 반환
 // → 클라(fetchAllMembers)가 nextCursor로 순회해 전체를 이어붙인다. 최신순 정렬은 클라가 수행(기존 동작 보존).
 import { getFirestore, FieldPath } from 'firebase-admin/firestore';
-import { getAdminApp } from './_firebase-admin';
+import { getAdminApp } from './_firebase-admin.js';
 
 export interface MembersPage { members: any[]; nextCursor: string | null; }
 

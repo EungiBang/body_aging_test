@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest } from './_auth';
-import { applyCors } from './_cors';
-import { getStatus, updateLimit } from './_usage-core';
+import { authenticateRequest } from './_auth.js';
+import { applyCors } from './_cors.js';
+import { getStatus, updateLimit } from './_usage-core.js';
 
 /**
  * Vercel Serverless Function — 지점 사용량/일일 한도 (R2)

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest } from './_auth';
-import { applyCors } from './_cors';
-import { listAllFeedbacks } from './_admin-feedbacks-core';
+import { authenticateRequest } from './_auth.js';
+import { applyCors } from './_cors.js';
+import { listAllFeedbacks } from './_admin-feedbacks-core.js';
 
 /**
  * Vercel Serverless Function — AI 피드백 전체 조회 (관리자 전용, R2 / G1)

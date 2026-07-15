@@ -3,7 +3,7 @@
 // getRegions/getBranches/saveRegion/deleteRegion/saveBranch/deleteBranch/get·updateSystemSettings를
 // 그대로 Admin SDK로 옮긴 것.
 import { getFirestore } from 'firebase-admin/firestore';
-import { getAdminApp } from './_firebase-admin';
+import { getAdminApp } from './_firebase-admin.js';
 
 export async function listRegions(): Promise<any[]> {
   getAdminApp();
@@ -61,18 +61,33 @@ export async function deleteBranch(branchId: string): Promise<void> {
   await db.doc(`branches/${branchId}`).delete();
 }
 
-export async function getSystemSettings(): Promise<{ autoApproveCode?: string; liteAutoApproveCode?: string }> {
+export interface SystemSettings {
+  autoApproveCode?: string;
+  liteAutoApproveCode?: string;
+  // 라이트 임시 교육용 배포 코드 + 만료 일시(ISO datetime-local 문자열). 라이트 서버가 등록·만료 강제에 소비.
+  tempLiteAutoApproveCode?: string;
+  tempLiteCodeExpiredAt?: string;
+}
+
+export async function getSystemSettings(): Promise<SystemSettings> {
   getAdminApp();
   const db = getFirestore();
   const snap = await db.doc('system_settings/config').get();
-  if (snap.exists) return snap.data() as { autoApproveCode?: string; liteAutoApproveCode?: string };
-  return { autoApproveCode: '', liteAutoApproveCode: '' };
+  if (snap.exists) return snap.data() as SystemSettings;
+  return { autoApproveCode: '', liteAutoApproveCode: '', tempLiteAutoApproveCode: '', tempLiteCodeExpiredAt: '' };
 }
 
-export async function updateSystemSettings(autoApproveCode: string, liteAutoApproveCode?: string): Promise<void> {
+export async function updateSystemSettings(
+  autoApproveCode: string,
+  liteAutoApproveCode?: string,
+  tempLiteAutoApproveCode?: string,
+  tempLiteCodeExpiredAt?: string,
+): Promise<void> {
   getAdminApp();
   const db = getFirestore();
   const updateData: any = { autoApproveCode: autoApproveCode || '' };
   if (liteAutoApproveCode !== undefined) updateData.liteAutoApproveCode = liteAutoApproveCode || '';
+  if (tempLiteAutoApproveCode !== undefined) updateData.tempLiteAutoApproveCode = tempLiteAutoApproveCode || '';
+  if (tempLiteCodeExpiredAt !== undefined) updateData.tempLiteCodeExpiredAt = tempLiteCodeExpiredAt || '';
   await db.doc('system_settings/config').set(updateData, { merge: true });
 }

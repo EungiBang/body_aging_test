@@ -5,7 +5,7 @@
 // 주의: 비밀번호 해시는 기존과 동일하게 SHA-256 hex로 유지(저장된 해시 호환). SHA-256은 약하나 동작 보존 우선.
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createHash } from 'node:crypto';
-import { getAdminApp } from './_firebase-admin';
+import { getAdminApp } from './_firebase-admin.js';
 
 function hashPassword(password: string): string {
   return createHash('sha256').update(password, 'utf8').digest('hex');

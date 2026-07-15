@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest } from './_auth';
-import { applyCors } from './_cors';
-import { listErrorLogs, setErrorLogStatus } from './_errorlog-core';
+import { authenticateRequest } from './_auth.js';
+import { applyCors } from './_cors.js';
+import { listErrorLogs, setErrorLogStatus } from './_errorlog-core.js';
 
 /**
  * Vercel Serverless Function — 에러 로그 조회/상태변경 (관리자 전용, R2)

@@ -5,7 +5,7 @@
 // 비개발자가 고칠 firebaseAuthService.ts는 건드리지 않는다(신 파일에 새로 구현, §인증 방침).
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
-import { getAdminApp } from './_firebase-admin';
+import { getAdminApp } from './_firebase-admin.js';
 import { createHash } from 'node:crypto';
 
 // 클라의 hashPassword(Web Crypto SHA-256 hex)와 동일 결과 — 기존 저장 해시가 그대로 검증됨.

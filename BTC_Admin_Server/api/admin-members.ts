@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest } from './_auth';
-import { applyCors } from './_cors';
-import { listAllMembersPage } from './_admin-members-core';
+import { authenticateRequest } from './_auth.js';
+import { applyCors } from './_cors.js';
+import { listAllMembersPage } from './_admin-members-core.js';
 
 /**
  * Vercel Serverless Function — 본사 전체 회원 조회(페이지네이션, 관리자 전용, R2)

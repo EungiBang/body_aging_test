@@ -69,12 +69,17 @@ export const deleteBranch = async (branchId: string) => {
   await apiPost('/api/admin-config', { action: 'deleteBranch', branchId });
 };
 
-export const getSystemSettings = async (): Promise<{ autoApproveCode?: string; liteAutoApproveCode?: string }> => {
+export const getSystemSettings = async (): Promise<{ autoApproveCode?: string; liteAutoApproveCode?: string; tempLiteAutoApproveCode?: string; tempLiteCodeExpiredAt?: string }> => {
   return apiPost('/api/admin-config', { action: 'getSettings' });
 };
 
-export const updateSystemSettings = async (autoApproveCode: string, liteAutoApproveCode?: string) => {
-  await apiPost('/api/admin-config', { action: 'updateSettings', autoApproveCode, liteAutoApproveCode });
+export const updateSystemSettings = async (
+  autoApproveCode: string,
+  liteAutoApproveCode?: string,
+  tempLiteAutoApproveCode?: string,
+  tempLiteCodeExpiredAt?: string,
+) => {
+  await apiPost('/api/admin-config', { action: 'updateSettings', autoApproveCode, liteAutoApproveCode, tempLiteAutoApproveCode, tempLiteCodeExpiredAt });
 };
 
 // ── 관리자 계정 (/api/admin-users) ────────────────────────────────

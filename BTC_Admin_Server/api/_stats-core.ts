@@ -3,8 +3,8 @@
 // 기존 services/statsService.ts의 클라 직접 접속 로직을 그대로 서버(Admin SDK)로 옮긴 것.
 // 관리자 표면에서 쓰는 건 getDashboardStats(overview)뿐. logUsage(측정 클라 경로)는 참고로 함께 이식.
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { getAdminApp } from './_firebase-admin';
-import type { Identity } from './_auth';
+import { getAdminApp } from './_firebase-admin.js';
+import type { Identity } from './_auth.js';
 
 export interface DashboardStats {
   dailyStats: any[];

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest } from './_auth';
-import { applyCors } from './_cors';
-import { listAllEvents } from './_admin-events-core';
+import { authenticateRequest } from './_auth.js';
+import { applyCors } from './_cors.js';
+import { listAllEvents } from './_admin-events-core.js';
 
 /**
  * Vercel Serverless Function — 연합 행사 전체 조회 (관리자 전용, R2)

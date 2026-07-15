@@ -29,7 +29,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [regions, setRegions] = useState<Region[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [devices, setDevices] = useState<DeviceLicense[]>([]);
-  const [settings, setSettings] = useState({ autoApproveCode: '', liteAutoApproveCode: '' });
+  const [settings, setSettings] = useState({ autoApproveCode: '', liteAutoApproveCode: '', tempLiteAutoApproveCode: '', tempLiteCodeExpiredAt: '' });
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<{ dailyStats: any[], branchStats: any[] }>({ dailyStats: [], branchStats: [] });
 
@@ -96,7 +96,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       setRegions(r);
       setBranches(b);
       setDevices(d);
-      setSettings((s as any) || { autoApproveCode: '', liteAutoApproveCode: '' });
+      setSettings((s as any) || { autoApproveCode: '', liteAutoApproveCode: '', tempLiteAutoApproveCode: '', tempLiteCodeExpiredAt: '' });
       setAdminUsers(au);
       setStats(dashStats);
       setAllFeedbacks(feedbacks);
@@ -232,7 +232,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
   const handleSaveSettings = async () => {
     try {
-      await updateSystemSettings(settings.autoApproveCode, settings.liteAutoApproveCode);
+      await updateSystemSettings(settings.autoApproveCode, settings.liteAutoApproveCode, settings.tempLiteAutoApproveCode, settings.tempLiteCodeExpiredAt);
       alert('설정이 저장되었습니다.');
     } catch (e: any) {
       console.error('설정 저장 실패:', e);
@@ -618,6 +618,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                 return 0;
               };
 
+              // 완전히 점검이 완료된 회원만 필터링 (분석 대기 제외)
+              const analyzedCloudMembers = cloudMembers.filter(m => {
+                const name = m.name || m.report?.userInfo?.name || '';
+                return name && !name.startsWith('(분석 대기)');
+              });
+
               // 1. 기간별 점검자 계산
               let todayTestedCount = 0;
               let yesterdayTestedCount = 0;
@@ -626,7 +632,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               const todayActiveBranchesSet = new Set<string>();
               const todayActiveRegionsSet = new Set<string>();
 
-              cloudMembers.forEach(m => {
+              analyzedCloudMembers.forEach(m => {
                 const mTime = getMemberTime(m);
                 if (mTime === 0) return;
 
@@ -644,7 +650,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               });
 
               // 2. 랭킹 기간 선택에 따른 집계
-              const rankFiltered = cloudMembers.filter(m => {
+              const rankFiltered = analyzedCloudMembers.filter(m => {
                 const mTime = getMemberTime(m);
                 if (mTime === 0) return false;
                 if (rankPeriod === 'today') return mTime >= todayStart;
@@ -768,7 +774,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xl shadow-inner"><i className="fas fa-database"></i></div>
                       <div>
                         <div className="text-slate-500 text-xs font-bold mb-1">누적 점검 건수</div>
-                        <div className="text-2xl font-black text-purple-600">{cloudMembers.length}<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
+                        <div className="text-2xl font-black text-purple-600">{analyzedCloudMembers.length}<span className="text-sm font-normal text-slate-500 ml-1">건</span></div>
                       </div>
                     </div>
                   </div>
@@ -2214,7 +2220,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     </div>
                   </div>
 
-                  <button 
+                  <div className="mb-6 p-6 bg-violet-50 rounded-2xl border border-violet-200">
+                    <h3 className="font-bold text-violet-800 mb-2">🎓 Online LITE 버전 임시 배포 승인 코드</h3>
+                    <p className="text-xs text-violet-600 mb-4 leading-relaxed">
+                      교육 및 테스트용 임시 코드입니다. 만료시간이 지나거나 이 필드를 비워두면 임시 코드로 인증받은 기기들의 사용 권한이 자동으로 즉시 소멸 및 차단됩니다.
+                    </p>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-violet-500 mb-1">임시 승인 코드</label>
+                        <input
+                          type="text"
+                          className="w-full p-3 border border-violet-200 rounded-xl bg-white focus:border-violet-400 outline-none"
+                          placeholder="예: TEMPLITE2026"
+                          value={settings.tempLiteAutoApproveCode || ''}
+                          onChange={e => setSettings({ ...settings, tempLiteAutoApproveCode: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-violet-500 mb-1">만료 일시</label>
+                        <input
+                          type="datetime-local"
+                          className="w-full p-3 border border-violet-200 rounded-xl bg-white focus:border-violet-400 outline-none"
+                          value={settings.tempLiteCodeExpiredAt || ''}
+                          onChange={e => setSettings({ ...settings, tempLiteCodeExpiredAt: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
                     onClick={handleSaveSettings}
                     className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors"
                   >💾 승인 코드 저장</button>

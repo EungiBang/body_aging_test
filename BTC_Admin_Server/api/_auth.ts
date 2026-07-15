@@ -6,7 +6,7 @@
 // (관리자 앱: role==='admin' 경로만 실제 사용. lite-device 경로는 P2에서 필요 시 활성.)
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
-import { getAdminApp } from './_firebase-admin';
+import { getAdminApp } from './_firebase-admin.js';
 
 // 세션 유휴 만료 기간. [비개발자 합의 미정 — 잠정 2주] 상수라 숫자만 바꾸면 조정됨.
 const IDLE_EXPIRY_DAYS = 14;

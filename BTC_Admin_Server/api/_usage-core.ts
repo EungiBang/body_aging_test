@@ -4,8 +4,8 @@
 // 관리자 표면에서 쓰는 건 getStatus(할당량 탭 사용량 표시) + updateLimit(일일 한도 변경)뿐.
 // increment(측정 클라 전용)는 관리자 앱에선 죽은 코드라 이식하지 않는다.
 import { getFirestore } from 'firebase-admin/firestore';
-import { getAdminApp } from './_firebase-admin';
-import type { Identity } from './_auth';
+import { getAdminApp } from './_firebase-admin.js';
+import type { Identity } from './_auth.js';
 
 export interface UsageStatus {
   kfaceLimit: number;

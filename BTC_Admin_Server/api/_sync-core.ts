@@ -4,8 +4,8 @@
 // 관리자 표면에서 쓰는 건 deleteMember(회원 삭제) + listMembersByBranch(지점별 조회)뿐.
 // syncMember/syncFeedback/fetchFeedbacks/listMembersByEventCode(측정·피드백 경로)는 참고로 함께 이식(템플릿 동일).
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { getAdminApp } from './_firebase-admin';
-import type { Identity } from './_auth';
+import { getAdminApp } from './_firebase-admin.js';
+import type { Identity } from './_auth.js';
 
 // 소유권: 기기는 자기 지점만, 관리자는 (요청/레코드가 준) 지점. usage/stats-core와 동일 규약.
 function resolveBranch(identity: Identity, requestedBranchId?: string): string {

@@ -4,7 +4,7 @@
 // ※ Outdoor 측정 앱의 /api/event(createEvent/대기열 등)와 달리, 관리자 표면은 "전체 행사 목록"만 필요 →
 //    admin 전용 목록 조회 엔드포인트를 신설한다(Outdoor _event-core엔 목록 조회가 없었음).
 import { getFirestore } from 'firebase-admin/firestore';
-import { getAdminApp } from './_firebase-admin';
+import { getAdminApp } from './_firebase-admin.js';
 
 // 전체 연합 행사 목록. createdAt(숫자) 내림차순 — 기존 fetchAllEvents 동작 보존.
 export async function listAllEvents(): Promise<any[]> {

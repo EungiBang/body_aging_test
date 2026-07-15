@@ -112,6 +112,24 @@ async function createWindow() {
     return ['media', 'mediaKeySystem'].includes(permission);
   });
 
+  // 패키징 빌드(file:// 렌더러)에서 원격 라이트 API를 cross-origin으로 부를 때의 CORS 우회.
+  // 이 앱은 Bearer 토큰 인증(쿠키 아님)이라 CORS는 보안 경계가 아니라 장애물일 뿐 — 실제 방어는
+  // 서버의 인증 관문(_auth.ts)이 한다. 그래서 서버 _cors.ts는 엄격히 둔 채, 앱이 자기 API 응답에만
+  // Access-Control-Allow-Origin을 주입해 렌더러 fetch(및 프리플라이트)를 통과시킨다.
+  // VITE_API_BASE가 test/real 어느 라이트 서버를 가리켜도 동일하게 동작한다.
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    if (/^https?:\/\//i.test(details.url) && details.url.includes('/api/')) {
+      const headers = details.responseHeaders || {};
+      for (const k of Object.keys(headers)) {
+        if (k.toLowerCase() === 'access-control-allow-origin') delete headers[k];
+      }
+      headers['Access-Control-Allow-Origin'] = ['*'];
+      callback({ responseHeaders: headers });
+      return;
+    }
+    callback({ responseHeaders: details.responseHeaders });
+  });
+
   // Handle window.open (popup) cleanly for Firebase Auth
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     // We can allow new window so Firebase popups work naturally

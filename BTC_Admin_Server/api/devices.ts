@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest } from './_auth';
-import { applyCors } from './_cors';
-import { listDevices, setDeviceStatus, removeDevice } from './_devices-core';
+import { authenticateRequest } from './_auth.js';
+import { applyCors } from './_cors.js';
+import { listDevices, setDeviceStatus, removeDevice } from './_devices-core.js';
 
 /**
  * Vercel Serverless Function — 기기 라이센스 관리 (관리자 전용, R2: 브라우저 직접 Firestore 접근 대체)
