@@ -43,10 +43,8 @@
     },
     "publish": [
       {
-        "provider": "github",
-        "owner": "EungiBang",
-        "repo": "body_aging_test",
-        "releaseType": "release"
+        "provider": "generic",
+        "url": "https://dwq1g8u6u2e82.cloudfront.net/updates/pc"
       }
     ],
     "artifactName": "BTC_3Body_AI_Analyzer_v${version}.${ext}"
