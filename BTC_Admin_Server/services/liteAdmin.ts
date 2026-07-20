@@ -153,10 +153,10 @@ export const fetchAllMembers = async (): Promise<MemberRecord[]> => {
   try {
     const all: any[] = [];
     let cursor: string | null = null;
-    // 안전 상한: 무한 루프 방지 (500 * 400 = 20만건까지).
+    // 안전 상한: 무한 루프 방지 (1000 * 400 = 40만건까지). 목록은 서버가 slim 프로젝션으로 내려줌.
     for (let i = 0; i < 400; i++) {
       const page = await apiPost<{ members: any[]; nextCursor: string | null }>(
-        '/api/admin-members', { action: 'list', cursor, limit: 500 }
+        '/api/admin-members', { action: 'list', cursor, limit: 1000 }
       );
       all.push(...(page.members || []));
       cursor = page.nextCursor;
@@ -188,6 +188,36 @@ export const deleteMemberFromCloud = async (memberId: string): Promise<boolean> 
     return true;
   } catch {
     return false;
+  }
+};
+
+// 단건 전체 조회(상세 모달용). 목록은 slim이라 report 무거운 필드가 없어, 행 클릭 시 이걸로 전체를 당긴다.
+export const getMemberDetail = async (memberId: string): Promise<MemberRecord | null> => {
+  try {
+    const { member } = await apiPost<{ member: any }>('/api/admin-members', { action: 'get', id: memberId });
+    return (member || null) as MemberRecord | null;
+  } catch {
+    return null;
+  }
+};
+
+// 엑셀 내보내기용 전량 조회: 서버가 엑셀 필드만 프로젝션해 페이지로 내려주고 여기서 이어붙인다.
+// 상시 로딩이 아니라 '엑셀 버튼'을 누를 때만 호출(무거운 sevenCode·측정데이터·이미지는 서버가 제외).
+export const fetchMembersForExcel = async (): Promise<MemberRecord[]> => {
+  try {
+    const all: any[] = [];
+    let cursor: string | null = null;
+    for (let i = 0; i < 400; i++) {
+      const page = await apiPost<{ members: any[]; nextCursor: string | null }>(
+        '/api/admin-members', { action: 'list', cursor, limit: 1000, projection: 'excel' }
+      );
+      all.push(...(page.members || []));
+      cursor = page.nextCursor;
+      if (!cursor) break;
+    }
+    return all as MemberRecord[];
+  } catch {
+    return [];
   }
 };
 

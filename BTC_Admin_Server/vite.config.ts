@@ -201,7 +201,12 @@ export default defineConfig(({ mode }) => {
                   catch (e: any) { res.statusCode = e.status || 401; return res.end(JSON.stringify({ error: e.message, code: e.code })); }
                   if (identity.role !== 'admin') { res.statusCode = 403; return res.end(JSON.stringify({ error: '관리자만 가능합니다.', code: 'forbidden' })); }
                   const p = JSON.parse(body || '{}');
-                  if (p.action === 'list') { res.statusCode = 200; return res.end(JSON.stringify(await core.listAllMembersPage(p.cursor, p.limit))); }
+                  if (p.action === 'list') { res.statusCode = 200; return res.end(JSON.stringify(await core.listAllMembersPage(p.cursor, p.limit, p.projection))); }
+                  if (p.action === 'get') {
+                    const member = await core.getMemberById(p.id);
+                    if (!member) { res.statusCode = 404; return res.end(JSON.stringify({ error: '회원을 찾을 수 없습니다.', code: 'not_found' })); }
+                    res.statusCode = 200; return res.end(JSON.stringify({ member }));
+                  }
                   res.statusCode = 400; return res.end(JSON.stringify({ error: 'unknown action' }));
                 } catch (e: any) { res.statusCode = 500; res.end(JSON.stringify({ error: e.message })); }
               });

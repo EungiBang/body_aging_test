@@ -8,7 +8,7 @@ import {
   saveBranch, saveRegion, deleteBranch, deleteRegion, getSystemSettings, updateSystemSettings,
   getAdminUsers, saveAdminUser, deleteAdminUser,
   getUsageStatus, updateDailyLimit,
-  getDashboardStats, fetchAllMembers, fetchMembersFromCloud, deleteMemberFromCloud,
+  getDashboardStats, fetchAllMembers, fetchMembersFromCloud, deleteMemberFromCloud, getMemberDetail, fetchMembersForExcel,
   fetchAllEvents, getAllFeedbacks,
 } from '../services/liteAdmin';
 import { MemberRecord } from '../types';
@@ -1591,33 +1591,43 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                 else alert('삭제 실패');
               };
 
-              const handleExportExcel = () => {
-                const rows = filteredMembers.map(m => {
-                  const r = m.report;
-                  return {
-                    '이름': m.name || r?.userInfo?.name || '-',
-                    '연락처': r?.userInfo?.phone || (m as any).phone || (m as any).phoneNumber || '-',
-                    '나이': r?.userInfo?.age || '-',
-                    '성별': r?.userInfo?.gender === 'male' ? '남' : r?.userInfo?.gender === 'female' ? '여' : '-',
-                    '출처': (m as any).sourceType === 'LITE' ? '온라인 LITE' : 'PC',
-                    '지역': (m as any).regionId || '-',
-                    '지점': (m as any).branchId || '-',
-                    '합동코드': m.eventCode || '-',
-                    '측정일': m.lastTestDate ? new Date(m.lastTestDate).toLocaleDateString() : '-',
-                    '신체나이': r?.physicalAge || '-',
-                    '뇌나이': r?.brainAge || '-',
-                    '얼굴나이': r?.faceAgeEstimate || '-',
-                    '종합나이': r?.comprehensiveAge || '-',
-                    '종합점수': r?.overallScore || '-',
-                    '종합평가': r?.summary || '-',
-                    '체형분석': r?.bodyTypeAnalysis || '-',
-                    '뇌테스트상세': r?.brainTestEvaluation || '-',
-                  };
-                });
-                const ws = xlsx.utils.json_to_sheet(rows);
-                const wb = xlsx.utils.book_new();
-                xlsx.utils.book_append_sheet(wb, ws, '회원데이터');
-                xlsx.writeFile(wb, `회원데이터_${memberSubTab === 'analyzed' ? '분석완료' : '분석대기'}_${new Date().toISOString().slice(0,10)}.xlsx`);
+              const handleExportExcel = async () => {
+                // 목록(cloudMembers)은 slim이라 report 무거운 필드가 없음 → 엑셀 필드만 프로젝션해 전량 조회 후,
+                // 현재 필터(filteredMembers)에 해당하는 회원만 추려 기존 시트 생성 코드로 내보낸다.
+                setMembersLoading(true);
+                try {
+                  const excelMembers = await fetchMembersForExcel();
+                  const excelById = new Map(excelMembers.map(em => [em.id, em]));
+                  const rows = filteredMembers.map(fm => {
+                    const m: any = excelById.get(fm.id) || fm;
+                    const r = m.report;
+                    return {
+                      '이름': m.name || r?.userInfo?.name || '-',
+                      '연락처': r?.userInfo?.phone || m.phone || m.phoneNumber || '-',
+                      '나이': r?.userInfo?.age || '-',
+                      '성별': r?.userInfo?.gender === 'male' ? '남' : r?.userInfo?.gender === 'female' ? '여' : '-',
+                      '출처': m.sourceType === 'LITE' ? '온라인 LITE' : 'PC',
+                      '지역': m.regionId || '-',
+                      '지점': m.branchId || '-',
+                      '합동코드': m.eventCode || '-',
+                      '측정일': m.lastTestDate ? new Date(m.lastTestDate).toLocaleDateString() : '-',
+                      '신체나이': r?.physicalAge || '-',
+                      '뇌나이': r?.brainAge || '-',
+                      '얼굴나이': r?.faceAgeEstimate || '-',
+                      '종합나이': r?.comprehensiveAge || '-',
+                      '종합점수': r?.overallScore || '-',
+                      '종합평가': r?.summary || '-',
+                      '체형분석': r?.bodyTypeAnalysis || '-',
+                      '뇌테스트상세': r?.brainTestEvaluation || '-',
+                    };
+                  });
+                  const ws = xlsx.utils.json_to_sheet(rows);
+                  const wb = xlsx.utils.book_new();
+                  xlsx.utils.book_append_sheet(wb, ws, '회원데이터');
+                  xlsx.writeFile(wb, `회원데이터_${memberSubTab === 'analyzed' ? '분석완료' : '분석대기'}_${new Date().toISOString().slice(0,10)}.xlsx`);
+                } finally {
+                  setMembersLoading(false);
+                }
               };
 
               const handleRefresh = async () => {
@@ -1626,6 +1636,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                   const m = await fetchAllMembers();
                   setCloudMembers(m);
                 } finally { setMembersLoading(false); }
+              };
+
+              // 상세 모달: 목록은 slim이라 무거운 report가 없음 → 즉시 모달을 열고(가벼운 필드), 전체 문서를 받아 교체.
+              const openMemberDetail = async (m: MemberRecord) => {
+                setSelectedMember(m);
+                const full = await getMemberDetail(m.id);
+                if (full) setSelectedMember(prev => (prev && prev.id === m.id ? full : prev));
               };
 
               return (
@@ -1741,7 +1758,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                             const r = m.report;
                             const branchName = branches.find(b => b.id === (m as any).branchId)?.name || (m as any).branchId || '-';
                             return (
-                              <tr key={m.id} className="border-t hover:bg-indigo-50/50 cursor-pointer transition-colors" onClick={() => setSelectedMember(m)}>
+                              <tr key={m.id} className="border-t hover:bg-indigo-50/50 cursor-pointer transition-colors" onClick={() => openMemberDetail(m)}>
                                 <td className="p-3 font-bold text-slate-800">{m.name || r?.userInfo?.name || '-'}</td>
                                 <td className="p-3 text-slate-600">{r?.userInfo?.phone || (m as any).phone || (m as any).phoneNumber || '-'}</td>
                                 <td className="p-3 text-center">{r?.userInfo?.age || '-'}</td>
