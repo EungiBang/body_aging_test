@@ -54,3 +54,11 @@ export async function getMemberById(id: string): Promise<any | null> {
   if (!snap.exists) return null;
   return { id: snap.id, ...snap.data() };
 }
+
+// 회원 총원(집계). count() 집계쿼리라 문서를 다 읽지 않아 싸다 — 초기 로딩 진행률 표시용.
+export async function getMemberCount(): Promise<number> {
+  getAdminApp();
+  const db = getFirestore();
+  const snap = await db.collection('members_v4').count().get();
+  return snap.data().count;
+}

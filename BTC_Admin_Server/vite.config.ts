@@ -202,6 +202,7 @@ export default defineConfig(({ mode }) => {
                   if (identity.role !== 'admin') { res.statusCode = 403; return res.end(JSON.stringify({ error: '관리자만 가능합니다.', code: 'forbidden' })); }
                   const p = JSON.parse(body || '{}');
                   if (p.action === 'list') { res.statusCode = 200; return res.end(JSON.stringify(await core.listAllMembersPage(p.cursor, p.limit, p.projection))); }
+                  if (p.action === 'count') { res.statusCode = 200; return res.end(JSON.stringify({ count: await core.getMemberCount() })); }
                   if (p.action === 'get') {
                     const member = await core.getMemberById(p.id);
                     if (!member) { res.statusCode = 404; return res.end(JSON.stringify({ error: '회원을 찾을 수 없습니다.', code: 'not_found' })); }

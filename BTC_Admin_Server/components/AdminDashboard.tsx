@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 // 타입(AdminUser/Region/Branch/DeviceLicense)은 여전히 firebaseAuthService가 원본(값 함수는 전부 liteAdmin으로 이관됨).
 import { AdminUser, Region, Branch, DeviceLicense } from '../services/firebaseAuthService';
 // 관리자 데이터 접근은 전부 봉합선(liteAdmin) 경유. P1: adminLogin · P2a: devices/config/users · P2b: stats/members · P2c: events/errorlog/feedbacks.
@@ -8,7 +8,7 @@ import {
   saveBranch, saveRegion, deleteBranch, deleteRegion, getSystemSettings, updateSystemSettings,
   getAdminUsers, saveAdminUser, deleteAdminUser,
   getUsageStatus, updateDailyLimit,
-  getDashboardStats, fetchAllMembers, fetchMembersFromCloud, deleteMemberFromCloud, getMemberDetail, fetchMembersForExcel,
+  getDashboardStats, fetchAllMembers, fetchMembersFromCloud, deleteMemberFromCloud, getMemberDetail, fetchMembersForExcel, getMemberCount,
   fetchAllEvents, getAllFeedbacks,
 } from '../services/liteAdmin';
 import { MemberRecord } from '../types';
@@ -17,6 +17,33 @@ import { UsageStatus } from '../services/usageLimitService';
 import * as xlsx from 'xlsx';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { AdminErrorMonitor } from './AdminErrorMonitor';
+
+// 무한 스크롤 센티넬: 목록 끝에 두고, 뷰포트 300px 이내로 들어오면 onReach 호출(다음 페이지 노출).
+// root:null(뷰포트)이라 안쪽 overflow-auto(회원 표)·페이지 스크롤(기기 표) 두 경우를 다 커버한다.
+const InfiniteSentinel: React.FC<{ onReach: () => void }> = ({ onReach }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const cb = useRef(onReach);
+  cb.current = onReach;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // 실제 스크롤 컨테이너를 root로 잡아야 rootMargin(선제 로드)이 그 컨테이너 하단 기준으로 동작한다.
+    // (root=viewport면 안쪽 overflow-auto 표는 사실상 바닥에 닿아서야 걸린다.) 없으면 null=viewport.
+    let root: HTMLElement | null = el.parentElement;
+    while (root) {
+      const oy = getComputedStyle(root).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && root.scrollHeight > root.clientHeight) break;
+      root = root.parentElement;
+    }
+    const io = new IntersectionObserver(
+      (entries) => { if (entries.some(e => e.isIntersecting)) cb.current(); },
+      { root, rootMargin: '400px 0px' } // 스크롤 하단 400px 전에 미리 다음 페이지 append
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return <div ref={ref} aria-hidden style={{ height: 1 }} />;
+};
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -70,6 +97,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [membersLoading, setMembersLoading] = useState(false);
   const [memberSubTab, setMemberSubTab] = useState<'analyzed' | 'pending'>('analyzed');
   const [memberFilterSource, setMemberFilterSource] = useState<'all' | 'PC' | 'LITE'>('all');
+  // 무한 스크롤: 화면에 그릴 개수(데이터는 이미 메모리에 전량 로드됨 — 화면만 잘라 그린다).
+  const [memberVisibleCount, setMemberVisibleCount] = useState(50);
+  const [deviceVisibleCount, setDeviceVisibleCount] = useState(50);
+  // 초기 회원 로딩 진행률: 총원은 count 집계로 먼저, 로드된 건수는 페이지 순회 콜백으로 누적.
+  const [memberTotal, setMemberTotal] = useState<number | null>(null);
+  const [memberLoaded, setMemberLoaded] = useState(0);
 
   // 합동 행사 관리 상태
   const [events, setEvents] = useState<any[]>([]);
@@ -80,8 +113,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [feedbacksLoading, setFeedbacksLoading] = useState(false);
   const [rankPeriod, setRankPeriod] = useState<'today' | 'week' | 'month'>('month');
 
+  // 필터/검색/정렬/서브탭이 바뀌면 무한스크롤 창을 1페이지(50)로 리셋한다.
+  useEffect(() => { setMemberVisibleCount(50); }, [memberFilterRegion, memberFilterBranch, memberFilterEventCode, memberSearch, memberFilterSource, memberSubTab]);
+  useEffect(() => { setDeviceVisibleCount(50); }, [deviceFilterRegion, deviceFilterBranch, deviceSearchQuery, deviceSortKey, deviceSortDir]);
+
   const loadData = async () => {
     setIsLoading(true);
+    setMemberLoaded(0);
+    getMemberCount().then(setMemberTotal).catch(() => {}); // 총원 먼저(집계, 빠름) → 진행률 분모
     try {
       const [r, b, d, s, au, dashStats, feedbacks, members] = await Promise.all([
         getRegions(),
@@ -91,7 +130,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         getAdminUsers(),
         getDashboardStats(),
         getAllFeedbacks(),
-        fetchAllMembers()
+        fetchAllMembers((loaded) => setMemberLoaded(loaded))
       ]);
       setRegions(r);
       setBranches(b);
@@ -575,7 +614,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       {/* Content */}
       <div className="flex-1 bg-white mx-6 mb-6 rounded-b-xl rounded-tr-xl shadow-sm p-6 overflow-y-auto">
         {isLoading ? (
-          <div className="flex items-center justify-center h-full text-slate-400">데이터 로딩 중...</div>
+          (() => {
+            const pct = memberTotal && memberTotal > 0 ? Math.min(100, Math.round((memberLoaded / memberTotal) * 100)) : null;
+            const R = 26, C = 2 * Math.PI * R;
+            return (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
+                {pct === null ? (
+                  // 총원(count) 오기 전 잠깐: 불확정 스피너
+                  <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                ) : (
+                  // 진행률 반영 원형 링(회색 트랙 + 인디고 채움) + 가운데 %
+                  <div className="relative w-16 h-16">
+                    <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+                      <circle cx="32" cy="32" r={R} fill="none" stroke="#e5e7eb" strokeWidth="6" />
+                      <circle
+                        cx="32" cy="32" r={R} fill="none" stroke="#4f46e5" strokeWidth="6"
+                        strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - pct / 100)}
+                        style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center text-sm font-black text-indigo-600">{pct}%</div>
+                  </div>
+                )}
+                <div className="text-sm font-bold text-slate-500">데이터 로딩 중...</div>
+                {memberTotal !== null && (
+                  <div className="text-xs text-slate-400">
+                    회원 {memberLoaded.toLocaleString()} / {memberTotal.toLocaleString()}명 불러오는 중
+                  </div>
+                )}
+              </div>
+            );
+          })()
         ) : (
           <>
             {/* Overview Tab */}
@@ -1145,13 +1214,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                           onChange={e => setDeviceSearchQuery(e.target.value)}
                         />
                       </div>
-                      <button 
-                        onClick={() => loadData()}
-                        disabled={isLoading}
+                      <button
+                        onClick={() => getAllDevices().then(setDevices).catch(() => {})}
                         className="px-4 py-2 bg-indigo-50 text-indigo-600 font-bold rounded-xl hover:bg-indigo-100 text-sm disabled:opacity-50 whitespace-nowrap"
-                        title="최신 기기 데이터 불러오기"
+                        title="최신 기기 데이터 불러오기(기기 목록만 갱신)"
                       >
-                        {isLoading ? '로딩...' : '🔄 새로고침'}
+                        🔄 새로고침
                       </button>
                     </div>
                   </div>
@@ -1176,7 +1244,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredDevices.map(d => {
+                      {filteredDevices.slice(0, deviceVisibleCount).map(d => {
                         const branch = branches.find(b => b.id === d.branchId);
                         const branchName = branch?.name || '알 수 없음';
                         const regionName = regions.find(r => r.id === branch?.regionId)?.name || '-';
@@ -1225,6 +1293,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       })}
                     </tbody>
                   </table>
+                  <InfiniteSentinel onReach={() => setDeviceVisibleCount(v => Math.min(v + 50, filteredDevices.length))} />
                 </div>
               </div>
               );
@@ -1754,7 +1823,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredMembers.map(m => {
+                          {filteredMembers.slice(0, memberVisibleCount).map(m => {
                             const r = m.report;
                             const branchName = branches.find(b => b.id === (m as any).branchId)?.name || (m as any).branchId || '-';
                             return (
@@ -1795,6 +1864,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                           })}
                         </tbody>
                       </table>
+                      <InfiniteSentinel onReach={() => setMemberVisibleCount(v => Math.min(v + 50, filteredMembers.length))} />
                     </div>
                   ) : (
                     /* 분석 대기 테이블 */
@@ -1815,7 +1885,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredMembers.map(m => {
+                          {filteredMembers.slice(0, memberVisibleCount).map(m => {
                             const r = m.report;
                             const rawName = m.name || r?.userInfo?.name || '-';
                             const displayName = rawName.replace('(분석 대기) ', '');
@@ -1855,6 +1925,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                           })}
                         </tbody>
                       </table>
+                      <InfiniteSentinel onReach={() => setMemberVisibleCount(v => Math.min(v + 50, filteredMembers.length))} />
                     </div>
                   )}
 

@@ -149,7 +149,7 @@ export const getDashboardStats = async (): Promise<{ dailyStats: any[]; branchSt
 // 원본 cloudSyncService.fetchAllMembers/fetchMembersFromCloud/deleteMemberFromCloud 대체.
 // fetchAllMembers: 서버가 커서 페이지네이션으로 반환 → 여기서 nextCursor 순회로 전체를 누적한 뒤
 //                  원본과 동일하게 최신순(lastTestDate || report.date) 정렬. 실패 시 [](원본 동작 보존).
-export const fetchAllMembers = async (): Promise<MemberRecord[]> => {
+export const fetchAllMembers = async (onProgress?: (loaded: number) => void): Promise<MemberRecord[]> => {
   try {
     const all: any[] = [];
     let cursor: string | null = null;
@@ -159,6 +159,7 @@ export const fetchAllMembers = async (): Promise<MemberRecord[]> => {
         '/api/admin-members', { action: 'list', cursor, limit: 1000 }
       );
       all.push(...(page.members || []));
+      onProgress?.(all.length); // 초기 로딩 진행률(누적 로드 건수) 통지
       cursor = page.nextCursor;
       if (!cursor) break;
     }
@@ -198,6 +199,16 @@ export const getMemberDetail = async (memberId: string): Promise<MemberRecord | 
     return (member || null) as MemberRecord | null;
   } catch {
     return null;
+  }
+};
+
+// 회원 총원(집계). count() 집계쿼리라 문서를 다 읽지 않아 싸다 — 초기 로딩 진행률 표시용.
+export const getMemberCount = async (): Promise<number> => {
+  try {
+    const { count } = await apiPost<{ count: number }>('/api/admin-members', { action: 'count' });
+    return count || 0;
+  } catch {
+    return 0;
   }
 };
 
