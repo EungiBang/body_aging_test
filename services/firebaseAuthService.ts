@@ -77,27 +77,11 @@ const hashPassword = async (password: string): Promise<string> => {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
-// 초기 마스터 계정 보장 (DB에 없으면 기본 비밀번호로 생성)
-const ensureMasterAccount = async (): Promise<void> => {
-  const docRef = doc(db, 'admin_users', 'admin');
-  const snap = await getDoc(docRef);
-  if (!snap.exists()) {
-    const hashedPw = await hashPassword('BTCADMIN2026');
-    await setDoc(docRef, {
-      name: 'Master',
-      role: 'master',
-      password: hashedPw,
-      createdAt: serverTimestamp()
-    });
-  }
-};
+// Initial administrators must be provisioned through an authorized server or console.
 
 // 0. 관리자(Admin) 인증 및 계정 관리
 export const adminLogin = async (userId: string, passwordInput: string): Promise<AdminUser | null> => {
-  // 초기 마스터 계정 보장
-  await ensureMasterAccount();
-
-  const docRef = doc(db, 'admin_users', userId);
+const docRef = doc(db, 'admin_users', userId);
   const snap = await getDoc(docRef);
   if (snap.exists()) {
     const data = snap.data();
