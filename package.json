@@ -26,17 +26,20 @@
     "react-markdown": "^10.1.0",
     "recharts": "^3.6.0",
     "remark-gfm": "^4.0.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "file:vendor/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.14.0",
-    "@vercel/node": "^5.7.15",
     "@vitejs/plugin-react": "^5.0.0",
     "dotenv": "^17.4.2",
     "postcss": "^8.5.14",
     "tailwindcss": "^4.2.2",
     "typescript": "~5.8.2",
     "vite": "^6.4.2"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "1.14.7",
+    "esbuild": "0.25.12"
   }
 }
